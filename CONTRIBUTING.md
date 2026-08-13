@@ -18,13 +18,21 @@
 3. Update the CHANGELOG.md with any customer-affecting changes since the last release and add this to the git index
 4. Run `npm version <VERSION_NUMBER> --no-git-tag-version` with the new version and add the changes to the git index
 5. Update the version number to the new version in `src/platform/react-hooks/src/AblyReactHooks.ts`
-6. Create a PR for the release branch
-7. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
-8. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
-9. Run `npm publish .` (should require OTP) - publishes to NPM
-10. Run the GitHub action "Publish to CDN" with the new tag name
-11. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
-12. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
+6. Update the `version` **and** the exact `peerDependencies.ably` range to the new version in both `packages/pubsub-device/package.json` and `packages/pubsub-server/package.json` (see [Per-side packages](#per-side-packages) below)
+7. Create a PR for the release branch
+8. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
+9. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
+10. Run `npm publish .` (should require OTP) - publishes to NPM
+11. Run `npm publish ./packages/pubsub-device` and `npm publish ./packages/pubsub-server` - publishes the per-side packages to NPM
+12. Run the GitHub action "Publish to CDN" with the new tag name
+13. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
+14. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
+
+### Per-side packages
+
+`packages/pubsub-device` and `packages/pubsub-server` are thin wrappers over the core, published as `@ably/pubsub-device` and `@ably/pubsub-server`. They exist so that a client can declare which side of the connection it is on, which is what determines whether its traffic counts toward an account's monthly active users.
+
+`npm run build:packages` builds them, and also links `node_modules/ably` to the repo root so their bundles resolve the local core. npm workspaces is deliberately not used: declaring them as workspaces makes npm satisfy their peer dependency from the registry, which would leave the tests running against a published core rather than the one in the working tree.
 
 ## Building the library
 

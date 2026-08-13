@@ -120,6 +120,48 @@ const minifiedLiveObjectsPluginCdnConfig = {
   minify: true,
 };
 
+// The per-side Pub/Sub wrapper packages (PDR-091). Each is a thin wrapper over the core, so it is
+// built as a plain CJS/ESM pair rather than UMD.
+//
+// Each entry is one of the package's public entry points: `.` plus one per re-exported core
+// subpath. Every entry point is served in both formats, so every entry is built twice.
+//
+// Every entry point exposes its surface under a name, which is spelled the same way in both module
+// systems, so one source serves both formats.
+function createPackageConfigs(packageName, entries) {
+  const packageDir = `packages/${packageName}`;
+
+  return entries.flatMap(({ name, sources = { cjs: name, esm: name } }) => {
+    const baseConfig = {
+      bundle: true,
+      sourcemap: true,
+      banner: { js: '/*' + banner + '*/' },
+      target: 'es2017',
+      // `react` and `react-dom` join the externals for the same reason `ably` does: the hooks must
+      // use the app's copy of React, and bundling one here would break the hooks' rules entirely.
+      external: ['ably', 'ably/*', 'react', 'react-dom'],
+    };
+
+    return Object.entries(sources).map(([format, source]) => ({
+      ...baseConfig,
+      format,
+      entryPoints: [`${packageDir}/src/${source}.ts`],
+      outfile: `${packageDir}/dist/${name}.${format === 'esm' ? 'mjs' : 'js'}`,
+    }));
+  });
+}
+
+const pubsubPackageConfigs = [
+  ...createPackageConfigs('pubsub-device', [
+    { name: 'index' },
+    { name: 'liveobjects' },
+    { name: 'react' },
+    { name: 'push' },
+    { name: 'react-native-push' },
+  ]),
+  ...createPackageConfigs('pubsub-server', [{ name: 'index' }, { name: 'liveobjects' }]),
+];
+
 module.exports = {
   webConfig,
   minifiedWebConfig,
@@ -133,4 +175,5 @@ module.exports = {
   liveObjectsPluginEsmConfig,
   liveObjectsPluginCdnConfig,
   minifiedLiveObjectsPluginCdnConfig,
+  pubsubPackageConfigs,
 };

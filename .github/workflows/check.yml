@@ -38,10 +38,24 @@ jobs:
       # commit; fail if the committed copy has drifted from the registry.
       - run: npm run generate:errorcodes-ts
       - run: git diff --exit-code -- src/common/lib/types/errorcodes.ts
+      # Type-checks the wrapper packages' sources and their hand-written declaration files
+      # together, against the core resolved through the tsconfig's `paths`. The React hooks'
+      # declaration files are generated rather than hand-written, so the `/react` subpath can only
+      # be checked against them once they exist — and checking against the generated types is the
+      # right thing to do anyway, since they are what a consumer resolves.
+      - run: npm run build:react
+      - run: npm run check:packages
       # for some reason, this doesn't work in CI using `npx attw --pack .`
       - run: npm pack
       - run: npx attw ably-$(node -e "console.log(require('./package.json').version)").tgz --summary --exclude-entrypoints 'ably/modular'
       # see https://github.com/ably/ably-js/issues/1546 for why we ignore 'false-cjs' currently.
       # should remove when switched to auto-generated type declaration files for modular variant of the library.
       - run: npx attw ably-$(node -e "console.log(require('./package.json').version)").tgz --summary --entrypoints 'ably/modular' --ignore-rules false-cjs
+      # Built explicitly rather than relying on the root `npm pack` above having run
+      # `prepare`, so that packing the wrapper packages does not depend on a side effect of
+      # an earlier step. Neither package has a `prepare` of its own to build it.
+      - run: npm run build:packages
+      - run: npm pack ./packages/pubsub-device ./packages/pubsub-server
+      - run: npx attw ably-pubsub-device-$(node -e "console.log(require('./packages/pubsub-device/package.json').version)").tgz --summary
+      - run: npx attw ably-pubsub-server-$(node -e "console.log(require('./packages/pubsub-server/package.json').version)").tgz --summary
       - run: npm audit --production

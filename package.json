@@ -28,7 +28,7 @@
     },
     "./push": {
       "types": "./push.d.ts",
-      "import": "./build/push.js"
+      "default": "./build/push.js"
     },
     "./react-native-push": {
       "types": "./react-native-push.d.ts",
@@ -176,7 +176,7 @@
     "start:react": "npx vite serve",
     "grunt": "grunt",
     "test": "npm run test:node",
-    "test:node": "npm run build:node && npm run build:push && npm run build:liveobjects && mocha",
+    "test:node": "npm run build:node && npm run build:push && npm run build:liveobjects && npm run build:packages && mocha",
     "test:grep": "npm run build:node && npm run build:push && npm run build:liveobjects && mocha --grep",
     "test:node:skip-build": "mocha",
     "test:webserver": "grunt test:webserver",
@@ -196,9 +196,11 @@
     "build:push": "grunt build:push",
     "build:react-native-push": "grunt build:react-native-push",
     "build:liveobjects": "grunt build:liveobjects",
+    "build:packages": "grunt build:packages",
     "requirejs": "grunt requirejs",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
+    "check:packages": "tsc --noEmit --project packages/tsconfig.json",
     "prepare": "npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

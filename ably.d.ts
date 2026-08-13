@@ -4490,12 +4490,14 @@ export declare class Rest implements RestClient {
   /**
    * Construct a client object using an Ably {@link ClientOptions} object.
    *
+   * @deprecated Use `createHttpClient()` from `@ably/pubsub-server` for a backend service. It wraps this constructor and additionally declares that the client is a server, which is what exempts it from monthly active user counting. Phase 1 of the package split ships no device-side HTTP factory, so if this client runs on an end user's device, keep using this constructor rather than declaring the client a server it is not. This constructor continues to work and declares no side.
    * @param options - A {@link ClientOptions} object to configure the client connection to Ably.
    */
   constructor(options: ClientOptions);
   /**
    * Constructs a client object using an Ably API key or token string.
    *
+   * @deprecated Use `createHttpClient()` from `@ably/pubsub-server` for a backend service. It wraps this constructor and additionally declares that the client is a server, which is what exempts it from monthly active user counting. Phase 1 of the package split ships no device-side HTTP factory, so if this client runs on an end user's device, keep using this constructor rather than declaring the client a server it is not. This constructor continues to work and declares no side.
    * @param keyOrToken - The Ably API key or token string used to validate the client.
    */
   constructor(keyOrToken: string);
@@ -4547,12 +4549,14 @@ export declare class Realtime implements RealtimeClient {
   /**
    * Construct a client object using an Ably {@link ClientOptions} object.
    *
+   * @deprecated Use `createClient()` from `@ably/pubsub-device` for code running on an end user's device, or `createRealtimeClient()` from `@ably/pubsub-server` for a backend service. Both wrap this constructor and additionally declare which side the client is on, which is what determines whether its traffic counts toward monthly active users. This constructor continues to work and declares no side.
    * @param options - A {@link ClientOptions} object to configure the client connection to Ably.
    */
   constructor(options: ClientOptions);
   /**
    * Constructs a client object using an Ably API key or token string.
    *
+   * @deprecated Use `createClient()` from `@ably/pubsub-device` for code running on an end user's device, or `createRealtimeClient()` from `@ably/pubsub-server` for a backend service. Both wrap this constructor and additionally declare which side the client is on, which is what determines whether its traffic counts toward monthly active users. This constructor continues to work and declares no side.
    * @param keyOrToken - The Ably API key or token string used to validate the client.
    */
   constructor(keyOrToken: string);

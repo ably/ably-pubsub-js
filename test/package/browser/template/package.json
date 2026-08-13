@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild --bundle src/index-default.ts --outdir=dist && esbuild --bundle src/index-liveobjects.ts --outdir=dist && esbuild --bundle src/index-modular.ts --outdir=dist",
+    "build": "esbuild --bundle src/index-default.ts --outdir=dist && esbuild --bundle src/index-liveobjects.ts --outdir=dist && esbuild --bundle src/index-modular.ts --outdir=dist && esbuild --bundle src/index-pubsub-side.ts --outdir=dist",
     "typecheck": "tsc --project src -noEmit",
     "test-support:server": "ts-node server/server.ts",
     "test": "npm run test:lib && npm run test:hooks",

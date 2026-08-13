@@ -80,6 +80,7 @@ module.exports = function (grunt) {
     'build:push',
     'build:react-native-push',
     'build:liveobjects',
+    'build:packages',
   ]);
 
   grunt.registerTask('all', ['build', 'requirejs']);
@@ -188,6 +189,123 @@ module.exports = function (grunt) {
 
   grunt.registerTask('build:liveobjects', ['build:liveobjects:bundle', 'build:liveobjects:types']);
 
+  grunt.registerTask('build:packages:bundle', 'Bundle the per-side Pub/Sub wrapper packages', function () {
+    var done = this.async();
+
+    Promise.all(esbuildConfig.pubsubPackageConfigs.map((config) => esbuild.build(config)))
+      .then(() => {
+        done(true);
+      })
+      .catch((err) => {
+        done(err);
+      });
+  });
+
+  // The wrapper packages keep `ably` external and take it as a peer dependency, so their
+  // bundles do `require('ably')` — which, inside this repo, resolves to nothing, because the
+  // core is the repo itself rather than something installed under node_modules. Linking it
+  // makes the packages resolve the very core they were built alongside, so tests exercise
+  // one copy of it and `instanceof` holds across the boundary, exactly as it does for a
+  // consumer who installed both.
+  //
+  // Not done with npm workspaces: declaring the packages as workspaces makes npm satisfy
+  // their peer dependency by installing `ably` from the registry, which would leave tests
+  // running against a published core rather than this one.
+  grunt.registerTask(
+    'link:core',
+    'Link node_modules/ably to the repo root, so the wrapper packages resolve the local core',
+    function () {
+      const linkPath = path.join('node_modules', 'ably');
+
+      // lstat rather than fs.existsSync, which follows the link and so reports a dangling one
+      // as absent — leaving symlinkSync below to fail with EEXIST.
+      let existing = null;
+      try {
+        existing = fs.lstatSync(linkPath);
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+
+      if (existing) {
+        // Anything already here that is not this checkout has to be a stale link or a core
+        // installed from the registry, either of which would have the wrapper packages resolve
+        // a different core than the one they were built alongside. The tests would still pass,
+        // because they and the packages would agree on that same wrong copy, so fail loudly
+        // rather than let a green run mean nothing.
+        let resolved = null;
+        try {
+          resolved = fs.realpathSync(linkPath);
+        } catch (err) {
+          if (err.code !== 'ENOENT') {
+            throw err;
+          }
+        }
+
+        if (resolved === fs.realpathSync(__dirname)) {
+          return;
+        }
+
+        if (resolved === null || existing.isSymbolicLink()) {
+          // A link we made and can safely remake: either dangling, or pointing somewhere else.
+          fs.unlinkSync(linkPath);
+        } else {
+          grunt.fatal(
+            `${linkPath} is an installed copy of the core rather than a link to this checkout. ` +
+              'Remove it and re-run, so the wrapper packages resolve the core they are built alongside.',
+          );
+        }
+      }
+
+      fs.symlinkSync('..', linkPath, 'dir');
+      grunt.log.ok('Linked node_modules/ably to the repo root');
+    },
+  );
+
+  // Each entry point serves real ESM behind its `import` condition, so that condition needs
+  // ESM-flavoured types too. Without a `.d.mts`, TypeScript reads the `.d.ts` as CommonJS types
+  // describing an ESM file, and `attw` rightly reports the entry point as masquerading as CJS.
+  //
+  // A straight copy is enough, unlike the core's equivalent step for liveobjects.d.mts, which has
+  // to rewrite relative imports: every declaration file in these packages imports the core by bare
+  // specifier only, and those resolve identically under both module systems. Every one of them also
+  // exports under a name rather than with `export =`, which has no ESM spelling and so could not be
+  // copied.
+  grunt.registerTask(
+    'build:packages:types',
+    'Generate the .d.mts counterpart of each wrapper package declaration file',
+    function () {
+      const declarationFiles = grunt.file.expand([
+        'packages/pubsub-device/**/index.d.ts',
+        'packages/pubsub-server/**/index.d.ts',
+      ]);
+
+      let generated = 0;
+
+      for (const declarationFile of declarationFiles) {
+        const contents = fs.readFileSync(declarationFile, 'utf8');
+
+        // `export =` has no ESM spelling, so a declaration file using it could not be copied into
+        // one. Nothing here uses it — every subpath exports under a name — so fail loudly rather
+        // than silently emit a `.d.mts` that does not parse.
+        if (/^export = /m.test(contents)) {
+          grunt.fatal(
+            `${declarationFile} uses \`export =\`, which has no ESM spelling and so cannot be ` +
+              'copied into a .d.mts. Export under a name instead, as the other subpaths do.',
+          );
+        }
+
+        fs.writeFileSync(declarationFile.replace(/\.d\.ts$/, '.d.mts'), contents);
+        generated++;
+      }
+
+      grunt.log.ok(`Generated ${generated} .d.mts declaration files`);
+    },
+  );
+
+  grunt.registerTask('build:packages', ['build:packages:bundle', 'build:packages:types', 'link:core']);
+
   grunt.registerTask('test:webserver', 'Launch the Mocha test web server on http://localhost:3000/', [
     'build:browser',
     'build:push',
@@ -220,10 +338,18 @@ module.exports = function (grunt) {
           const version = grunt.file.readJSON('package.json').version;
           const packFileName = `ably-${version}.tgz`;
 
-          // Configure app to consume the generated .tgz file
+          // The per-side wrapper packages are installed alongside the core, so the app resolves
+          // them the way a consumer would, with the core satisfying their exact peer dependency.
+          // Their versions move in lockstep with the core's.
+          await execExternalPromises(
+            'npm pack --pack-destination test/package/browser/build ./packages/pubsub-device ./packages/pubsub-server',
+          );
+          const sidePackFileNames = [`ably-pubsub-device-${version}.tgz`, `ably-pubsub-server-${version}.tgz`];
+
+          // Configure app to consume the generated .tgz files
           const pwd = process.cwd();
           process.chdir(buildDir);
-          await execExternalPromises(`npm install ${packFileName}`);
+          await execExternalPromises(`npm install ${packFileName} ${sidePackFileNames.join(' ')}`);
 
           // Install further dependencies required for testing the app
           await execExternalPromises('npm run test:install-deps');

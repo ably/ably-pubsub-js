@@ -6,10 +6,15 @@ npm-debug.log
 .tool-versions
 liveobjects.d.mts
 build/
-react/
+packages/*/dist/
+*.tgz
+/react/
 typedoc/generated/
 junit/
 private-api-usage/
 private-api-usage-reports/
 test/support/mocha_junit_reporter/build/
 .claude
+# Generated from the sibling index.d.ts by `grunt build:packages:types`.
+packages/*/index.d.mts
+packages/*/*/index.d.mts

@@ -41,7 +41,7 @@ module.exports = {
       },
     },
     {
-      files: ['ably.d.ts', 'modular.d.ts'],
+      files: ['packages/core/ably.d.ts', 'packages/core/modular.d.ts'],
       extends: ['plugin:jsdoc/recommended'],
       rules: {
         'jsdoc/check-tag-names': ['warn', { definedTags: ['experimental'] }],
@@ -55,7 +55,7 @@ module.exports = {
     'tools',
     'scripts',
     'typedoc/generated',
-    '/react',
+    '/packages/core/react',
     'Gruntfile.js',
     'grunt',
   ],

@@ -8,6 +8,6 @@
  * export, one source serving both module systems, and a declaration file that copies verbatim into
  * its ESM counterpart. See ./liveobjects-exports.ts for the shape being matched.
  */
-import Push from 'ably/push';
+import Push from '@ably/pubsub-core/push';
 
 export { Push };

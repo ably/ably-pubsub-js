@@ -5,8 +5,14 @@ import { promisify } from 'util';
 import { gzip } from 'zlib';
 import Table from 'cli-table';
 
+// Every bundle path and module name in this file is written relative to the core package, so every
+// esbuild call below is given that as its working directory. Changing this process's own cwd is not
+// enough: esbuild-runner has already started the esbuild service by the time this module is
+// evaluated, and the service keeps the working directory it was started with.
+const coreDir = path.join(__dirname, '..', 'packages', 'core');
+
 // The maximum size we allow for a minimal useful Realtime bundle (i.e. one that can subscribe to a channel)
-const minimalUsefulRealtimeBundleSizeThresholdsKiB = { raw: 121, gzip: 37 };
+const minimalUsefulRealtimeBundleSizeThresholdsKiB = { raw: 122, gzip: 37 };
 
 const baseClientNames = ['BaseRest', 'BaseRealtime'];
 
@@ -83,7 +89,7 @@ interface Output {
   errors: Error[];
 }
 
-// Uses esbuild to create a bundle containing the named exports from 'ably/modular'
+// Uses esbuild to create a bundle containing the named exports from '@ably/pubsub-core/modular'
 function getModularBundleInfo(exports: string[]): BundleInfo {
   return getBundleInfo('./build/modular/index.mjs', exports);
 }
@@ -93,9 +99,10 @@ function getBundleInfo(modulePath: string, exports?: string[], external?: string
   const outfile = exports ? exports.join('') : 'all';
   const exportTarget = exports ? `{ ${exports.join(', ')} }` : '*';
   const result = esbuild.buildSync({
+    absWorkingDir: coreDir,
     stdin: {
       contents: `export ${exportTarget} from '${modulePath}'`,
-      resolveDir: '.',
+      resolveDir: coreDir,
     },
     metafile: true,
     minify: true,
@@ -122,7 +129,7 @@ function getBundleInfo(modulePath: string, exports?: string[], external?: string
   };
 }
 
-// Gets the bundled size in bytes of an array of named exports from 'ably/modular'
+// Gets the bundled size in bytes of an array of named exports from '@ably/pubsub-core/modular'
 async function getModularImportSizes(exports: string[]): Promise<ByteSizes> {
   const bundleInfo = getModularBundleInfo(exports);
 

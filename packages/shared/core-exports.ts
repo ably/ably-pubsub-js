@@ -4,7 +4,7 @@
  *
  * These are enumerated rather than star-re-exported, for two reasons:
  *
- * The core ships as UMD with `libraryExport: 'default'`. `export * from 'ably'` does
+ * The core ships as UMD with `libraryExport: 'default'`. `export * from '@ably/pubsub-core'` does
  * resolve, but cjs-module-lexer over-detects two bogus bindings from that wrapper — `Ably`
  * and a literal `module.exports` — which a star re-export would publish as part of this
  * package's own namespace.
@@ -15,6 +15,6 @@
  * package.
  *
  * The type surface is handled separately, in each package's hand-written `index.d.ts`,
- * where `export * from 'ably'` is safe because it resolves at compile time only.
+ * where `export * from '@ably/pubsub-core'` is safe because it resolves at compile time only.
  */
-export { Rest, Realtime, ErrorInfo } from 'ably';
+export { Rest, Realtime, ErrorInfo } from '@ably/pubsub-core';

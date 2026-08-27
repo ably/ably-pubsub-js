@@ -1,21 +1,28 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('path');
 const { BannerPlugin, ProvidePlugin } = require('webpack');
-const banner = require('./src/fragments/license');
+const banner = require('./packages/core/src/fragments/license');
 // This is needed for baseUrl to resolve correctly from tsconfig
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+
+// Everything webpack builds here belongs to the core package rather than to this monorepo root.
+// That is also why the tsconfig has to be named explicitly: the plugin resolves one from the
+// working directory, which would find the root's, and the root's covers scripts/ and carries none
+// of the core's `baseUrl`.
+const coreDir = path.resolve(__dirname, 'packages', 'core');
+const tsconfigPathsPlugin = () => new TsconfigPathsPlugin({ configFile: path.resolve(coreDir, 'tsconfig.json') });
 
 const baseConfig = {
   mode: 'production',
   entry: {
-    index: path.resolve(__dirname, 'src', 'common', 'lib', 'index.js'),
+    index: path.resolve(coreDir, 'src', 'common', 'lib', 'index.js'),
   },
   resolve: {
     extensions: ['.js', '.ts'],
-    plugins: [new TsconfigPathsPlugin()],
+    plugins: [tsconfigPathsPlugin()],
   },
   output: {
-    path: path.resolve(__dirname, 'build'),
+    path: path.resolve(coreDir, 'build'),
     library: 'Ably',
     libraryTarget: 'umd',
     libraryExport: 'default',
@@ -41,7 +48,7 @@ const baseConfig = {
 };
 
 function platformPath(platform, ...dir) {
-  return path.resolve(__dirname, 'src', 'platform', platform, ...dir);
+  return path.resolve(coreDir, 'src', 'platform', platform, ...dir);
 }
 
 const nativeScriptConfig = {
@@ -83,7 +90,7 @@ const reactNativeConfig = {
   },
   resolve: {
     extensions: ['.js', '.ts'],
-    plugins: [new TsconfigPathsPlugin()],
+    plugins: [tsconfigPathsPlugin()],
     fallback: {
       crypto: false,
     },
@@ -105,7 +112,7 @@ const reactNativeConfig = {
  * - The package is not compatible with RequireJS and hence we don’t have any easy way to directly load it in our tests — the webpack bundle exposes it as a global named MochaJUnitReporter.
  */
 function createMochaJUnitReporterConfig() {
-  const dir = path.join(__dirname, 'test', 'support', 'mocha_junit_reporter');
+  const dir = path.join(coreDir, 'test', 'support', 'mocha_junit_reporter');
 
   return {
     mode: 'development',

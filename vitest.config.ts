@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  root: 'src/platform/react-hooks/src',
+  root: 'packages/core/src/platform/react-hooks/src',
   plugins: [react() as any],
   test: {
     globals: true,
@@ -11,7 +11,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      ably: path.resolve(__dirname, 'build', 'ably.js'),
+      '@ably/pubsub-core': path.resolve(__dirname, 'packages', 'core', 'build', 'ably.js'),
     },
   },
 });

@@ -6,6 +6,6 @@
  * core declares alongside `create` are handled separately, by each package's hand-written
  * `react-native-push/index.d.ts`, which re-exports them by name.
  */
-import ReactNativePush from 'ably/react-native-push';
+import ReactNativePush from '@ably/pubsub-core/react-native-push';
 
 export { ReactNativePush };

@@ -4,17 +4,18 @@ ably-pubsub-js.iml
 node_modules
 npm-debug.log
 .tool-versions
-liveobjects.d.mts
+packages/core/liveobjects.d.mts
 build/
 packages/*/dist/
 *.tgz
-/react/
+/packages/core/react/
 typedoc/generated/
 junit/
 private-api-usage/
 private-api-usage-reports/
-test/support/mocha_junit_reporter/build/
+packages/core/test/support/mocha_junit_reporter/build/
 .claude
 # Generated from the sibling index.d.ts by `grunt build:packages:types`.
 packages/*/index.d.mts
 packages/*/*/index.d.mts
+packages/*/*/*/index.d.mts

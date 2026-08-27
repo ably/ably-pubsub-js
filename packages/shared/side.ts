@@ -2,10 +2,10 @@
 // each package's output by the esbuild step rather than published, so that the two packages
 // can share this code without a third npm package existing for it to live in.
 //
-// PDR-091 keeps `ably` itself as the shared core, so nothing here may grow into a general
+// PDR-091 keeps `@ably/pubsub-core` itself as the shared core, so nothing here may grow into a general
 // abstraction over the core: it exists only to stamp the side a package declares.
 
-import type * as Ably from 'ably';
+import type * as Ably from '@ably/pubsub-core';
 
 // The `-device` / `-server` suffix on both identifiers below is load-bearing, not
 // cosmetic. On API-key auth the realtime system grants the server exemption by matching an

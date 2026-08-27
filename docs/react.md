@@ -37,13 +37,13 @@ The hooks are compatible with all versions of React above 16.8.0, with the excep
 Start by connecting your app to Ably using the `AblyProvider` component. See the [`ClientOptions` documentation](https://ably.com/docs/api/realtime-sdk/types?lang=javascript) for information about what options are available when creating an Ably client. If you want to use the `usePresence` or `usePresenceListener` hooks, you'll need to explicitly provide a `clientId`.
 
 The `AblyProvider` should be high in your component tree, wrapping every component which needs to access Ably.
-Also, ensure that the `Ably.Realtime` instance is created outside of components to prevent it from being recreated on component re-renders. This will help avoid opening extra unnecessary connections to the Ably servers and potentially reaching the maximum connections limit on your account.
+Also, ensure that the client is created outside of components to prevent it from being recreated on component re-renders. This will help avoid opening extra unnecessary connections to the Ably servers and potentially reaching the maximum connections limit on your account.
 
 ```jsx
-import { AblyProvider } from 'ably/react';
-import * as Ably from 'ably';
+import { AblyProvider } from '@ably/pubsub-device/react';
+import { createClient } from '@ably/pubsub-device';
 
-const client = new Ably.Realtime({ key: 'your-ably-api-key', clientId: 'me' });
+const client = createClient({ key: 'your-ably-api-key', clientId: 'me' });
 
 root.render(
   <AblyProvider client={client}>
@@ -322,10 +322,10 @@ interface MyPresenceType {
 
 ### useObject
 
-The `useObject` hook subscribes to the [LiveObjects](https://ably.com/docs/liveobjects) state on a channel and re-renders your component when it changes. It is exported from its own entry point, `ably/liveobjects/react`, so apps that don't use LiveObjects don't need to import any of its code:
+The `useObject` hook subscribes to the [LiveObjects](https://ably.com/docs/liveobjects) state on a channel and re-renders your component when it changes. It is exported from its own entry point, `@ably/pubsub-device/liveobjects/react`, so apps that don't use LiveObjects don't need to import any of its code:
 
 ```javascript
-import { useObject } from 'ably/liveobjects/react';
+import { useObject } from '@ably/pubsub-device/liveobjects/react';
 ```
 
 Using the hook requires:
@@ -365,7 +365,7 @@ const AliceScore = () => {
 If you're using TypeScript, annotate the selector's parameter with the shape of your channel's object and the whole navigation chain is checked at compile time — `value` and `object` are then typed from the chain with no further annotation:
 
 ```tsx
-import { LiveCounter, LiveMap, PathObject } from 'ably/liveobjects';
+import { LiveCounter, LiveMap, PathObject } from '@ably/pubsub-device/liveobjects';
 
 type Game = {
   scores: LiveMap<{ alice: LiveCounter; bob: LiveCounter }>;
@@ -551,8 +551,8 @@ Consider a scenario where a component uses the `useChannel` hook, but the user's
 
 ```tsx
 import React, { useEffect, useState } from 'react';
-import { useChannel } from 'ably/react';
-import * as Ably from 'ably';
+import { useChannel } from '@ably/pubsub-device/react';
+import type * as Ably from '@ably/pubsub-device';
 
 const ChatComponent = () => {
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
@@ -592,8 +592,8 @@ In an application with both free and premium features, you might want to conditi
 
 ```tsx
 import React from 'react';
-import { useChannel } from 'ably/react';
-import * as Ably from 'ably';
+import { useChannel } from '@ably/pubsub-device/react';
+import type * as Ably from '@ably/pubsub-device';
 
 interface PremiumFeatureComponentProps {
   isPremiumUser: boolean;

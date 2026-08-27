@@ -27,17 +27,19 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
-      - run: npx tsc --noEmit ably.d.ts modular.d.ts
+      - run: npx tsc --noEmit packages/core/ably.d.ts packages/core/modular.d.ts
       # Redundant today: `npm ci` above runs `prepare`, which builds `webpack:all`, and its
       # ts-loader already typechecks this same tsconfig program - so a type error fails that
       # step first. Kept explicit so the guarantee does not rest on that incidental side
       # effect: adding `transpileOnly` or dropping the webpack bundles would silently remove
       # it, and nothing would tell us.
+      - run: npx tsc --noEmit -p packages/core/tsconfig.json
+      # The core's program no longer covers scripts/; the root tsconfig is what does.
       - run: npx tsc --noEmit -p tsconfig.json
       # The error-code union is generated from the ably-common submodule at its pinned
       # commit; fail if the committed copy has drifted from the registry.
       - run: npm run generate:errorcodes-ts
-      - run: git diff --exit-code -- src/common/lib/types/errorcodes.ts
+      - run: git diff --exit-code -- packages/core/src/common/lib/types/errorcodes.ts
       # Type-checks the wrapper packages' sources and their hand-written declaration files
       # together, against the core resolved through the tsconfig's `paths`. The React hooks'
       # declaration files are generated rather than hand-written, so the `/react` subpath can only
@@ -45,17 +47,20 @@ jobs:
       # right thing to do anyway, since they are what a consumer resolves.
       - run: npm run build:react
       - run: npm run check:packages
+      # Every package is built explicitly rather than relying on the root `npm ci` above having
+      # run `prepare`, so that packing does not depend on a side effect of an earlier step. None
+      # of the packages has a `prepare` of its own to build it.
+      - run: npm run build
       # for some reason, this doesn't work in CI using `npx attw --pack .`
-      - run: npm pack
-      - run: npx attw ably-$(node -e "console.log(require('./package.json').version)").tgz --summary --exclude-entrypoints 'ably/modular'
+      - run: npm pack ./packages/core ./packages/device ./packages/server
+      - run: npx attw ably-pubsub-core-$(node -e "console.log(require('./packages/core/package.json').version)").tgz --summary --exclude-entrypoints '@ably/pubsub-core/modular'
       # see https://github.com/ably/ably-js/issues/1546 for why we ignore 'false-cjs' currently.
       # should remove when switched to auto-generated type declaration files for modular variant of the library.
-      - run: npx attw ably-$(node -e "console.log(require('./package.json').version)").tgz --summary --entrypoints 'ably/modular' --ignore-rules false-cjs
-      # Built explicitly rather than relying on the root `npm pack` above having run
-      # `prepare`, so that packing the wrapper packages does not depend on a side effect of
-      # an earlier step. Neither package has a `prepare` of its own to build it.
-      - run: npm run build:packages
-      - run: npm pack ./packages/pubsub-device ./packages/pubsub-server
-      - run: npx attw ably-pubsub-device-$(node -e "console.log(require('./packages/pubsub-device/package.json').version)").tgz --summary
-      - run: npx attw ably-pubsub-server-$(node -e "console.log(require('./packages/pubsub-server/package.json').version)").tgz --summary
+      - run: npx attw ably-pubsub-core-$(node -e "console.log(require('./packages/core/package.json').version)").tgz --summary --entrypoints '@ably/pubsub-core/modular' --ignore-rules false-cjs
+      # `@ably/pubsub-device/modular` is deliberately ESM-only, mirroring the core's modular
+      # variant, so `require()` of it is expected not to resolve. Checked separately with that one
+      # rule ignored, rather than left unchecked.
+      - run: npx attw ably-pubsub-device-$(node -e "console.log(require('./packages/device/package.json').version)").tgz --summary --exclude-entrypoints '@ably/pubsub-device/modular'
+      - run: npx attw ably-pubsub-device-$(node -e "console.log(require('./packages/device/package.json').version)").tgz --summary --entrypoints '@ably/pubsub-device/modular' --ignore-rules no-resolution
+      - run: npx attw ably-pubsub-server-$(node -e "console.log(require('./packages/server/package.json').version)").tgz --summary
       - run: npm audit --production

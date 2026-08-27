@@ -12,12 +12,22 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "ably": [".."],
-      "ably/liveobjects": ["../liveobjects.d.ts"],
-      "ably/react": ["../react/cjs/index.d.ts"],
-      "ably/push": ["../push.d.ts"],
-      "ably/react-native-push": ["../react-native-push.d.ts"]
+      "@ably/pubsub-core": ["./core"],
+      "@ably/pubsub-core/modular": ["./core/modular.d.ts"],
+      "@ably/pubsub-core/liveobjects": ["./core/liveobjects.d.ts"],
+      "@ably/pubsub-core/liveobjects/react": ["./core/react/cjs/liveobjects/index.d.ts"],
+      "@ably/pubsub-core/react": ["./core/react/cjs/index.d.ts"],
+      "@ably/pubsub-core/push": ["./core/push.d.ts"],
+      "@ably/pubsub-core/react-native-push": ["./core/react-native-push.d.ts"]
     }
   },
-  "include": ["shared/**/*.ts", "*/src/**/*.ts", "*/**/*.d.ts", "*/**/*.d.mts"]
+  "include": [
+    "shared/**/*.ts",
+    "device/src/**/*.ts",
+    "device/**/*.d.ts",
+    "device/**/*.d.mts",
+    "server/src/**/*.ts",
+    "server/**/*.d.ts",
+    "server/**/*.d.mts"
+  ]
 }

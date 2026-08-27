@@ -23,7 +23,9 @@ const stripLogsPlugin = {
     let foundErrorLog = false;
     let foundNoStripLog = false;
 
-    const filter = new RegExp(`^${escapeRegExp(path.join(__dirname, '..', '..', 'src') + path.sep)}.*\\.[tj]s$`);
+    const filter = new RegExp(
+      `^${escapeRegExp(path.join(__dirname, '..', '..', 'packages', 'core', 'src') + path.sep)}.*\\.[tj]s$`,
+    );
     build.onLoad({ filter }, async (args) => {
       const contents = (await fs.promises.readFile(args.path)).toString();
       const lines = contents.split('\n');

@@ -1,6 +1,14 @@
-const banner = require('../../src/fragments/license');
+const path = require('path');
+const banner = require('../../packages/core/src/fragments/license');
 const umdWrapper = require('esbuild-plugin-umd-wrapper');
 const stripLogsPlugin = require('./strip-logs').default;
+
+// The core's own bundles are built with `packages/core` as esbuild's working directory, so the
+// entry points, outfiles and sourcemap paths below all stay written relative to that package
+// rather than to this monorepo root. The wrapper package configs at the bottom of this file
+// deliberately do not use this base config, and so are built from the root: their sources reach
+// across package boundaries into packages/shared.
+const coreDir = path.resolve(__dirname, '..', '..', 'packages', 'core');
 
 // We need to create a new copy of the base config each time, because calling
 // esbuild.build() with the base config causes it to mutate the passed
@@ -8,6 +16,7 @@ const stripLogsPlugin = require('./strip-logs').default;
 // which we don’t want here.
 function createBaseConfig() {
   return {
+    absWorkingDir: coreDir,
     bundle: true,
     sourcemap: true,
     format: 'umd',
@@ -126,8 +135,11 @@ const minifiedLiveObjectsPluginCdnConfig = {
 // Each entry is one of the package's public entry points: `.` plus one per re-exported core
 // subpath. Every entry point is served in both formats, so every entry is built twice.
 //
-// Every entry point exposes its surface under a name, which is spelled the same way in both module
-// systems, so one source serves both formats.
+// `sources` names the source file to build for each format, and defaults to one file serving both.
+// Only the modular subpath overrides it, naming `esm` alone so that it is built in that format
+// only, because the core publishes its modular variant behind an `import` condition with no
+// CommonJS build to re-export. Every other entry point exposes its surface under a name, which is
+// spelled the same way in both module systems, so one source serves both.
 function createPackageConfigs(packageName, entries) {
   const packageDir = `packages/${packageName}`;
 
@@ -137,9 +149,10 @@ function createPackageConfigs(packageName, entries) {
       sourcemap: true,
       banner: { js: '/*' + banner + '*/' },
       target: 'es2017',
-      // `react` and `react-dom` join the externals for the same reason `ably` does: the hooks must
-      // use the app's copy of React, and bundling one here would break the hooks' rules entirely.
-      external: ['ably', 'ably/*', 'react', 'react-dom'],
+      // `react` and `react-dom` join the externals for the same reason `@ably/pubsub-core` does:
+      // the hooks must use the app's copy of React, and bundling one here would break the hooks'
+      // rules entirely.
+      external: ['@ably/pubsub-core', '@ably/pubsub-core/*', 'react', 'react-dom'],
     };
 
     return Object.entries(sources).map(([format, source]) => ({
@@ -152,14 +165,16 @@ function createPackageConfigs(packageName, entries) {
 }
 
 const pubsubPackageConfigs = [
-  ...createPackageConfigs('pubsub-device', [
+  ...createPackageConfigs('device', [
     { name: 'index' },
+    { name: 'modular', sources: { esm: 'modular' } },
     { name: 'liveobjects' },
+    { name: 'liveobjects-react' },
     { name: 'react' },
     { name: 'push' },
     { name: 'react-native-push' },
   ]),
-  ...createPackageConfigs('pubsub-server', [{ name: 'index' }, { name: 'liveobjects' }]),
+  ...createPackageConfigs('server', [{ name: 'index' }, { name: 'liveobjects' }]),
 ];
 
 module.exports = {

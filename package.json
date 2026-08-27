@@ -1,100 +1,19 @@
 {
-  "name": "ably",
-  "description": "Realtime client library for Ably, the realtime messaging service",
+  "name": "ably-pubsub-js",
+  "description": "Monorepo root for the Ably JavaScript client libraries. Not published; see packages/ for the published packages",
   "version": "2.28.0",
+  "private": true,
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/ably/ably-pubsub-js/issues",
     "email": "support@ably.com"
   },
-  "main": "./build/ably-node.js",
-  "browser": "./build/ably.js",
-  "react-native": "./build/ably-reactnative.js",
-  "typings": "./ably.d.ts",
-  "exports": {
-    ".": {
-      "types": "./ably.d.ts",
-      "node": "./build/ably-node.js",
-      "react-native": "./build/ably-reactnative.js",
-      "default": "./build/ably.js"
-    },
-    "./modular": {
-      "types": "./modular.d.ts",
-      "import": "./build/modular/index.mjs"
-    },
-    "./react": {
-      "require": "./react/cjs/index.js",
-      "import": "./react/mjs/index.js"
-    },
-    "./push": {
-      "types": "./push.d.ts",
-      "default": "./build/push.js"
-    },
-    "./react-native-push": {
-      "types": "./react-native-push.d.ts",
-      "default": "./build/react-native-push.js"
-    },
-    "./liveobjects": {
-      "import": {
-        "types": "./liveobjects.d.mts",
-        "default": "./build/liveobjects.mjs"
-      },
-      "require": {
-        "types": "./liveobjects.d.ts",
-        "default": "./build/liveobjects.js"
-      }
-    },
-    "./liveobjects/react": {
-      "require": "./react/cjs/liveobjects/index.js",
-      "import": "./react/mjs/liveobjects/index.js"
-    },
-    "./promises": {
-      "types": "./promises.d.ts",
-      "default": "./promises.js"
-    },
-    "./callbacks": {
-      "types": "./callbacks.d.ts",
-      "default": "./callbacks.js"
-    }
-  },
-  "files": [
-    "build/**",
-    "ably.d.ts",
-    "callbacks.d.ts",
-    "callbacks.js",
-    "liveobjects.d.ts",
-    "liveobjects.d.mts",
-    "liveobjects/react.d.ts",
-    "modular.d.ts",
-    "promises.d.ts",
-    "promises.js",
-    "push.d.ts",
-    "react-native-push.d.ts",
-    "react-native-push.js",
-    "resources/**",
-    "src/**",
-    "react/**"
+  "repository": "ably/ably-js",
+  "workspaces": [
+    "packages/core",
+    "packages/device",
+    "packages/server"
   ],
-  "dependencies": {
-    "@ably/msgpack-js": "^0.4.0",
-    "dequal": "^2.0.3",
-    "fastestsmallesttextencoderdecoder": "^1.0.22",
-    "got": "^11.8.5",
-    "ulid": "^2.3.0",
-    "ws": "^8.17.1"
-  },
-  "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-dom": ">=16.8.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@ably/vcdiff-decoder": "1.0.6",
     "@arethetypeswrong/cli": "^0.13.1",
@@ -164,14 +83,6 @@
   "engines": {
     "node": ">=16"
   },
-  "repository": "ably/ably-pubsub-js",
-  "jspm": {
-    "registry": "npm",
-    "directories": {
-      "lib": "build"
-    },
-    "main": "ably"
-  },
   "scripts": {
     "start:react": "npx vite serve",
     "grunt": "grunt",
@@ -180,19 +91,19 @@
     "test:grep": "npm run build:node && npm run build:push && npm run build:liveobjects && mocha --grep",
     "test:node:skip-build": "mocha",
     "test:webserver": "grunt test:webserver",
-    "test:playwright": "node test/support/runPlaywrightTests.js",
+    "test:playwright": "node packages/core/test/support/runPlaywrightTests.js",
     "test:react": "vitest run",
     "test:package": "grunt test:package",
-    "test:uts": "npm run build:node && mocha --no-config --require tsx/cjs 'test/uts/**/*.test.ts'",
-    "test:uts:unit": "npm run build:node && mocha --no-config --exit --require tsx/cjs --ignore 'test/uts/**/proxy/**' --ignore 'test/uts/**/integration/**' 'test/uts/**/*.test.ts'",
-    "test:uts:integration": "npm run build:node && mocha --no-config --exit --require tsx/cjs 'test/uts/**/integration/**/*.test.ts'",
+    "test:uts": "npm run build:node && TSX_TSCONFIG_PATH=packages/core/tsconfig.json mocha --no-config --require tsx/cjs 'packages/core/test/uts/**/*.test.ts'",
+    "test:uts:unit": "npm run build:node && TSX_TSCONFIG_PATH=packages/core/tsconfig.json mocha --no-config --exit --require tsx/cjs --ignore 'packages/core/test/uts/**/proxy/**' --ignore 'packages/core/test/uts/**/integration/**' 'packages/core/test/uts/**/*.test.ts'",
+    "test:uts:integration": "npm run build:node && TSX_TSCONFIG_PATH=packages/core/tsconfig.json mocha --no-config --exit --require tsx/cjs 'packages/core/test/uts/**/integration/**/*.test.ts'",
     "concat": "grunt concat",
     "build": "grunt build:all && npm run build:react",
     "build:node": "grunt build:node",
     "build:browser": "grunt build:browser",
-    "build:react": "npm run build:react:mjs && npm run build:react:cjs && cp src/platform/react-hooks/res/package.react.json react/package.json",
-    "build:react:mjs": "tsc --project src/platform/react-hooks/tsconfig.mjs.json && cp src/platform/react-hooks/res/package.mjs.json react/mjs/package.json",
-    "build:react:cjs": "tsc --project src/platform/react-hooks/tsconfig.cjs.json && cp src/platform/react-hooks/res/package.cjs.json react/cjs/package.json",
+    "build:react": "npm run build:react:mjs && npm run build:react:cjs && cp packages/core/src/platform/react-hooks/res/package.react.json packages/core/react/package.json",
+    "build:react:mjs": "tsc --project packages/core/src/platform/react-hooks/tsconfig.mjs.json && cp packages/core/src/platform/react-hooks/res/package.mjs.json packages/core/react/mjs/package.json",
+    "build:react:cjs": "tsc --project packages/core/src/platform/react-hooks/tsconfig.cjs.json && cp packages/core/src/platform/react-hooks/res/package.cjs.json packages/core/react/cjs/package.json",
     "build:push": "grunt build:push",
     "build:react-native-push": "grunt build:react-native-push",
     "build:liveobjects": "grunt build:liveobjects",
@@ -204,11 +115,11 @@
     "prepare": "npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "sourcemap": "source-map-explorer build/ably.min.js",
+    "sourcemap": "source-map-explorer packages/core/build/ably.min.js",
     "modulereport": "tsc --noEmit --esModuleInterop scripts/moduleReport.ts && esr scripts/moduleReport.ts",
     "speccoveragereport": "tsc --noEmit --esModuleInterop --target ES2017 --moduleResolution node scripts/specCoverageReport.ts && esr scripts/specCoverageReport.ts",
     "process-private-api-data": "tsc --noEmit --esModuleInterop --strictNullChecks scripts/processPrivateApiData/run.ts && esr scripts/processPrivateApiData/run.ts",
     "docs": "typedoc",
-    "generate:errorcodes-ts": "node test/common/ably-common/errors/scripts/generate-errorcodes-ts.js --format=type --out src/common/lib/types/errorcodes.ts"
+    "generate:errorcodes-ts": "node packages/core/test/common/ably-common/errors/scripts/generate-errorcodes-ts.js --format=type --out packages/core/src/common/lib/types/errorcodes.ts"
   }
 }

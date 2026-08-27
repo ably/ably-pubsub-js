@@ -5,18 +5,22 @@ var path = require('path');
 var webpackConfig = require('./webpack.config');
 var esbuild = require('esbuild');
 var process = require('process');
-var MochaServer = require('./test/web_server');
+var MochaServer = require('./packages/core/test/web_server');
 var esbuildConfig = require('./grunt/esbuild/build');
 
 module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-webpack');
 
+  // Grunt runs from the monorepo root, but most of what it builds is the core package, so its
+  // paths are written relative to this rather than to the root.
+  var coreDir = 'packages/core';
+
   var dirs = {
-    common: 'src/common',
-    browser: 'src/platform/web',
-    fragments: 'src/platform/web/fragments',
-    static: 'build',
-    dest: 'build',
+    common: coreDir + '/src/common',
+    browser: coreDir + '/src/platform/web',
+    fragments: coreDir + '/src/platform/web/fragments',
+    static: coreDir + '/build',
+    dest: coreDir + '/build',
   };
 
   async function execExternalPromises(cmd) {
@@ -55,7 +59,7 @@ module.exports = function (grunt) {
 
   grunt.registerTask('checkGitSubmodules', 'Check, if git submodules are properly installed', function () {
     var done = this.async();
-    var pathToSubmodule = path.join(__dirname, 'test', 'common', 'ably-common');
+    var pathToSubmodule = path.join(__dirname, coreDir, 'test', 'common', 'ably-common');
     fs.stat(pathToSubmodule, function (error, stats) {
       if (error) {
         grunt.log.writeln('%s : while checking submodule path!', error.message);
@@ -180,9 +184,9 @@ module.exports = function (grunt) {
     'build:liveobjects:types',
     'Generate liveobjects.d.mts from liveobjects.d.ts by adding .js extensions to relative imports',
     function () {
-      const dtsContent = fs.readFileSync('liveobjects.d.ts', 'utf8');
+      const dtsContent = fs.readFileSync(coreDir + '/liveobjects.d.ts', 'utf8');
       const mtsContent = dtsContent.replace(/from '(\.\/[^']+)'/g, "from '$1.js'");
-      fs.writeFileSync('liveobjects.d.mts', mtsContent);
+      fs.writeFileSync(coreDir + '/liveobjects.d.mts', mtsContent);
       grunt.log.ok('Generated liveobjects.d.mts from liveobjects.d.ts');
     },
   );
@@ -201,68 +205,6 @@ module.exports = function (grunt) {
       });
   });
 
-  // The wrapper packages keep `ably` external and take it as a peer dependency, so their
-  // bundles do `require('ably')` — which, inside this repo, resolves to nothing, because the
-  // core is the repo itself rather than something installed under node_modules. Linking it
-  // makes the packages resolve the very core they were built alongside, so tests exercise
-  // one copy of it and `instanceof` holds across the boundary, exactly as it does for a
-  // consumer who installed both.
-  //
-  // Not done with npm workspaces: declaring the packages as workspaces makes npm satisfy
-  // their peer dependency by installing `ably` from the registry, which would leave tests
-  // running against a published core rather than this one.
-  grunt.registerTask(
-    'link:core',
-    'Link node_modules/ably to the repo root, so the wrapper packages resolve the local core',
-    function () {
-      const linkPath = path.join('node_modules', 'ably');
-
-      // lstat rather than fs.existsSync, which follows the link and so reports a dangling one
-      // as absent — leaving symlinkSync below to fail with EEXIST.
-      let existing = null;
-      try {
-        existing = fs.lstatSync(linkPath);
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          throw err;
-        }
-      }
-
-      if (existing) {
-        // Anything already here that is not this checkout has to be a stale link or a core
-        // installed from the registry, either of which would have the wrapper packages resolve
-        // a different core than the one they were built alongside. The tests would still pass,
-        // because they and the packages would agree on that same wrong copy, so fail loudly
-        // rather than let a green run mean nothing.
-        let resolved = null;
-        try {
-          resolved = fs.realpathSync(linkPath);
-        } catch (err) {
-          if (err.code !== 'ENOENT') {
-            throw err;
-          }
-        }
-
-        if (resolved === fs.realpathSync(__dirname)) {
-          return;
-        }
-
-        if (resolved === null || existing.isSymbolicLink()) {
-          // A link we made and can safely remake: either dangling, or pointing somewhere else.
-          fs.unlinkSync(linkPath);
-        } else {
-          grunt.fatal(
-            `${linkPath} is an installed copy of the core rather than a link to this checkout. ` +
-              'Remove it and re-run, so the wrapper packages resolve the core they are built alongside.',
-          );
-        }
-      }
-
-      fs.symlinkSync('..', linkPath, 'dir');
-      grunt.log.ok('Linked node_modules/ably to the repo root');
-    },
-  );
-
   // Each entry point serves real ESM behind its `import` condition, so that condition needs
   // ESM-flavoured types too. Without a `.d.mts`, TypeScript reads the `.d.ts` as CommonJS types
   // describing an ESM file, and `attw` rightly reports the entry point as masquerading as CJS.
@@ -276,10 +218,7 @@ module.exports = function (grunt) {
     'build:packages:types',
     'Generate the .d.mts counterpart of each wrapper package declaration file',
     function () {
-      const declarationFiles = grunt.file.expand([
-        'packages/pubsub-device/**/index.d.ts',
-        'packages/pubsub-server/**/index.d.ts',
-      ]);
+      const declarationFiles = grunt.file.expand(['packages/device/**/index.d.ts', 'packages/server/**/index.d.ts']);
 
       let generated = 0;
 
@@ -304,7 +243,7 @@ module.exports = function (grunt) {
     },
   );
 
-  grunt.registerTask('build:packages', ['build:packages:bundle', 'build:packages:types', 'link:core']);
+  grunt.registerTask('build:packages', ['build:packages:bundle', 'build:packages:types']);
 
   grunt.registerTask('test:webserver', 'Launch the Mocha test web server on http://localhost:3000/', [
     'build:browser',
@@ -315,7 +254,7 @@ module.exports = function (grunt) {
   ]);
 
   (function () {
-    const baseDir = path.join(__dirname, 'test', 'package', 'browser');
+    const baseDir = path.join(__dirname, coreDir, 'test', 'package', 'browser');
     const buildDir = path.join(baseDir, 'build');
 
     grunt.registerTask(
@@ -332,24 +271,26 @@ module.exports = function (grunt) {
           // Create an app based on the template
           grunt.file.copy(path.join(baseDir, 'template'), buildDir);
 
-          // Use `npm pack` to generate a .tgz NPM package
+          // Use `npm pack` to generate a .tgz NPM package for the core and for each of the
+          // per-side wrapper packages. The wrappers are installed alongside the core, so the app
+          // resolves them the way a consumer would, with the core satisfying their exact peer
+          // dependency. Their versions move in lockstep with the core's.
+          const packDestination = `${coreDir}/test/package/browser/build`;
           await execExternalPromises('npm run build');
-          await execExternalPromises('npm pack --pack-destination test/package/browser/build');
-          const version = grunt.file.readJSON('package.json').version;
-          const packFileName = `ably-${version}.tgz`;
-
-          // The per-side wrapper packages are installed alongside the core, so the app resolves
-          // them the way a consumer would, with the core satisfying their exact peer dependency.
-          // Their versions move in lockstep with the core's.
           await execExternalPromises(
-            'npm pack --pack-destination test/package/browser/build ./packages/pubsub-device ./packages/pubsub-server',
+            `npm pack --pack-destination ${packDestination} ./packages/core ./packages/device ./packages/server`,
           );
-          const sidePackFileNames = [`ably-pubsub-device-${version}.tgz`, `ably-pubsub-server-${version}.tgz`];
+          const version = grunt.file.readJSON('packages/core/package.json').version;
+          const packFileNames = [
+            `ably-pubsub-core-${version}.tgz`,
+            `ably-pubsub-device-${version}.tgz`,
+            `ably-pubsub-server-${version}.tgz`,
+          ];
 
           // Configure app to consume the generated .tgz files
           const pwd = process.cwd();
           process.chdir(buildDir);
-          await execExternalPromises(`npm install ${packFileName} ${sidePackFileNames.join(' ')}`);
+          await execExternalPromises(`npm install ${packFileNames.join(' ')}`);
 
           // Install further dependencies required for testing the app
           await execExternalPromises('npm run test:install-deps');

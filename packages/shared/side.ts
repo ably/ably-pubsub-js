@@ -70,6 +70,12 @@ function keyOrTokenToOptions(keyOrToken: string): Ably.ClientOptions {
  * a collision on its own identifier: which side the package declares is the package's to
  * state, not the caller's to redefine.
  *
+ * `undefined` and `null` pass through unchanged rather than being spread into an empty object,
+ * so that a JS caller who passes nothing gets the core constructor's own initialization error
+ * ("must be initialized with either a client options object, an Ably API key, or an Ably Token")
+ * instead of constructing with only an `agents` entry and failing later with a vaguer
+ * authentication error.
+ *
  * @param optionsOrKeyOrToken - The options, API key or token the caller passed to the factory.
  * @param identifier - The side-declaring agent identifier to stamp.
  * @param version - The version of the package doing the stamping.
@@ -79,6 +85,10 @@ export function optionsWithSideAgent(
   identifier: string,
   version: string,
 ): Ably.ClientOptions {
+  if (optionsOrKeyOrToken === undefined || optionsOrKeyOrToken === null) {
+    return optionsOrKeyOrToken as unknown as Ably.ClientOptions;
+  }
+
   const options: ClientOptionsWithAgents =
     typeof optionsOrKeyOrToken === 'string' ? keyOrTokenToOptions(optionsOrKeyOrToken) : { ...optionsOrKeyOrToken };
 

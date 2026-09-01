@@ -4,9 +4,9 @@
 // package is a wrapper whose declarations re-export the core's by bare specifier, so its types
 // only resolve if the core resolves from inside it too.
 //
-// This covers resolution, types and bundling only. The agent identifier each factory stamps is
-// not asserted anywhere yet — see the note in packages/device/README.md about what declaring a
-// side means, and treat that as an open gap rather than existing coverage.
+// This covers resolution, types and bundling only. The agent identifier each factory stamps —
+// what declaring a side means, per the note in packages/device/README.md — is asserted on the
+// wire in packages/core/test/unit/pubsub_side_agent.test.js.
 //
 // Nothing here connects to Ably, so this file needs no sandbox key.
 import * as PubSubDevice from '@ably/pubsub-device';

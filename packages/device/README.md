@@ -84,7 +84,7 @@ Replace the `Realtime` constructor with `createClient`, and change the import:
 
 Nothing else changes. The `Realtime` constructor still works and is not going away; it simply declares no side, which means Ably has to fall back to its default classification.
 
-This package ships no HTTP-only factory. If you need a stateless REST client on a device, keep using `new Ably.Rest(...)` from `@ably/pubsub-core` — do not reach for `@ably/pubsub-server`, which would declare your device a server and claim an exemption it is not entitled to.
+This package ships no HTTP-only factory. If you need a stateless REST client on a device, use the `Rest` constructor this package re-exports — `import { Rest } from '@ably/pubsub-device'` — which, like the `Realtime` constructor, declares no side. Do not reach for `@ably/pubsub-server`, which would declare your device a server and claim an exemption it is not entitled to.
 
 ## Support, feedback, and troubleshooting
 

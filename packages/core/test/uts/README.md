@@ -10,9 +10,21 @@ npm run test:uts
 
 This builds the Node.js bundle and runs all UTS tests via mocha. UTS tests are isolated from the main test suite (no shared_helper, no sandbox setup).
 
+## Per-side package modes
+
+The suite constructs its clients through a single seam (`Ably.Rest` / `Ably.Realtime` in `helpers.ts`), selected by the `UTS_SIDE` environment variable:
+
+```bash
+npm run test:uts             # core (default): the core constructors
+UTS_SIDE=device npm run test:uts   # @ably/pubsub-device: realtime via createClient; REST via the Rest re-export
+UTS_SIDE=server npm run test:uts   # @ably/pubsub-server: createHttpClient / createRealtimeClient
+```
+
+The per-side factories are imported from `packages/{device,server}/src`, with `@ably/pubsub-core` mapped onto the core's Node.js source entry (`tsconfig.json` in this directory), so the clients they construct share the Platform singleton the mocks patch. The factories only stamp a side-declaring agent entry, so every mode must pass identically; `side_modes.test.ts` asserts each mode's stamp so a broken seam cannot silently degrade into a duplicate core run. CI runs all three modes (see `test-node-uts.yml`).
+
 ## Architecture
 
-UTS tests run against the **Node.js build** (`build/ably-node.js`) with mock implementations injected at the Platform level:
+UTS tests run against the **Node.js source** (`src/platform/nodejs`, the source of `build/ably-node.js`, executed via tsx) with mock implementations injected at the Platform level:
 
 - **HTTP** is mocked by replacing `Platform.Http`
 - **WebSocket** is mocked by replacing `Platform.Config.WebSocket`

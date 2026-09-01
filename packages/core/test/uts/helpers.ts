@@ -15,10 +15,72 @@ import { DefaultRealtime } from '../../src/common/lib/client/defaultrealtime';
 import ErrorInfo from '../../src/common/lib/types/errorinfo';
 import { makeFromDeserializedWithDependencies as makeProtocolMessageFromDeserialized } from '../../src/common/lib/types/protocolmessage';
 import { populateFieldsFromParent } from '../../src/common/lib/types/basemessage';
+// The per-side package factories, imported from source rather than from the built dist so that
+// they share this file's module graph: tsconfig.json in this directory maps `@ably/pubsub-core`
+// onto ../../src/platform/nodejs, the module imported for side effects above, so the factories
+// construct clients from the same Platform singleton the mock installers patch. The built
+// wrappers resolve the core to build/ably-node.js — a second module instance whose Platform the
+// mocks cannot reach — which is why the dist bundles cannot be used here.
+import { createClient as createDeviceClient } from '../../../device/src/index';
+import { createHttpClient, createRealtimeClient } from '../../../server/src/index';
+
+/**
+ * Wraps a per-side factory in a constructor-shaped function, so the UTS's `new Ably.Rest(...)` /
+ * `new Ably.Realtime(...)` call sites work unchanged in every mode:
+ *
+ * - `new` on a function that returns an object yields that object, so construction goes through
+ *   the factory (and picks up its side-declaring agent stamp).
+ * - The wrapper shares the base constructor's prototype, so `instanceof Ably.Realtime` still
+ *   holds for the clients the factory returns.
+ * - Statics (`PresenceMessage`, `Message`, `Crypto`, …) delegate to the base constructor via the
+ *   prototype chain.
+ */
+function sideConstructor<T extends { prototype: unknown }>(factory: (options: any) => any, base: T): T {
+  const ctor = function (options: any) {
+    return factory(options);
+  };
+  ctor.prototype = base.prototype;
+  Object.setPrototypeOf(ctor, base);
+  return ctor as unknown as T;
+}
+
+/**
+ * Which package's entry points the suite constructs clients through, selected by the UTS_SIDE
+ * environment variable:
+ *
+ * - `core` (default): the core constructors, the entry shape of today's `ably` package.
+ * - `device`: `@ably/pubsub-device` — realtime via its side-stamping `createClient`; REST via the
+ *   package's `Rest` re-export, which is the unstamped core constructor (the device package
+ *   deliberately ships no HTTP factory).
+ * - `server`: `@ably/pubsub-server` — both client kinds via its side-stamping factories.
+ *
+ * The factories only stamp the side-declaring agent entry and pass every other option through,
+ * so the suite asserts that conformance is identical whichever door constructed the client.
+ */
+const utsSide = process.env.UTS_SIDE || 'core';
+
+let Rest: typeof DefaultRest;
+let Realtime: typeof DefaultRealtime;
+switch (utsSide) {
+  case 'core':
+    Rest = DefaultRest;
+    Realtime = DefaultRealtime;
+    break;
+  case 'device':
+    Rest = DefaultRest;
+    Realtime = sideConstructor(createDeviceClient, DefaultRealtime);
+    break;
+  case 'server':
+    Rest = sideConstructor(createHttpClient, DefaultRest);
+    Realtime = sideConstructor(createRealtimeClient, DefaultRealtime);
+    break;
+  default:
+    throw new Error(`Unknown UTS_SIDE '${utsSide}': use 'core', 'device' or 'server'`);
+}
 
 const Ably = {
-  Rest: DefaultRest,
-  Realtime: DefaultRealtime,
+  Rest,
+  Realtime,
   ErrorInfo,
   makeProtocolMessageFromDeserialized,
 };

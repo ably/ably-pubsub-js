@@ -13,20 +13,19 @@
 
 ## Release Process
 
+The three packages (`@ably/pubsub-core`, `@ably/pubsub-device`, `@ably/pubsub-server`) always release together on the same version — see [Per-side packages](#per-side-packages) below. `scripts/release.js` owns the lockstep mechanics: `npm run check:versions` verifies every version site agrees (CI runs this on every PR), `npm run release:bump` moves them all at once, and `npm run release:publish` publishes all three, in dependency order, resumably.
+
 1. Make sure the tests are passing in CI for the branch you're building
 2. Create a new branch for the release, for example `release/1.2.3`
 3. Update the CHANGELOG.md with any customer-affecting changes since the last release and add this to the git index
-4. Run `npm version <VERSION_NUMBER> --no-git-tag-version --workspaces --include-workspace-root` with the new version and add the changes to the git index
-5. Update the version number to the new version in `packages/core/src/platform/react-hooks/src/AblyReactHooks.ts`
-6. Update the exact `peerDependencies['@ably/pubsub-core']` range to the new version in both `packages/device/package.json` and `packages/server/package.json` (see [Per-side packages](#per-side-packages) below)
-7. Create a PR for the release branch
-8. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
-9. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
-10. Run `npm publish ./packages/core` (should require OTP) - publishes the core to NPM
-11. Run `npm publish ./packages/device` and `npm publish ./packages/server` - publishes the per-side packages to NPM
-12. Run the GitHub action "Publish to CDN" with the new tag name
-13. Visit https://github.com/ably/ably-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
-14. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
+4. Run `npm run release:bump <VERSION_NUMBER>` with the new version and add the changes to the git index (this moves every version site together: the root and workspace `package.json` files, the wrappers' exact `@ably/pubsub-core` peer pins, the react-hooks version constant, and the lockfile)
+5. Create a PR for the release branch
+6. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
+7. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
+8. Run `npm run release:publish` (should require OTP) - publishes `@ably/pubsub-core`, `@ably/pubsub-device` and `@ably/pubsub-server` to NPM in that order. It refuses to start unless every version site agrees and the build artifacts exist, dry-run packs everything first, and if it fails partway, re-running it publishes only the remainder (`npm run release:publish -- --dry-run` previews without publishing)
+9. Run the GitHub action "Publish to CDN" with the new tag name
+10. Visit https://github.com/ably/ably-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
+11. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
 
 ### Per-side packages
 

@@ -16,7 +16,7 @@ import { LiveObjects } from '@ably/pubsub-device/liveobjects';
 import * as PubSubServer from '@ably/pubsub-server';
 
 declare module globalThis {
-  var testAblyPubSubSidePackages: () => Promise<void>;
+  var testAblyPackage: () => Promise<void>;
 }
 
 // Both packages re-export the core's type surface, so a consumer can annotate with the types
@@ -29,7 +29,7 @@ function inspectStats(page: PubSubServer.PaginatedResult<PubSubServer.Stats>) {
   return page.items.length;
 }
 
-globalThis.testAblyPubSubSidePackages = async function () {
+globalThis.testAblyPackage = async function () {
   const device = PubSubDevice.createClient({ key: 'app.key:secret', autoConnect: false, clientId: 'someone' });
   const serverRealtime = PubSubServer.createRealtimeClient({ key: 'app.key:secret', autoConnect: false });
   const serverHttp = PubSubServer.createHttpClient({ key: 'app.key:secret' });

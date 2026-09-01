@@ -5,6 +5,7 @@ test.describe('NPM package', () => {
     { name: 'default export', path: '/index-default.html' },
     { name: 'LiveObjects plugin export', path: '/index-liveobjects.html' },
     { name: 'modular export', path: '/index-modular.html' },
+    { name: 'per-side Pub/Sub packages', path: '/index-pubsub-side.html' },
   ]) {
     test.describe(scenario.name, () => {
       /** @nospec */

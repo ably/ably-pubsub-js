@@ -34,7 +34,19 @@ define(['chai'], function (chai) {
     const server = http.createServer(function (req, res) {
       agentHeaders.push(req.headers['ably-agent']);
       res.setHeader('Content-Type', 'application/json');
+      // The client's HTTP layer uses a keep-alive agent, and before Node 19 server.close()
+      // never completes while an idle kept-alive socket remains open. Refuse keep-alive so
+      // teardown is deterministic on every supported Node version.
+      res.setHeader('Connection', 'close');
       res.end(JSON.stringify([Date.now()]));
+    });
+    // Belt and braces for the same reason: destroy any socket still open at teardown.
+    const sockets = new Set();
+    server.on('connection', function (socket) {
+      sockets.add(socket);
+      socket.on('close', function () {
+        sockets.delete(socket);
+      });
     });
     await new Promise(function (resolve) {
       server.listen(0, '127.0.0.1', resolve);
@@ -49,6 +61,9 @@ define(['chai'], function (chai) {
         useBinaryProtocol: false,
       });
     } finally {
+      for (const socket of sockets) {
+        socket.destroy();
+      }
       await new Promise(function (resolve) {
         server.close(resolve);
       });

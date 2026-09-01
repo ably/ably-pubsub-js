@@ -17,6 +17,12 @@ jobs:
       matrix:
         # tsx (used to run the TypeScript UTS suite) requires Node >= 18, so 16.x is excluded.
         node-version: [18.x, 20.x]
+        # Which package's entry points the suite constructs clients through (see the UTS_SIDE
+        # handling in packages/core/test/uts/helpers.ts): the core constructors, or the
+        # side-declaring factories of @ably/pubsub-device / @ably/pubsub-server. The factories
+        # stamp an agent entry and pass everything else through, so conformance must be
+        # identical on every leg; side_modes.test.ts fails a leg whose stamp does not match.
+        side: [core, device, server]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
@@ -36,7 +42,9 @@ jobs:
         run: npm run test:uts:unit
         env:
           CI: true
+          UTS_SIDE: ${{ matrix.side }}
       - name: Run UTS integration tests
         run: npm run test:uts:integration
         env:
           CI: true
+          UTS_SIDE: ${{ matrix.side }}

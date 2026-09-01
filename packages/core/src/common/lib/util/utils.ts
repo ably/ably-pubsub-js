@@ -522,14 +522,14 @@ export function createMissingPluginError(pluginName: keyof ModularPlugins): Erro
   let remediation: string;
   switch (pluginName) {
     case 'Push':
-      remediation = 'Import Push from "@ably/pubsub-device/push" and pass it in ClientOptions.plugins: { Push }.';
+      remediation = 'Import { Push } from "@ably/pubsub-device/push" and pass it in ClientOptions.plugins: { Push }.';
       break;
     case 'LiveObjects':
       remediation =
         'Import { LiveObjects } from the "/liveobjects" entry point of the package you installed, "@ably/pubsub-device" or "@ably/pubsub-server". Pass it in ClientOptions.plugins: { LiveObjects }.';
       break;
     default:
-      remediation = `Import ${pluginName} from "@ably/pubsub-device/modular" and pass it in ClientOptions.plugins: { ${pluginName} }. See the modular variant reference at https://sdk.ably.com/builds/ably/ably-pubsub-js/main/typedoc/modules/modular.html.`;
+      remediation = `Import { ${pluginName} } from "@ably/pubsub-device/modular" and pass it in ClientOptions.plugins: { ${pluginName} }. See the modular variant reference at https://sdk.ably.com/builds/ably/ably-pubsub-js/main/typedoc/modules/modular.html.`;
       break;
   }
   const err = new ErrorInfo({

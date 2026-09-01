@@ -25,6 +25,16 @@ export * from '@ably/pubsub-core/modular';
  * see.
  */
 export function createClient(options: ClientOptions<CorePlugins & ModularPlugins>): BaseRealtime {
+  // The signature already forbids bare key/token strings, but a JS caller can still pass one.
+  // Hand it to the constructor unstamped rather than normalising it into an options object:
+  // the core deliberately rejects strings for modular clients with an error telling the caller
+  // to provide an options object with a `plugins` property, and converting the string here
+  // would replace that with a generic missing-plugin failure the caller cannot act on. No side
+  // agent is needed on a path that always throws.
+  if (typeof options === 'string') {
+    return new BaseRealtime(options as unknown as ClientOptions<CorePlugins & ModularPlugins>);
+  }
+
   // `optionsWithSideAgent` is typed against the core's default plugin map, because that is all the
   // root factories need. It only ever replaces `agents`, copying every other option across by
   // reference — `plugins` included, untouched — so the wider plugin type a modular client requires

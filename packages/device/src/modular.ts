@@ -10,7 +10,6 @@ import { BaseRealtime } from '@ably/pubsub-core/modular';
 import type { ModularPlugins } from '@ably/pubsub-core/modular';
 import type { ClientOptions, CorePlugins } from '@ably/pubsub-core';
 import { deviceAgentIdentifier, optionsWithSideAgent } from '../../shared/side';
-import { version } from '../package.json';
 
 export * from '@ably/pubsub-core/modular';
 
@@ -39,7 +38,7 @@ export function createClient(options: ClientOptions<CorePlugins & ModularPlugins
   // root factories need. It only ever replaces `agents`, copying every other option across by
   // reference — `plugins` included, untouched — so the wider plugin type a modular client requires
   // survives the call unharmed, and the cast restores it to the signature.
-  const withSideAgent = optionsWithSideAgent(options, deviceAgentIdentifier, version) as ClientOptions<
+  const withSideAgent = optionsWithSideAgent(options, deviceAgentIdentifier) as ClientOptions<
     CorePlugins & ModularPlugins
   >;
 

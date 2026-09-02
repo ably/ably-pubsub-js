@@ -1,7 +1,6 @@
 import { Realtime, Rest } from '@ably/pubsub-core';
 import type * as Ably from '@ably/pubsub-core';
 import { optionsWithSideAgent, serverAgentIdentifier } from '../../shared/side';
-import { version } from '../package.json';
 
 // Re-export the core's public value surface, so consumers of this package never need to
 // depend on `@ably/pubsub-core` directly. See ../../shared/core-exports.ts for why the list is
@@ -14,9 +13,9 @@ export { Rest, Realtime, ErrorInfo } from '../../shared/core-exports';
 // ably.d.ts rather than duplicating it here.
 
 export function createHttpClient(options: Ably.ClientOptions | string): Ably.Rest {
-  return new Rest(optionsWithSideAgent(options, serverAgentIdentifier, version));
+  return new Rest(optionsWithSideAgent(options, serverAgentIdentifier));
 }
 
 export function createRealtimeClient(options: Ably.ClientOptions | string): Ably.Realtime {
-  return new Realtime(optionsWithSideAgent(options, serverAgentIdentifier, version));
+  return new Realtime(optionsWithSideAgent(options, serverAgentIdentifier));
 }

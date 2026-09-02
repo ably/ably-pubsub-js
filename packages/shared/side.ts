@@ -70,6 +70,12 @@ function keyOrTokenToOptions(keyOrToken: string): Ably.ClientOptions {
  * a collision on its own identifier: which side the package declares is the package's to
  * state, not the caller's to redefine.
  *
+ * The side entry is versionless — a pure flag, like the core's `browser` entry — because the
+ * identifiers are shared by every Pub/Sub SDK, so a version could not say what it versions,
+ * and under lockstep releasing it would only ever duplicate the SDK's own agent entry sent
+ * alongside (see ably/ably-common#361). Stamping `undefined` relies on `getAgentString` in
+ * the core (src/common/lib/util/defaults.ts) emitting a bare identifier for nullish values.
+ *
  * `undefined` and `null` pass through unchanged rather than being spread into an empty object,
  * so that a JS caller who passes nothing gets the core constructor's own initialization error
  * ("must be initialized with either a client options object, an Ably API key, or an Ably Token")
@@ -78,12 +84,10 @@ function keyOrTokenToOptions(keyOrToken: string): Ably.ClientOptions {
  *
  * @param optionsOrKeyOrToken - The options, API key or token the caller passed to the factory.
  * @param identifier - The side-declaring agent identifier to stamp.
- * @param version - The version of the package doing the stamping.
  */
 export function optionsWithSideAgent(
   optionsOrKeyOrToken: Ably.ClientOptions | string,
   identifier: string,
-  version: string,
 ): Ably.ClientOptions {
   if (optionsOrKeyOrToken === undefined || optionsOrKeyOrToken === null) {
     return optionsOrKeyOrToken as unknown as Ably.ClientOptions;
@@ -92,7 +96,7 @@ export function optionsWithSideAgent(
   const options: ClientOptionsWithAgents =
     typeof optionsOrKeyOrToken === 'string' ? keyOrTokenToOptions(optionsOrKeyOrToken) : { ...optionsOrKeyOrToken };
 
-  options.agents = { ...options.agents, [identifier]: version };
+  options.agents = { ...options.agents, [identifier]: undefined };
 
   return options;
 }

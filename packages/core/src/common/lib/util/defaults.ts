@@ -206,7 +206,11 @@ export function getAgentString(options: ClientOptions): string {
   let agentStr = Defaults.agent;
   if (options.agents) {
     for (var agent in options.agents) {
-      agentStr += ' ' + agent + '/' + options.agents[agent];
+      const version = options.agents[agent];
+      // An entry with no version is emitted bare, like the platform's own `browser` entry:
+      // versionless identifiers are flags (for example the per-side Pub/Sub packages' side
+      // declarations), and `name/undefined` is not a valid Ably-Agent token.
+      agentStr += ' ' + agent + (version ? '/' + version : '');
     }
   }
   return agentStr;

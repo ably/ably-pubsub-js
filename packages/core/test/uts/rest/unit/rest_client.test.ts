@@ -72,7 +72,7 @@ describe('uts/rest/unit/rest_client', function () {
 
     expect(captured).to.have.length(1);
     expect(captured[0].headers).to.have.property('Ably-Agent');
-    expect(captured[0].headers['Ably-Agent']).to.match(/ably-js\/[0-9]+\.[0-9]+/);
+    expect(captured[0].headers['Ably-Agent']).to.match(/ably-pubsub-js\/[0-9]+\.[0-9]+/);
   });
 
   /**

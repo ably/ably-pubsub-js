@@ -10,7 +10,12 @@ import { IUntypedCryptoStatic } from 'common/types/ICryptoStatic';
 import { ChannelOptions } from 'common/types/channel';
 import { ModularPlugins } from '../client/modularplugins';
 
-let agent = 'ably-js/' + version;
+// The SDK family identifier. It renamed from `ably-js` with the per-side package split (this
+// version partitions the fleet: `ably-js/*` is legacy `ably`-package traffic, `ably-pubsub-js/*`
+// is new-package traffic), and it deliberately names the family rather than any one published
+// package — the side a client declares travels as a separate versionless agent entry stamped by
+// the per-side packages (see packages/shared/side.ts and the agents registry in ably-common).
+let agent = 'ably-pubsub-js/' + version;
 
 type CompleteDefaults = IDefaults & {
   ENDPOINT: string;

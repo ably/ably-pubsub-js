@@ -78,7 +78,7 @@ describe('uts/realtime/unit/time', function () {
     expect(request.headers).to.have.property('X-Ably-Version');
     expect(request.headers).to.have.property('Ably-Agent');
     expect(request.headers['X-Ably-Version']).to.match(/[0-9.]+/);
-    expect(request.headers['Ably-Agent']).to.match(/ably-js\/[0-9]+\.[0-9]+\.[0-9]+/);
+    expect(request.headers['Ably-Agent']).to.match(/ably-pubsub-js\/[0-9]+\.[0-9]+\.[0-9]+/);
     client.close();
   });
 

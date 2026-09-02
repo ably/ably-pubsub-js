@@ -105,7 +105,7 @@ define(['chai'], function (chai) {
       expect(agents['ably-pubsub-device'], 'the side flag is versionless').to.equal(null);
       expect(agents, 'a device client must not carry the server entry').to.not.have.property('ably-pubsub-server');
       // The wrapper adds to the core's identity rather than replacing it.
-      expect(agents['ably-js']).to.equal(coreVersion);
+      expect(agents['ably-pubsub-js']).to.equal(coreVersion);
     });
 
     it('server createHttpClient declares the server side', async function () {
@@ -118,7 +118,7 @@ define(['chai'], function (chai) {
       expect(agents, 'expected the server side flag').to.have.property('ably-pubsub-server');
       expect(agents['ably-pubsub-server'], 'the side flag is versionless').to.equal(null);
       expect(agents, 'a server client must not carry the device entry').to.not.have.property('ably-pubsub-device');
-      expect(agents['ably-js']).to.equal(coreVersion);
+      expect(agents['ably-pubsub-js']).to.equal(coreVersion);
     });
 
     it('server createRealtimeClient declares the server side', async function () {

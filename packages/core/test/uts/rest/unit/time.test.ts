@@ -85,7 +85,7 @@ describe('uts/rest/unit/time', function () {
     expect(request.headers['X-Ably-Version']).to.match(/[0-9.]+/);
 
     // Agent header should include library name/version
-    expect(request.headers['Ably-Agent']).to.match(/ably-js\/[0-9]+\.[0-9]+\.[0-9]+/);
+    expect(request.headers['Ably-Agent']).to.match(/ably-pubsub-js\/[0-9]+\.[0-9]+\.[0-9]+/);
   });
 
   /**

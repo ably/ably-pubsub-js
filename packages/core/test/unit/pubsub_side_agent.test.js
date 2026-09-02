@@ -4,8 +4,9 @@
  * Asserts the side-declaring agent entry that each per-side Pub/Sub package factory stamps
  * (packages/shared/side.ts), as observed on the wire: the `Ably-Agent` request header is what
  * the realtime system classifies on for MAU billing, so these tests fail loudly if a factory
- * stops stamping its side, stamps the wrong identifier, or loses the `-server` suffix that
- * grants the server exemption on API-key auth.
+ * stops stamping its side, stamps the wrong identifier, loses the `-server` suffix that
+ * grants the server exemption on API-key auth, or regresses the flag's versionless form
+ * (the side entry is a bare token, not `name/version` — see ably/ably-common#361).
  *
  * Lives in the core's test tree because the whole monorepo's mocha suite runs from here (see
  * .mocharc.js), but tests the wrapper packages: it requires `@ably/pubsub-device` and
@@ -20,8 +21,6 @@ define(['chai'], function (chai) {
   const http = require('http');
   const PubSubDevice = require('@ably/pubsub-device');
   const PubSubServer = require('@ably/pubsub-server');
-  const deviceVersion = require('../../../device/package.json').version;
-  const serverVersion = require('../../../server/package.json').version;
   const coreVersion = require('../../package.json').version;
 
   /**
@@ -74,7 +73,10 @@ define(['chai'], function (chai) {
     return agentHeaders[0];
   }
 
-  /** Parses an `Ably-Agent` header value into a name → version map, failing on duplicates. */
+  /**
+   * Parses an `Ably-Agent` header value into a name → version map, failing on duplicates.
+   * A bare token (a versionless flag, like the side entries) maps to null.
+   */
   function parseAgentHeader(header) {
     const entries = {};
     for (const token of header.split(' ')) {
@@ -99,7 +101,8 @@ define(['chai'], function (chai) {
         }),
       );
 
-      expect(agents['ably-pubsub-device']).to.equal(deviceVersion);
+      expect(agents, 'expected the device side flag').to.have.property('ably-pubsub-device');
+      expect(agents['ably-pubsub-device'], 'the side flag is versionless').to.equal(null);
       expect(agents, 'a device client must not carry the server entry').to.not.have.property('ably-pubsub-server');
       // The wrapper adds to the core's identity rather than replacing it.
       expect(agents['ably-js']).to.equal(coreVersion);
@@ -112,7 +115,8 @@ define(['chai'], function (chai) {
         }),
       );
 
-      expect(agents['ably-pubsub-server']).to.equal(serverVersion);
+      expect(agents, 'expected the server side flag').to.have.property('ably-pubsub-server');
+      expect(agents['ably-pubsub-server'], 'the side flag is versionless').to.equal(null);
       expect(agents, 'a server client must not carry the device entry').to.not.have.property('ably-pubsub-device');
       expect(agents['ably-js']).to.equal(coreVersion);
     });
@@ -129,7 +133,8 @@ define(['chai'], function (chai) {
         }),
       );
 
-      expect(agents['ably-pubsub-server']).to.equal(serverVersion);
+      expect(agents, 'expected the server side flag').to.have.property('ably-pubsub-server');
+      expect(agents['ably-pubsub-server'], 'the side flag is versionless').to.equal(null);
       expect(agents, 'a server client must not carry the device entry').to.not.have.property('ably-pubsub-device');
     });
 
@@ -142,9 +147,9 @@ define(['chai'], function (chai) {
       });
 
       const serverEntries = header.split(' ').filter(function (token) {
-        return /-server\//.test(token);
+        return /-server(\/|$)/.test(token);
       });
-      expect(serverEntries).to.deep.equal(['ably-pubsub-server/' + serverVersion]);
+      expect(serverEntries).to.deep.equal(['ably-pubsub-server']);
     });
 
     // `agents` is honoured at runtime but absent from the public ClientOptions type; SDKs
@@ -157,7 +162,7 @@ define(['chai'], function (chai) {
       );
 
       expect(agents['chat-js']).to.equal('0.1.0');
-      expect(agents['ably-pubsub-server']).to.equal(serverVersion);
+      expect(agents).to.have.property('ably-pubsub-server');
     });
 
     it('the side stamp wins a collision on its own identifier', async function () {
@@ -167,9 +172,10 @@ define(['chai'], function (chai) {
         }),
       );
 
-      // parseAgentHeader has already rejected duplicates, so the stamped version being present
-      // means the caller's value was replaced, not joined.
-      expect(agents['ably-pubsub-server']).to.equal(serverVersion);
+      // parseAgentHeader has already rejected duplicates, so the flag being bare means the
+      // caller's value was replaced, not joined.
+      expect(agents, 'expected the server side flag').to.have.property('ably-pubsub-server');
+      expect(agents['ably-pubsub-server'], 'the side stamp must replace the caller value').to.equal(null);
     });
   });
 });

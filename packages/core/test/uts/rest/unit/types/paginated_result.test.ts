@@ -342,7 +342,7 @@ describe('uts/rest/unit/types/paginated_result', function () {
     const nextRequest = captured[1];
     expect(nextRequest.headers).to.have.property('X-Ably-Version');
     expect(nextRequest.headers).to.have.property('Ably-Agent');
-    expect(nextRequest.headers['Ably-Agent']).to.match(/ably-js/);
+    expect(nextRequest.headers['Ably-Agent']).to.match(/ably-pubsub-js/);
   });
 
   /**

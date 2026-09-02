@@ -36,7 +36,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         // ultimately the version header has been derived from that value.
         expect(headers['X-Ably-Version']).to.equal('6', 'Verify current version number');
         helper.recordPrivateApi('read.Defaults.version');
-        expect(headers['Ably-Agent'].indexOf('ably-js/' + Defaults.version) > -1, 'Verify agent').to.be.ok;
+        expect(headers['Ably-Agent'].indexOf('ably-pubsub-js/' + Defaults.version) > -1, 'Verify agent').to.be.ok;
         expect(headers['Ably-Agent'].indexOf('custom-agent/0.1.2') > -1, 'Verify custom agent').to.be.ok;
 
         // We don't test on NativeScript so a check for that platform is excluded here

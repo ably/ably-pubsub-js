@@ -4,7 +4,7 @@
   "version": "2.28.0",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/ably/ably-js/issues",
+    "url": "https://github.com/ably/ably-pubsub-js/issues",
     "email": "support@ably.com"
   },
   "main": "./build/ably-node.js",
@@ -164,7 +164,7 @@
   "engines": {
     "node": ">=16"
   },
-  "repository": "ably/ably-js",
+  "repository": "ably/ably-pubsub-js",
   "jspm": {
     "registry": "npm",
     "directories": {

@@ -525,7 +525,7 @@ export function createMissingPluginError(pluginName: keyof ModularPlugins): Erro
         'Import { LiveObjects } from "ably/liveobjects" and pass it in ClientOptions.plugins: { LiveObjects }.';
       break;
     default:
-      remediation = `Import ${pluginName} from "ably/modular" and pass it in ClientOptions.plugins: { ${pluginName} }. See the modular variant reference at https://sdk.ably.com/builds/ably/ably-js/main/typedoc/modules/modular.html.`;
+      remediation = `Import ${pluginName} from "ably/modular" and pass it in ClientOptions.plugins: { ${pluginName} }. See the modular variant reference at https://sdk.ably.com/builds/ably/ably-pubsub-js/main/typedoc/modules/modular.html.`;
       break;
   }
   const err = new ErrorInfo({

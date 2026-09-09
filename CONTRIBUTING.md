@@ -1,4 +1,4 @@
-# Contributing to ably-js
+# Contributing to ably-pubsub-js
 
 ## Contributing
 
@@ -7,7 +7,7 @@
 3. Create your feature branch (`git checkout -b my-new-feature`)
 4. Commit your changes (`git commit -am 'Add some feature'`)
 5. Ensure you have added suitable tests and the test suite is passing(`npm test`)
-6. Ensure the [type definitions](https://github.com/ably/ably-js/blob/main/ably.d.ts) have been updated if the public API has changed
+6. Ensure the [type definitions](https://github.com/ably/ably-pubsub-js/blob/main/ably.d.ts) have been updated if the public API has changed
 7. Push the branch (`git push origin my-new-feature`)
 8. Create a new Pull Request
 
@@ -23,7 +23,7 @@
 8. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
 9. Run `npm publish .` (should require OTP) - publishes to NPM
 10. Run the GitHub action "Publish to CDN" with the new tag name
-11. Visit https://github.com/ably/ably-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
+11. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
 12. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
 
 ## Building the library

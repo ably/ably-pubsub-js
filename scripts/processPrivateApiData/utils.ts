@@ -5,7 +5,7 @@ import { StaticContext } from './staticContext';
 export function stripFilePrefix(records: Record[]) {
   for (const record of records) {
     if (record.context.file !== null) {
-      record.context.file = record.context.file.replace('/home/runner/work/ably-js/ably-js/', '');
+      record.context.file = record.context.file.replace('/home/runner/work/ably-pubsub-js/ably-pubsub-js/', '');
     }
   }
 }

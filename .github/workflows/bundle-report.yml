@@ -32,7 +32,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 # v1
         with:
           aws-region: eu-west-2
-          role-to-assume: arn:aws:iam::${{ secrets.ABLY_AWS_ACCOUNT_ID_SDK }}:role/ably-sdk-builds-ably-js
+          role-to-assume: arn:aws:iam::${{ secrets.ABLY_AWS_ACCOUNT_ID_SDK }}:role/ably-sdk-builds-ably-pubsub-js
           role-session-name: '${{ github.run_id }}-${{ github.run_number }}'
       - uses: ably/sdk-upload-action@8c6179796fc7ee8fc9bb28d5223ffef005b985cc # v1
         with:

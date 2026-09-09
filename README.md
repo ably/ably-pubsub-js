@@ -35,13 +35,13 @@ Ably aims to support a wide range of platforms and all current browser versions,
 
 The following platforms are supported:
 
-| Platform    | Support                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| JavaScript  | ES2017                                                                                   |
+| Platform    | Support                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| JavaScript  | ES2017                                                                                          |
 | Node.js     | See `engines` in [package.json](https://github.com/ably/ably-pubsub-js/blob/main/package.json). |
-| React       | >=16.8.x                                                                                 |
-| TypeScript  | Type definitions are included in the package.                                            |
-| Web Workers | Browser bundle and [modular](#modular-variant) support.                                  |
+| React       | >=16.8.x                                                                                        |
+| TypeScript  | Type definitions are included in the package.                                                   |
+| Web Workers | Browser bundle and [modular](#modular-variant) support.                                         |
 
 > [!NOTE]
 > Versions 1.2.x of the SDK support Internet Explorer >=9 and other older browsers, as well as Node.js >=8.17.

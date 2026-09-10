@@ -928,7 +928,9 @@ class RealtimeChannel extends EventEmitter {
       this._presence.actOnChannelState(state, hasPresence, reason);
     }
     if (this._object) {
-      this._object.actOnChannelState(state, hasObjects);
+      // RTO23c1/RTO20e1 - pass `reason` explicitly: this runs before `this.errorReason` is assigned
+      // below, so the plugin cannot read it off the channel to set the sync-wait failure cause.
+      this._object.actOnChannelState(state, hasObjects, reason);
     }
     if (state === 'suspended' && this.connectionManager.state.sendEvents) {
       this.startRetryTimer();

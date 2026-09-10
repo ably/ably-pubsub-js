@@ -1,5 +1,6 @@
 import type BaseClient from 'common/lib/client/baseclient';
 import type RealtimeChannel from 'common/lib/client/realtimechannel';
+import type ErrorInfo from 'common/lib/types/errorinfo';
 import type EventEmitter from 'common/lib/util/eventemitter';
 import type * as API from '../../../ably';
 import type { ChannelState, StatusSubscription } from '../../../ably';
@@ -17,6 +18,17 @@ import { SyncObjectsPool } from './syncobjectspool';
 export enum ObjectsEvent {
   syncing = 'syncing',
   synced = 'synced',
+}
+
+/**
+ * Internal-only signals emitted on `_eventEmitterInternal` (never on `_eventEmitterPublic`), so they
+ * are not observable through the public `RealtimeObject#on` API.
+ */
+enum ObjectsInternalEvent {
+  // RTO23c1 / RTO20e1 - emitted when the channel transitions into DETACHED/SUSPENDED/FAILED, so that
+  // parked objects-sync waiters (get()/publishAndApply) can fail. Carries the channel state and its
+  // errorReason as emit arguments.
+  syncWaitFailed = 'syncWaitFailed',
 }
 
 /** @spec RTO22 */
@@ -38,6 +50,35 @@ const StateToEventsMap: Record<ObjectsState, ObjectsEvent | undefined> = {
 };
 
 export type ObjectsEventCallback = () => void;
+
+/**
+ * Remediation for a `get()` sync wait failing (RTO23c1). The rejection is recoverable, but the
+ * recovery differs per state: `ensureAttached` at `get()` entry re-attaches a DETACHED channel
+ * itself and proceeds through SUSPENDED (the SDK re-attaches when the connection recovers), so a
+ * plain retry suffices for those two states, whereas from FAILED `get()` rejects at entry (90001)
+ * until the channel is explicitly re-attached.
+ */
+function getSyncWaitFailureRemediation(state: ChannelState): string {
+  switch (state) {
+    case 'detached':
+      return 'Retry channel.object.get(). The retried call re-attaches the channel and waits for a fresh objects sync.';
+    case 'suspended':
+      return 'Retry channel.object.get() once the channel re-attaches. The SDK re-attaches suspended channels automatically when the connection recovers, or call channel.attach() to retry now.';
+    default:
+      return 'Inspect the cause for the underlying failure. Call channel.attach() to recover the channel, then retry channel.object.get(). Calling channel.object.get() on a failed channel without re-attaching first rejects immediately.';
+  }
+}
+
+/**
+ * Remediation for a `publishAndApply` sync wait failing (RTO20e1), reached via the public mutation
+ * APIs (`LiveMap.set`/`remove`, `LiveCounter.increment`/`decrement`, batch). The operation was
+ * published and ACKed before the wait started, so it is persisted server-side and must not be
+ * retried; only the local optimistic apply failed, and the local object converges on the next
+ * successful attach and objects sync. State-independent, unlike the `get()` remediation.
+ */
+function publishSyncWaitFailureRemediation(): string {
+  return 'Do not retry the operation. It was already published and acknowledged by Ably, so retrying would apply it twice. The local object converges automatically on the next successful attach and objects sync. Inspect the cause and channel.errorReason for why the channel left the attached state.';
+}
 
 export class RealtimeObject {
   gcGracePeriod: number;
@@ -91,9 +132,9 @@ export class RealtimeObject {
     // implicit attach before proceeding
     await this._channel.ensureAttached();
 
-    // if we're not synced yet, wait for sync sequence to finish before returning root
+    // RTO23c - if we're not synced yet, wait for sync sequence to finish before returning root
     if (this._state !== ObjectsState.synced) {
-      await this._eventEmitterInternal.once(ObjectsEvent.synced); // RTO1c
+      await this._waitForSyncedOrChannelFailure('the object could not be retrieved', getSyncWaitFailureRemediation); // RTO23c1
     }
 
     const pathObject = new DefaultPathObject(this, this._objectsPool.getRoot(), []);
@@ -234,7 +275,7 @@ export class RealtimeObject {
    * @spec RTO4 - handling of the `ATTACHED` transition
    * @spec RTO27 - manage the stored objects data across non-`ATTACHED` transitions
    */
-  actOnChannelState(state: ChannelState, hasObjects?: boolean): void {
+  actOnChannelState(state: ChannelState, hasObjects?: boolean, reason?: ErrorInfo | null): void {
     switch (state) {
       case 'attached':
         // RTO4 - ATTACHED is handled by onAttached (the sync lifecycle); it is outside RTO27's scope
@@ -242,16 +283,24 @@ export class RealtimeObject {
         break;
 
       case 'detached':
+      case 'suspended':
       case 'failed':
-        // RTO27a - the actual current state of Objects data is unknown in these states, so clear it
-        // without emitting update events (RTO27a1); the objects themselves remain in the pool.
-        this._objectsPool.clearObjectsData(false); // RTO27a1
-        this._syncObjectsPool.clear(); // RTO27a2
-        break;
+        // RTO23c1 / RTO20e1 - fail any parked objects-sync waiters (get()/publishAndApply) before the
+        // RTO27a data clearing below (drain-then-clear, matching ably-cocoa). The channel's errorReason
+        // is not yet assigned when notifyState invokes this handler, so it is passed in as `reason`.
+        // Emitted unconditionally; a no-op when no waiter is parked.
+        this._eventEmitterInternal.emit(ObjectsInternalEvent.syncWaitFailed, state, reason);
 
-      // RTO27b - every other state (SUSPENDED, INITIALIZED, ATTACHING, DETACHING) is intentionally
-      // not handled here: the objects data is retained unchanged. For SUSPENDED in particular, the
-      // connection may still recover, so the retained data remains a valid best-effort local copy.
+        if (state !== 'suspended') {
+          // RTO27a - the actual current state of Objects data is unknown in DETACHED/FAILED, so clear it
+          // without emitting update events (RTO27a1); the objects themselves remain in the pool.
+          this._objectsPool.clearObjectsData(false); // RTO27a1
+          this._syncObjectsPool.clear(); // RTO27a2
+        }
+        // RTO27b - SUSPENDED (and every unlisted state: INITIALIZED, ATTACHING, DETACHING) retains the
+        // objects data unchanged. For SUSPENDED in particular the connection may still recover, so the
+        // retained data remains a valid best-effort local copy.
+        break;
     }
   }
 
@@ -356,30 +405,10 @@ export class RealtimeObject {
         `waiting for sync to complete before applying ${syntheticMessages.length} message(s); channel=${this._channel.name}`,
       );
 
-      await new Promise<void>((resolve, reject) => {
-        const cleanup = () => {
-          this._eventEmitterInternal.off(onSynced);
-          this._channel.internalStateChanges.off(onChannelState);
-        };
-        const onSynced = () => {
-          cleanup();
-          resolve();
-        };
-        // RTO20e1
-        const onChannelState = () => {
-          cleanup();
-          reject(
-            new this._client.ErrorInfo(
-              `the operation could not be applied locally due to the channel entering the ${this._channel.state} state whilst waiting for objects sync to complete`,
-              92008,
-              400,
-              this._channel.errorReason || undefined,
-            ),
-          );
-        };
-        this._eventEmitterInternal.once(ObjectsEvent.synced, onSynced);
-        this._channel.internalStateChanges.once(['detached', 'suspended', 'failed'], onChannelState);
-      });
+      await this._waitForSyncedOrChannelFailure(
+        'the operation could not be applied locally',
+        publishSyncWaitFailureRemediation,
+      ); // RTO20e1
     }
 
     // RTO20f - Apply synthetic messages
@@ -595,6 +624,48 @@ export class RealtimeObject {
         remediation: `Include "${expectedMode}" in the channel modes: realtime.channels.get(name, { modes: ["${expectedMode}", ...] }), or call channel.setOptions({ modes: [...] }) on an existing channel to trigger a reattach. Calling channels.get(name, { modes }) on an existing channel throws. If the mode is still missing after the reattach, your API key lacks the capability corresponding to the mode ("object-subscribe" or "object-publish") on this channel and the server silently dropped it. If you have the Ably CLI installed, \`ably auth keys list\` shows your key's capabilities.`,
       });
     }
+  }
+
+  /**
+   * Waits for the objects sync state to reach SYNCED, rejecting with a 92008 error if the channel
+   * first transitions into DETACHED/SUSPENDED/FAILED (signalled by `actOnChannelState` via the
+   * internal `syncWaitFailed` event). Shared by `get()` (RTO23c1) and `publishAndApply` (RTO20e1),
+   * which differ in the error message's `failureDescription` prefix and in their caller-specific
+   * `remediation` (resolved per failure state, since the recovery advice depends on it); the error's
+   * code (92008), statusCode (400), and cause (the channel's errorReason) are mandated identically
+   * by both spec points, which say nothing about remediation. The cause is the state-change
+   * `reason` — the same error `notifyState` assigns to `RealtimeChannel.errorReason`; on a
+   * reason-less transition (e.g. a clean detach) the cause is deliberately absent rather than a
+   * stale prior errorReason. Both listeners are removed on either outcome (no leaks).
+   */
+  private _waitForSyncedOrChannelFailure(
+    failureDescription: string,
+    remediation: (state: ChannelState) => string,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        this._eventEmitterInternal.off(ObjectsEvent.synced, onSynced);
+        this._eventEmitterInternal.off(ObjectsInternalEvent.syncWaitFailed, onChannelFailure);
+      };
+      const onSynced = () => {
+        cleanup();
+        resolve();
+      };
+      const onChannelFailure = (state: ChannelState, reason?: ErrorInfo | null) => {
+        cleanup();
+        reject(
+          new this._client.ErrorInfo({
+            message: `${failureDescription} due to the channel entering the ${state} state whilst waiting for objects sync to complete`,
+            code: 92008,
+            statusCode: 400,
+            cause: reason || undefined,
+            remediation: remediation(state),
+          }),
+        );
+      };
+      this._eventEmitterInternal.once(ObjectsEvent.synced, onSynced);
+      this._eventEmitterInternal.once(ObjectsInternalEvent.syncWaitFailed, onChannelFailure);
+    });
   }
 
   private _stateChange(state: ObjectsState): void {

@@ -237,6 +237,123 @@ describe('uts/objects/unit/realtime_object', function () {
     expect(root).to.exist;
   });
 
+  // UTS: objects/unit/RTO23c1/fails-on-channel-detached-0
+  it('RTO23c1 - get() fails when channel enters DETACHED during sync wait', async function () {
+    const { channel, mockWs } = await setupSyncedChannel('test-RTO23c1-detached');
+
+    // Move the objects sync state back to SYNCING so a fresh get() must wait (RTO23c)
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ATTACHED,
+      channel: 'test-RTO23c1-detached',
+      channelSerial: 'sync2:cursor',
+      flags: HAS_OBJECTS,
+    });
+    await flushAsync();
+
+    const getFuture = channel.object.get();
+
+    // While still SYNCING the get() cannot complete — it parks in the RTO23c wait for SYNCED
+    let settled = false;
+    getFuture.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    await flushAsync();
+    expect(settled).to.equal(false);
+
+    // Detach the channel client-side (an unsolicited server DETACHED would trigger an RTL13a
+    // re-attach); the shared mock answers the outbound DETACH with DETACHED
+    await channel.detach();
+
+    try {
+      await getFuture;
+      expect.fail('should have thrown');
+    } catch (err: any) {
+      // RTO23c1 - fail with code 92008 and statusCode 400
+      expect(err.code).to.equal(92008);
+      expect(err.statusCode).to.equal(400);
+    }
+  });
+
+  // UTS: objects/unit/RTO23c1/fails-on-channel-suspended-0
+  it('RTO23c1 - get() fails when channel enters SUSPENDED during sync wait', async function () {
+    const { channel, mockWs } = await setupSyncedChannel('test-RTO23c1-suspended');
+
+    // Move the objects sync state back to SYNCING so a fresh get() must wait (RTO23c)
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ATTACHED,
+      channel: 'test-RTO23c1-suspended',
+      channelSerial: 'sync2:cursor',
+      flags: HAS_OBJECTS,
+    });
+    await flushAsync();
+
+    const getFuture = channel.object.get();
+
+    let settled = false;
+    getFuture.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    await flushAsync();
+    expect(settled).to.equal(false);
+
+    // SUSPENDED is a connection-level state the mock cannot drive; drive the RealtimeObject's
+    // internal channel-state handler directly, exactly as the RTO27 tests do
+    (channel as any)._object.actOnChannelState('suspended');
+
+    try {
+      await getFuture;
+      expect.fail('should have thrown');
+    } catch (err: any) {
+      // RTO23c1 - fail with code 92008 and statusCode 400
+      expect(err.code).to.equal(92008);
+      expect(err.statusCode).to.equal(400);
+    }
+  });
+
+  // UTS: objects/unit/RTO23c1/fails-on-channel-failed-0
+  it('RTO23c1 - get() fails with cause when channel enters FAILED during sync wait', async function () {
+    const { channel, mockWs } = await setupSyncedChannel('test-RTO23c1-failed');
+
+    // Move the objects sync state back to SYNCING so a fresh get() must wait (RTO23c)
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ATTACHED,
+      channel: 'test-RTO23c1-failed',
+      channelSerial: 'sync2:cursor',
+      flags: HAS_OBJECTS,
+    });
+    await flushAsync();
+
+    const getFuture = channel.object.get();
+
+    let settled = false;
+    getFuture.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    await flushAsync();
+    expect(settled).to.equal(false);
+
+    // A channel ERROR moves the channel to FAILED and sets its errorReason
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ERROR,
+      channel: 'test-RTO23c1-failed',
+      error: { code: 90000, statusCode: 400, message: 'Channel failed' },
+    });
+
+    try {
+      await getFuture;
+      expect.fail('should have thrown');
+    } catch (err: any) {
+      // RTO23c1 - fail with code 92008 and statusCode 400
+      expect(err.code).to.equal(92008);
+      expect(err.statusCode).to.equal(400);
+      // RTO23c1 - cause is set to the channel's errorReason (the injected FAILED error)
+      expect(err.cause.code).to.equal(90000);
+    }
+  });
+
   // UTS: objects/unit/RTO15/publish-sends-object-pm-0
   it('RTO15 - publish sends OBJECT ProtocolMessage', async function () {
     const capturedMessages: any[] = [];

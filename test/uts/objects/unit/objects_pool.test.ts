@@ -360,6 +360,69 @@ describe('uts/objects/unit/objects_pool', function () {
     expect(rto._objectsPool.get('counter:new@1000')).to.exist;
   });
 
+  // UTS: objects/unit/RTO5a5/absent-channel-serial-0
+  it('RTO5a5 - OBJECT_SYNC with no channelSerial is a single-message sync', async function () {
+    const { channel, mockWs } = await setupManualChannel('test-RTO5a5', {
+      onMessageFromClient: (msg, ws) => {
+        if (msg.action === PM_ACTION.ATTACH) {
+          ws.active_connection!.send_to_client({
+            action: PM_ACTION.ATTACHED,
+            channel: msg.channel,
+            channelSerial: 'sync1:cursor',
+            flags: HAS_OBJECTS,
+          });
+          // RTO5a5 - no channelSerial: the whole sync is contained in this one message, so the
+          // objects are applied and the sync completes (SYNCED) without waiting for a cursor-empty
+          // channelSerial (RTO5a4)
+          ws.active_connection!.send_to_client(
+            buildObjectSyncMessage(msg.channel, null as any, [
+              buildObjectState('counter:new@1000', { aaa: 't:0' }, { counter: { count: 99 } }),
+            ]),
+          );
+        }
+      },
+    });
+
+    // get() waits for SYNCED, so it doubles as the synchronization point for the applied sync
+    await channel.object.get();
+
+    const rto = getRealtimeObject(channel);
+    expect(rto._state).to.equal('synced');
+    expect(rto._objectsPool.get('counter:new@1000')).to.exist;
+  });
+
+  // UTS: objects/unit/RTO5a6/malformed-channel-serial-treated-as-absent-0
+  it('RTO5a6 - malformed channelSerial is treated as absent', async function () {
+    const { channel, mockWs } = await setupManualChannel('test-RTO5a6', {
+      onMessageFromClient: (msg, ws) => {
+        if (msg.action === PM_ACTION.ATTACH) {
+          ws.active_connection!.send_to_client({
+            action: PM_ACTION.ATTACHED,
+            channel: msg.channel,
+            channelSerial: 'sync1:cursor',
+            flags: HAS_OBJECTS,
+          });
+          // RTO5a6 - "malformedserialnocolon" has no ':' separator, so it cannot be parsed per
+          // RTO5a1; it must be handled as if the channelSerial were absent (RTO5a5): the objects
+          // are applied and the sync completes (SYNCED)
+          ws.active_connection!.send_to_client(
+            buildObjectSyncMessage(msg.channel, 'malformedserialnocolon', [
+              buildObjectState('counter:new@1000', { aaa: 't:0' }, { counter: { count: 99 } }),
+            ]),
+          );
+        }
+      },
+    });
+
+    // get() waits for SYNCED, so it doubles as the synchronization point for the applied sync
+    await channel.object.get();
+
+    const rto = getRealtimeObject(channel);
+    // Treated as absent (RTO5a5): the message was applied and the sync ended
+    expect(rto._state).to.equal('synced');
+    expect(rto._objectsPool.get('counter:new@1000')).to.exist;
+  });
+
   // UTS: objects/unit/RTO5f2a/partial-map-merge-0
   it('RTO5f2a - partial object state merge for maps', async function () {
     const { channel, mockWs } = await setupManualChannel('test-RTO5f2a', {

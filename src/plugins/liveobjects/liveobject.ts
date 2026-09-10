@@ -134,11 +134,18 @@ export abstract class LiveObject<
       'LiveObject.tombstone()',
       `objectId=${this.getObjectId()}`,
     ); // RTLO4e3
-    const update = this.clearData(); // RTLO4e4
-    update.objectMessage = objectMessage;
-    update.tombstone = true;
+    // RTLO4e5 - compute the diff between the pre-clear data and the zero value. Per the RTLC14c /
+    // RTLM22c tombstone carve-out, that noop exception "must not be applied when the diff is
+    // computed for a tombstone": tombstoning an already-empty object yields a noop diff, but the
+    // resulting tombstone update (RTLO4b4e) must still be delivered so it drives the RTLO4b4c3c
+    // listener teardown. So when the diff collapses to a noop, synthesize the typed no-change
+    // update instead, leaving a real (non-noop) update to stamp.
+    const diff = this.clearData(); // RTLO4e4
+    const update: TUpdate = this._isNoopUpdate(diff) ? this._createNoChangeUpdate() : diff;
+    update.objectMessage = objectMessage; // RTLO4e7
+    update.tombstone = true; // RTLO4e6
 
-    return update;
+    return update; // RTLO4e8
   }
 
   /**
@@ -158,7 +165,7 @@ export abstract class LiveObject<
   /**
    * @internal
    */
-  clearData(): TUpdate {
+  clearData(): TUpdate | LiveObjectUpdateNoop {
     const previousDataRef = this._dataRef;
     this._dataRef = this._getZeroValueData();
     return this._updateFromDataDiff(previousDataRef, this._dataRef);
@@ -350,7 +357,7 @@ export abstract class LiveObject<
     }
   }
 
-  private _isNoopUpdate(update: TUpdate | LiveObjectUpdateNoop): update is LiveObjectUpdateNoop {
+  protected _isNoopUpdate(update: TUpdate | LiveObjectUpdateNoop): update is LiveObjectUpdateNoop {
     return (update as LiveObjectUpdateNoop).noop === true;
   }
 
@@ -383,8 +390,16 @@ export abstract class LiveObject<
   protected abstract _getZeroValueData(): TData;
   /**
    * Calculate the update object based on the current LiveObject data and incoming new data.
+   *
+   * Returns a noop update when the data is unchanged (RTLC14c / RTLM22c).
    */
-  protected abstract _updateFromDataDiff(prevDataRef: TData, newDataRef: TData): TUpdate;
+  protected abstract _updateFromDataDiff(prevDataRef: TData, newDataRef: TData): TUpdate | LiveObjectUpdateNoop;
+  /**
+   * Returns a typed update that represents "no change" (e.g. a counter delta of 0, or an empty
+   * map key-diff), used by {@link LiveObject.tombstone} to synthesize a deliverable tombstone
+   * update when the tombstone diff itself collapsed to a noop per the RTLC14c / RTLM22c carve-out.
+   */
+  protected abstract _createNoChangeUpdate(): TUpdate;
   /**
    * Merges the initial data from the create operation into the LiveObject.
    *

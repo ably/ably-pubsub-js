@@ -511,6 +511,43 @@ describe('uts/objects/unit/live_counter', function () {
     expect(update.objectMessage).to.equal(msg);
   });
 
+  // UTS: objects/unit/RTLO5/tombstone-zero-value-counter-emits-update-0
+  // Complements object-delete-tombstones-0 (which tombstones a populated counter). Here the
+  // counter data is already 0, so the tombstone diff (previousData 0, newData 0) is a zero delta.
+  // Per the RTLC14c tombstone carve-out (RTLO4e5) this update must NOT be marked as a no-op — it
+  // must still be delivered so the RTLO4b4c3c listener teardown runs.
+  it('RTLO5 - OBJECT_DELETE on an already-zero counter emits a non-noop tombstone update', async function () {
+    const { channel, client } = await setupSyncedChannel('test-RTLO5-zero');
+
+    const counter = createZeroCounter(channel, 'counter:abc@1000');
+    const capture = captureNotifyUpdated(counter);
+    (counter as any)._dataRef.data = 0;
+    (counter as any)._siteTimeserials = { site1: '00' };
+
+    const msg = makeObjectMessage(client, {
+      serial: '01',
+      siteCode: 'site1',
+      serialTimestamp: 1700000000000,
+      operation: {
+        action: OBJ_OP.OBJECT_DELETE,
+        objectId: 'counter:abc@1000',
+        objectDelete: {},
+      },
+    });
+
+    const result = counter.applyOperation(msg.operation!, msg, ObjectsOperationSource.channel);
+
+    expect(counter.isTombstoned()).to.equal(true);
+    expect((counter as any)._dataRef.data).to.equal(0);
+    expect(result).to.equal(true);
+    const update = capture.getUpdate();
+    // RTLC14c carve-out: the zero-delta tombstone update is NOT a no-op
+    expect((update as any).noop).to.not.equal(true);
+    expect(update.tombstone).to.equal(true);
+    expect(update.update.amount).to.equal(0);
+    expect(update.objectMessage).to.equal(msg);
+  });
+
   // =========================================================================
   // RTLC7e - Operations on tombstoned counter are rejected
   // =========================================================================
@@ -796,6 +833,29 @@ describe('uts/objects/unit/live_counter', function () {
 
     expect((update as any).update.amount).to.equal(55);
     expect((update as any).objectMessage).to.equal(stateMsg);
+  });
+
+  // UTS: objects/unit/RTLC14c/zero-delta-diff-is-noop-0
+  it('RTLC14c - Zero-delta diff is a no-op', async function () {
+    const { channel, client } = await setupSyncedChannel('test-RTLC14c');
+
+    const counter = createZeroCounter(channel, 'counter:abc@1000');
+    (counter as any)._dataRef.data = 100;
+
+    const stateMsg = makeObjectMessage(client, {
+      object: {
+        objectId: 'counter:abc@1000',
+        siteTimeserials: { site1: '01' },
+        tombstone: false,
+        counter: { count: 100 },
+      },
+    });
+
+    const update = counter.overrideWithObjectState(stateMsg);
+
+    // RTLC14c - the computed delta is 0, so the diff collapses to a no-op update
+    expect((update as any).noop).to.equal(true);
+    expect((counter as any)._dataRef.data).to.equal(100);
   });
 
   // =========================================================================

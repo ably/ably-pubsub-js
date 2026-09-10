@@ -396,6 +396,12 @@ export class RealtimeObject {
       );
     }
 
+    // RTO20d4 - if the synthetic messages list is empty (e.g. every serial was null and skipped per
+    // RTO20d1) there is nothing to apply locally, so complete without performing the RTO20e sync wait.
+    if (syntheticMessages.length === 0) {
+      return;
+    }
+
     // RTO20e - Wait for sync to complete if not synced
     if (this._state !== ObjectsState.synced) {
       this._client.Logger.logAction(

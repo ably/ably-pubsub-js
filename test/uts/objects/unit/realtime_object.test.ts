@@ -534,6 +534,71 @@ describe('uts/objects/unit/realtime_object', function () {
     expect(root.get('score').value()).to.equal(100);
   });
 
+  // UTS: objects/unit/RTO20d4/empty-synthetic-list-skips-sync-wait-0
+  it('RTO20d4 - empty synthetic list skips the RTO20e sync wait', async function () {
+    const mockWs = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        mockWs.active_connection = conn;
+        conn.respond_with_connected({
+          action: PM_ACTION.CONNECTED,
+          connectionId: 'conn-1',
+          connectionDetails: {
+            connectionKey: 'key-1',
+            siteCode: 'test-site',
+            objectsGCGracePeriod: 86400000,
+          },
+        });
+      },
+      onMessageFromClient: (msg: any) => {
+        if (msg.action === PM_ACTION.ATTACH) {
+          mockWs.active_connection!.send_to_client({
+            action: PM_ACTION.ATTACHED,
+            channel: msg.channel,
+            channelSerial: 'sync1:',
+            flags: HAS_OBJECTS,
+          });
+          mockWs.active_connection!.send_to_client(
+            buildObjectSyncMessage('test-RTO20d4', 'sync1:', STANDARD_POOL_OBJECTS),
+          );
+        } else if (msg.action === PM_ACTION.OBJECT) {
+          // All-null serial list -> every synthetic ObjectMessage is skipped per RTO20d1
+          mockWs.active_connection!.send_to_client(buildAckMessage(msg.msgSerial, [null as any]));
+        }
+      },
+    });
+    installMockWebSocket(mockWs.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+      plugins: { LiveObjects: LiveObjectsPlugin },
+    });
+    trackClient(client);
+    client.connect();
+    await new Promise<void>((resolve) => client.connection.once('connected', resolve));
+
+    const channel = client.channels.get('test-RTO20d4', { modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] });
+    const root = await channel.object.get();
+
+    // Move the objects sync state back to SYNCING so a normal publishAndApply would park in
+    // the RTO20e wait for SYNCED. No sync-completing message is ever sent, so if the RTO20e wait
+    // were performed this future would never resolve.
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ATTACHED,
+      channel: 'test-RTO20d4',
+      channelSerial: 'sync2:cursor',
+      flags: HAS_OBJECTS,
+    });
+
+    // RTO20d4 - the all-null ACK makes the synthetic list empty, so publishAndApply completes
+    // without the RTO20e wait. Resolution despite the channel never reaching SYNCED proves it.
+    await root.get('score').increment(10);
+
+    // Nothing applied locally, so the value is unchanged.
+    expect(root.get('score').value()).to.equal(100);
+  });
+
   // UTS: objects/unit/RTO20e/waits-for-synced-0
   it('RTO20e - publishAndApply waits for SYNCED during SYNCING', async function () {
     const { root, mockWs } = await setupSyncedChannel('test-RTO20e');

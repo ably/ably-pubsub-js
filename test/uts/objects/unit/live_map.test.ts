@@ -753,6 +753,56 @@ describe('uts/objects/unit/live_map', function () {
     expect(update.objectMessage).to.equal(msg);
   });
 
+  // UTS: objects/unit/RTLO5/tombstone-empty-map-emits-update-0
+  // Complements object-delete-tombstones-map-0 (which tombstones a map with live entries). Here
+  // every entry is already tombstoned, so the map has no non-tombstoned entries and the tombstone
+  // diff (per RTLM22b, which considers only non-tombstoned entries) contains no changed keys. Per
+  // the RTLM22c tombstone carve-out (RTLO4e5) this empty update must NOT be marked as a no-op — it
+  // must still be delivered so the RTLO4b4c3c listener teardown runs. Uses a non-root map: an
+  // OBJECT_DELETE targeting root is rejected per RTLO4e10.
+  it('RTLO5 - OBJECT_DELETE on an all-tombstoned map emits a non-noop tombstone update', async function () {
+    const { channel, client } = await setupSyncedChannel('test-RTLO5-empty');
+
+    const map = createZeroMap(channel, 'map:test@1000');
+    const capture = captureNotifyUpdated(map);
+    getDataMap(map).set('name', {
+      data: { string: 'Alice' },
+      timeserial: '01',
+      tombstone: true,
+      tombstonedAt: 1600000000000,
+    });
+    getDataMap(map).set('age', {
+      data: { number: 30 },
+      timeserial: '01',
+      tombstone: true,
+      tombstonedAt: 1600000000000,
+    });
+    (map as any)._siteTimeserials = { site1: '00' };
+
+    const msg = makeObjectMessage(client, {
+      serial: '01',
+      siteCode: 'site1',
+      serialTimestamp: 1700000000000,
+      operation: {
+        action: OBJ_OP.OBJECT_DELETE,
+        objectId: 'map:test@1000',
+        objectDelete: {},
+      },
+    });
+
+    const result = map.applyOperation(msg.operation!, msg, ObjectsOperationSource.channel);
+
+    expect(map.isTombstoned()).to.equal(true);
+    expect(getDataMap(map).size).to.equal(0); // data cleared
+    expect(result).to.equal(true);
+    const update = capture.getUpdate();
+    // RTLM22c carve-out: the empty tombstone update is NOT a no-op
+    expect((update as any).noop).to.not.equal(true);
+    expect(update.tombstone).to.equal(true);
+    expect(update.update).to.deep.equal({});
+    expect(update.objectMessage).to.equal(msg);
+  });
+
   // =====================================================================
   // RTLO4e10 - OBJECT_DELETE targeting root is rejected
   // =====================================================================
@@ -1034,6 +1084,41 @@ describe('uts/objects/unit/live_map', function () {
     expect(diff).to.not.have.property('unchanged');
     expect(diff).to.not.have.property('was_dead');
     expect(diff).to.not.have.property('now_dead');
+  });
+
+  // UTS: objects/unit/RTLM22c/empty-diff-is-noop-0
+  it('RTLM22c - empty diff is a no-op', async function () {
+    const { channel, client } = await setupSyncedChannel('test-RTLM22c');
+
+    const map = createZeroMap(channel, 'root');
+    getDataMap(map).set('name', {
+      data: { string: 'alice' },
+      timeserial: '01',
+      tombstone: false,
+      tombstonedAt: undefined,
+    });
+
+    // The non-tombstoned entries before and after are identical under the RTLM22b
+    // comparison rules (same key, same data; only timeserial differs, which is not compared).
+    const stateMsg = makeObjectMessage(client, {
+      object: {
+        objectId: 'root',
+        siteTimeserials: { site1: '02' },
+        tombstone: false,
+        map: {
+          semantics: MAP_SEMANTICS_LWW,
+          entries: {
+            name: { data: { string: 'alice' }, timeserial: '02' },
+          },
+        },
+      },
+    });
+
+    const update = map.overrideWithObjectState(stateMsg);
+
+    // RTLM22c - the computed update contains no changed keys, so the diff collapses to a no-op
+    expect((update as any).noop).to.equal(true);
+    expect(getDataMap(map).get('name')!.data).to.deep.equal({ string: 'alice' });
   });
 
   // =====================================================================

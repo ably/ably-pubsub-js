@@ -235,6 +235,12 @@ export class LiveCounter extends LiveObject<LiveCounterData, LiveCounterUpdate> 
 
     // update will contain the diff between previous value and new value from object state
     const update = this._updateFromDataDiff(previousDataRef, this._dataRef);
+    // RTLC14c - _updateFromDataDiff collapses a zero-delta diff (unchanged counter data) to a noop.
+    // pass it straight through without stamping the object message, mirroring the terminal noop
+    // return above (RTLC6e).
+    if (this._isNoopUpdate(update)) {
+      return update;
+    }
     update.objectMessage = objectMessage;
 
     return update;
@@ -253,9 +259,25 @@ export class LiveCounter extends LiveObject<LiveCounterData, LiveCounterUpdate> 
     return { data: 0 };
   }
 
-  protected _updateFromDataDiff(prevDataRef: LiveCounterData, newDataRef: LiveCounterData): LiveCounterUpdate {
+  protected _updateFromDataDiff(
+    prevDataRef: LiveCounterData,
+    newDataRef: LiveCounterData,
+  ): LiveCounterUpdate | LiveObjectUpdateNoop {
     const counterDiff = newDataRef.data - prevDataRef.data;
+    // RTLC14c - as an exception to RTLC14b: if newData equals previousData (the computed delta is 0)
+    // the counter data did not change, so instead of returning an update return a LiveCounterUpdate
+    // object with noop set to true (RTLO4b4b), as in RTLC9h. This exception must not be applied when
+    // the diff is computed for a tombstone per RTLO4e5; LiveObject.tombstone re-synthesizes a
+    // non-noop update via _createNoChangeUpdate() so the RTLO4b4c3c listener teardown still fires.
+    if (counterDiff === 0) {
+      return { noop: true };
+    }
     return { update: { amount: counterDiff }, _type: 'LiveCounterUpdate' };
+  }
+
+  protected _createNoChangeUpdate(): LiveCounterUpdate {
+    // RTLO4e5 tombstone carve-out (RTLC14c) - a zero-delta no-change update for an already-zero counter
+    return { update: { amount: 0 }, _type: 'LiveCounterUpdate' };
   }
 
   protected _mergeInitialDataFromCreateOperation(

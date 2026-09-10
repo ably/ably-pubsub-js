@@ -253,6 +253,69 @@ describe('uts/objects/unit/objects_pool', function () {
     expect(updates[0].message).to.be.undefined;
   });
 
+  // UTS: objects/unit/RTO4b2a/reset-of-empty-root-emits-no-update-0
+  // Complements attached-no-objects-synced-0 (which resets a populated root and emits a `removed`
+  // update). Here the root InternalLiveMap is already empty, so the RTO4b2 reset removes no keys:
+  // the resulting LiveMapUpdate has no changed keys and, per RTLM22c/RTLO4b4b, is a no-op that must
+  // not be delivered to root subscribers. The liveness control below (populated root) proves the
+  // subscription wiring is live, so the zero count reflects the empty-root collapse.
+  it('RTO4b2a - reset of an already-empty root emits no update', async function () {
+    const { channel, root, mockWs, client } = await setupSyncedChannel('test-RTO4b2a');
+    const rto = getRealtimeObject(channel);
+    const pool = rto.getPool();
+
+    // White-box: make the root already empty and add a non-root object to the pool.
+    const rootMap = pool.get('root');
+    (rootMap as any)._dataRef.data.clear();
+    pool.createZeroValueObjectIfNotExists('counter:abc@1000');
+    expect(root.size()).to.equal(0);
+
+    // Subscribe to root; capture the internal update passed to root's notifyUpdated too.
+    const updates: any[] = [];
+    root.subscribe((event: any) => updates.push(event));
+    const capture = captureNotifyUpdated(rootMap);
+
+    // ATTACHED without HAS_OBJECTS triggers the RTO4b reset path.
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ATTACHED,
+      channel: 'test-RTO4b2a',
+      flags: 0,
+    });
+    await flushAsync();
+    capture.restore();
+
+    expect(rto._state).to.equal('synced');
+    // RTO4b1: non-root objects are still removed
+    expect(pool.get('counter:abc@1000')).to.be.undefined;
+    expect(pool.get('root')).to.exist;
+    expect(root.size()).to.equal(0);
+    // RTO4b2a: no keys were removed, so the empty update collapses to a no-op and is not delivered
+    expect(updates.length).to.equal(0);
+    // the internal diff itself is a no-op (RTLM22c), so notifyUpdated suppressed it
+    expect((capture.getUpdate() as any).noop).to.equal(true);
+
+    // Liveness control: a reset that DOES remove a key still emits, so the zero count above
+    // reflects the empty-root collapse and not a dead subscription. Mirrors RTO4b. Uses a second
+    // channel on the same client/connection (the mock WebSocket is a singleton), whose root is
+    // populated from the standard sync pool.
+    const channel2 = client.channels.get('test-RTO4b2a-control', { modes: ['OBJECT_SUBSCRIBE', 'OBJECT_PUBLISH'] });
+    const root2 = await channel2.object.get();
+    const rootMap2 = getRealtimeObject(channel2).getPool().get('root');
+    const control: any[] = [];
+    root2.subscribe((event: any) => control.push(event));
+    const capture2 = captureNotifyUpdated(rootMap2);
+    mockWs.active_connection!.send_to_client({
+      action: PM_ACTION.ATTACHED,
+      channel: 'test-RTO4b2a-control',
+      flags: 0,
+    });
+    await flushAsync();
+    capture2.restore();
+
+    expect(control.length).to.be.greaterThanOrEqual(1);
+    expect(capture2.getUpdate().update.name).to.equal('removed');
+  });
+
   // UTS: objects/unit/RTO5/sync-complete-sequence-0
   it('RTO5 - OBJECT_SYNC complete sequence populates pool', async function () {
     const { channel, mockWs } = await setupManualChannel('test-RTO5', {

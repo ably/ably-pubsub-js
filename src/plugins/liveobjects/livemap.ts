@@ -462,6 +462,12 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
 
     // update will contain the diff between previous value and new value from object state
     const update = this._updateFromDataDiff(previousDataRef, this._dataRef);
+    // RTLM22c - _updateFromDataDiff collapses an empty key-diff (no map key changed) to a noop.
+    // pass it straight through without stamping the object message, mirroring the terminal noop
+    // return above (RTLM6e).
+    if (this._isNoopUpdate(update)) {
+      return update;
+    }
     update.objectMessage = objectMessage;
 
     return update;
@@ -488,7 +494,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
    *
    * @internal
    */
-  clearData(): LiveMapUpdate<T> {
+  clearData(): LiveMapUpdate<T> | LiveObjectUpdateNoop {
     // Remove all parent references for objects this map was referencing
     for (const [key, entry] of this._dataRef.data.entries()) {
       if (entry.data && 'objectId' in entry.data) {
@@ -600,7 +606,10 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
     return { data: new Map<string, LiveMapEntry>() };
   }
 
-  protected _updateFromDataDiff(prevDataRef: LiveMapData, newDataRef: LiveMapData): LiveMapUpdate<T> {
+  protected _updateFromDataDiff(
+    prevDataRef: LiveMapData,
+    newDataRef: LiveMapData,
+  ): LiveMapUpdate<T> | LiveObjectUpdateNoop {
     const update: LiveMapUpdate<T> = { update: {}, _type: 'LiveMapUpdate' };
 
     for (const [key, currentEntry] of prevDataRef.data.entries()) {
@@ -653,7 +662,22 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
       }
     }
 
+    // RTLM22c - as an exception to RTLM22b: if the computed update contains no changed keys (it is
+    // empty) no map key actually changed, so instead of returning an update return a LiveMapUpdate
+    // object with noop set to true (RTLO4b4b), as in RTLM16b. This exception must not be applied when
+    // the diff is computed for a tombstone per RTLO4e5; LiveObject.tombstone re-synthesizes a
+    // non-noop update via _createNoChangeUpdate() so the RTLO4b4c3c listener teardown still fires.
+    if (Object.keys(update.update).length === 0) {
+      return { noop: true };
+    }
+
     return update;
+  }
+
+  protected _createNoChangeUpdate(): LiveMapUpdate<T> {
+    // RTLO4e5 tombstone carve-out (RTLM22c) - an empty no-change update for a map with no
+    // non-tombstoned entries
+    return { update: {}, _type: 'LiveMapUpdate' };
   }
 
   protected _mergeInitialDataFromCreateOperation(

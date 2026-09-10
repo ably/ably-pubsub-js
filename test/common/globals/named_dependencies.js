@@ -15,6 +15,10 @@ define(function () {
       browser: 'build/liveobjects',
       node: 'build/liveobjects',
     },
+    materializer: {
+      browser: 'build/materializer',
+      node: 'build/materializer',
+    },
 
     // test modules
     globals: { browser: 'test/common/globals/environment', node: 'test/common/globals/environment' },

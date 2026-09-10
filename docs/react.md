@@ -52,6 +52,43 @@ root.render(
 );
 ```
 
+However, exposing API key in the client app isn't the best practice. Alternatively, you can use the auth callback to provide the token needed to establish the connection. 
+```tsx
+import { AblyProvider } from 'ably/react';
+import * as Ably from 'ably';
+
+const BACKEND_URL = "YOUR_BACKEND_URL"
+
+const client = new Ably.Realtime({
+  authCallback: async (_, callback) => {
+    let token: Ably.TokenDetails | null = null;
+
+    try {
+      const response = await fetch(BACKEND_URL, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`Token fetch failed: ${response.statusText}`);
+      }
+      token = await response.json(); // adjust according to your backend data structure
+    } catch (e) {
+      callback(e instanceof Error ? e.message : "Unknown error occurred", null);
+      return;
+    }
+
+    callback(null, token);
+  }
+});
+
+root.render(
+  <AblyProvider client={client}>
+    <App />
+  </AblyProvider>,
+);
+```
+
+More about token generation, please refer to this [documentation](https://ably.com/docs/auth/token?lang=javascript#ably-token).
+
 ### Define Ably channels
 
 Once you've set up `AblyProvider`, define Ably channels you want to use by utilizing the `ChannelProvider` component:

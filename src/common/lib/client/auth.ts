@@ -437,7 +437,7 @@ class Auth {
     let tokenRequestCallback: (
         data: API.TokenParams,
         callback: (
-          error: API.ErrorInfo | RequestResultError | string | null,
+          error: API.ErrorInfo | Error | RequestResultError | string | null,
           tokenRequestOrDetails: API.TokenDetails | API.TokenRequest | string | null,
           contentType?: string,
         ) => void,

@@ -126,6 +126,7 @@ export class ClientSingleChannelConnection extends EventEmitter {
   private channel: Channel;
 
   public presence: any;
+  public push: any;
   public state: string;
   public name: string;
 
@@ -134,6 +135,7 @@ export class ClientSingleChannelConnection extends EventEmitter {
     this.client = client;
     this.channel = channel;
     this.presence = new ClientPresenceConnection(this.client, this.channel.presence);
+    this.push = new ClientPushConnection();
     this.state = 'attached';
     this.name = name;
   }
@@ -444,5 +446,27 @@ export class ChannelPresence {
         callback(data);
       }
     }
+  }
+}
+
+export class ClientPushConnection {
+  public async subscribeDevice() {
+    // do nothing
+  }
+
+  public async unsubscribeDevice() {
+    // do nothing
+  }
+
+  public async subscribeClient() {
+    // do nothing
+  }
+
+  public async unsubscribeClient() {
+    // do nothing
+  }
+
+  public async listSubscriptions(_params?: Record<string, string>) {
+    return { items: [], hasNext: () => false, isLast: () => true } as any;
   }
 }

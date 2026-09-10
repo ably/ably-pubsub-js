@@ -51,6 +51,35 @@ const StateToEventsMap: Record<ObjectsState, ObjectsEvent | undefined> = {
 
 export type ObjectsEventCallback = () => void;
 
+/**
+ * Remediation for a `get()` sync wait failing (RTO23c1). The rejection is recoverable, but the
+ * recovery differs per state: `ensureAttached` at `get()` entry re-attaches a DETACHED channel
+ * itself and proceeds through SUSPENDED (the SDK re-attaches when the connection recovers), so a
+ * plain retry suffices for those two states, whereas from FAILED `get()` rejects at entry (90001)
+ * until the channel is explicitly re-attached.
+ */
+function getSyncWaitFailureRemediation(state: ChannelState): string {
+  switch (state) {
+    case 'detached':
+      return 'Retry channel.object.get(). The retried call re-attaches the channel and waits for a fresh objects sync.';
+    case 'suspended':
+      return 'Retry channel.object.get() once the channel re-attaches. The SDK re-attaches suspended channels automatically when the connection recovers, or call channel.attach() to retry now.';
+    default:
+      return 'Inspect the cause for the underlying failure. Call channel.attach() to recover the channel, then retry channel.object.get(). Calling channel.object.get() on a failed channel without re-attaching first rejects immediately.';
+  }
+}
+
+/**
+ * Remediation for a `publishAndApply` sync wait failing (RTO20e1), reached via the public mutation
+ * APIs (`LiveMap.set`/`remove`, `LiveCounter.increment`/`decrement`, batch). The operation was
+ * published and ACKed before the wait started, so it is persisted server-side and must not be
+ * retried; only the local optimistic apply failed, and the local object converges on the next
+ * successful attach and objects sync. State-independent, unlike the `get()` remediation.
+ */
+function publishSyncWaitFailureRemediation(): string {
+  return 'Do not retry the operation. It was already published and acknowledged by Ably, so retrying would apply it twice. The local object converges automatically on the next successful attach and objects sync. Inspect the cause and channel.errorReason for why the channel left the attached state.';
+}
+
 export class RealtimeObject {
   gcGracePeriod: number;
 
@@ -105,7 +134,7 @@ export class RealtimeObject {
 
     // RTO23c - if we're not synced yet, wait for sync sequence to finish before returning root
     if (this._state !== ObjectsState.synced) {
-      await this._waitForSyncedOrChannelFailure('the object could not be retrieved'); // RTO23c1
+      await this._waitForSyncedOrChannelFailure('the object could not be retrieved', getSyncWaitFailureRemediation); // RTO23c1
     }
 
     const pathObject = new DefaultPathObject(this, this._objectsPool.getRoot(), []);
@@ -382,7 +411,10 @@ export class RealtimeObject {
         `waiting for sync to complete before applying ${syntheticMessages.length} message(s); channel=${this._channel.name}`,
       );
 
-      await this._waitForSyncedOrChannelFailure('the operation could not be applied locally'); // RTO20e1
+      await this._waitForSyncedOrChannelFailure(
+        'the operation could not be applied locally',
+        publishSyncWaitFailureRemediation,
+      ); // RTO20e1
     }
 
     // RTO20f - Apply synthetic messages
@@ -604,14 +636,18 @@ export class RealtimeObject {
    * Waits for the objects sync state to reach SYNCED, rejecting with a 92008 error if the channel
    * first transitions into DETACHED/SUSPENDED/FAILED (signalled by `actOnChannelState` via the
    * internal `syncWaitFailed` event). Shared by `get()` (RTO23c1) and `publishAndApply` (RTO20e1),
-   * which differ only in the error message's `failureDescription` prefix; the error's code (92008),
-   * statusCode (400), and cause (the channel's errorReason) are mandated identically by both spec
-   * points. The cause is the state-change `reason` — the same error `notifyState` assigns to
-   * `RealtimeChannel.errorReason`; on a reason-less transition (e.g. a clean detach) the cause is
-   * deliberately absent rather than a stale prior errorReason. Both listeners are removed on either
-   * outcome (no leaks).
+   * which differ in the error message's `failureDescription` prefix and in their caller-specific
+   * `remediation` (resolved per failure state, since the recovery advice depends on it); the error's
+   * code (92008), statusCode (400), and cause (the channel's errorReason) are mandated identically
+   * by both spec points, which say nothing about remediation. The cause is the state-change
+   * `reason` — the same error `notifyState` assigns to `RealtimeChannel.errorReason`; on a
+   * reason-less transition (e.g. a clean detach) the cause is deliberately absent rather than a
+   * stale prior errorReason. Both listeners are removed on either outcome (no leaks).
    */
-  private _waitForSyncedOrChannelFailure(failureDescription: string): Promise<void> {
+  private _waitForSyncedOrChannelFailure(
+    failureDescription: string,
+    remediation: (state: ChannelState) => string,
+  ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const cleanup = () => {
         this._eventEmitterInternal.off(ObjectsEvent.synced, onSynced);
@@ -624,12 +660,13 @@ export class RealtimeObject {
       const onChannelFailure = (state: ChannelState, reason?: ErrorInfo | null) => {
         cleanup();
         reject(
-          new this._client.ErrorInfo(
-            `${failureDescription} due to the channel entering the ${state} state whilst waiting for objects sync to complete`,
-            92008,
-            400,
-            reason || undefined,
-          ),
+          new this._client.ErrorInfo({
+            message: `${failureDescription} due to the channel entering the ${state} state whilst waiting for objects sync to complete`,
+            code: 92008,
+            statusCode: 400,
+            cause: reason || undefined,
+            remediation: remediation(state),
+          }),
         );
       };
       this._eventEmitterInternal.once(ObjectsEvent.synced, onSynced);

@@ -24,7 +24,7 @@ class RealtimeAnnotations {
   async publish(msgOrSerial: string | Message, annotationValues: Partial<Properties<Annotation>>): Promise<void> {
     const channelName = this.channel.name;
     const annotation = constructValidateAnnotation(msgOrSerial, annotationValues, 'publish');
-    const wireAnnotation = await annotation.encode();
+    const wireAnnotation = await annotation.encode(this.channel.channelOptions);
 
     this.channel.throwIfUnpublishableState();
 

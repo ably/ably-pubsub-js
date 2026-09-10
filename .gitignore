@@ -1,5 +1,5 @@
 .DS_Store
-ably-js.iml
+ably-pubsub-js.iml
 .idea
 node_modules
 npm-debug.log

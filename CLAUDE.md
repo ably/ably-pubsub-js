@@ -22,6 +22,26 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full test-suite, debugging, and
 
 ## Coding Conventions
 
+### Error codes
+
+`ErrorInfo.code` is typed as `ErrorCode`, a union of every code registered in [ably-common](https://github.com/ably/ably-common/tree/main/errors/codes). It is generated into [errorcodes.ts](./src/common/lib/types/errorcodes.ts) from the pinned `ably-common` submodule and committed. CI regenerates it at that pin and fails on a diff, so never hand-edit it.
+
+Pick the registered code whose `identifier` matches the failure, and pair it with the HTTP status that code's registry entry documents. `statusCode` is a plain `number`, so a wrong status still compiles — check it against the registry rather than copying a neighbouring call.
+
+If the code you need is not in the union, `tsc` rejects it:
+
+```text
+error TS2345: Argument of type '40199' is not assignable to parameter of type 'ErrorCode'.
+```
+
+That means the code is not registered. Do not cast around it. Instead:
+
+1. Add the code under `errors/codes/` in [ably-common](https://github.com/ably/ably-common) and get that merged.
+2. Bump the `test/common/ably-common` submodule pin here to a commit that contains it.
+3. Run `npm run generate:errorcodes-ts` and commit the regenerated `errorcodes.ts`.
+
+Errors decoded from the server are exempt: the server chose the code and may use one this client version does not know about, so build those with `ErrorInfo.fromWireValues` instead of `ErrorInfo.fromValues`.
+
 ### Error messages and remediations
 
 Errors constructed by the SDK (`ErrorInfo` / `PartialErrorInfo`) carry a `message` and, in most cases, a `remediation` (see the `ErrorInfo.remediation` docstring in [ably.d.ts](./ably.d.ts)). The two fields have distinct jobs:

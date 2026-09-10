@@ -124,7 +124,7 @@ class DeviceDetails {
   }
 
   static fromValues(values: Record<string, unknown>): DeviceDetails {
-    values.error = values.error && ErrorInfo.fromValues(values.error as IConvertibleToErrorInfo);
+    values.error = values.error && ErrorInfo.fromWireValues(values.error as IConvertibleToErrorInfo);
     return Object.assign(new DeviceDetails(), values);
   }
 

@@ -37,6 +37,46 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
     close() {}
   }
 
+  /* Drop in replacement for WebSocket which rejects the handshake immediately,
+   * as a proxy that answers the upgrade request with (say) a 403 does: the
+   * browser surfaces that to us only as an error event followed by an unclean
+   * close. Unlike FakeWebSocket this fails fast, so the connection sequence
+   * finishes before the websocket slow/give-up timers can fire.
+   *
+   * If allowConnectivityCheck is set, the websocket connectivity check is let
+   * through, simulating a network on which websockets work but every Ably host
+   * is rejecting them. */
+  function rejectingWebSocket({ allowConnectivityCheck } = {}) {
+    return class FakeRejectingWebSocket {
+      constructor(url) {
+        this.url = url;
+        const succeed = allowConnectivityCheck && url.indexOf(originialWsCheckUrl) === 0;
+        setTimeout(() => {
+          if (succeed) {
+            if (this.onopen) this.onopen();
+            return;
+          }
+          if (this.onerror) this.onerror({ message: undefined });
+          if (this.onclose) this.onclose({ code: 1006, wasClean: false });
+        }, 0);
+      }
+      close() {}
+    };
+  }
+
+  /* Records the transports the connection manager actually attempts */
+  function recordTransportAttempts(helper, realtime) {
+    const attempts = [];
+    const connectionManager = realtime.connection.connectionManager;
+    helper.recordPrivateApi('replace.connectionManager.tryATransport');
+    const original = connectionManager.tryATransport.bind(connectionManager);
+    connectionManager.tryATransport = function (transportParams, candidate, callback) {
+      attempts.push(candidate);
+      return original(transportParams, candidate, callback);
+    };
+    return attempts;
+  }
+
   describe('realtime/transports', function () {
     this.timeout(60 * 1000);
 
@@ -113,6 +153,68 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
         helper.monitorConnection(done, realtime);
       });
 
+      /**
+       * A proxy that rejects the websocket upgrade fails every candidate host
+       * within milliseconds, so neither the websocket slow timer nor the
+       * give-up timer gets a chance to fire. The client must still work out
+       * that websockets are unusable and fall back to the base transport,
+       * rather than exhausting its fallback hosts on websocket and giving up.
+       *
+       * @nospec
+       */
+      it('ws_rejected_immediately', function (done) {
+        const helper = this.test.helper;
+        Config.WebSocket = rejectingWebSocket();
+        const realtime = helper.AblyRealtime(options(helper));
+        const attempts = recordTransportAttempts(helper, realtime);
+
+        realtime.connection.on('connected', function () {
+          try {
+            expect(realtime.connection.connectionManager.activeProtocol.transport.shortName).to.equal(
+              baseTransport(helper),
+            );
+            expect(attempts).to.include('web_socket');
+            expect(attempts[attempts.length - 1]).to.equal(baseTransport(helper));
+          } catch (err) {
+            helper.closeAndFinish(done, realtime, err);
+            return;
+          }
+          helper.closeAndFinish(done, realtime);
+        });
+
+        helper.monitorConnection(done, realtime);
+      });
+
+      /**
+       * The converse: if websockets are demonstrably available on this network
+       * then failures on every host are the hosts' problem, not the transport's,
+       * and the base transport (which talks to those same hosts) would be no
+       * better off. The client should go to disconnected and retry.
+       *
+       * @nospec
+       */
+      it('ws_rejected_immediately_but_ws_connectivity_available', function (done) {
+        const helper = this.test.helper;
+        Config.WebSocket = rejectingWebSocket({ allowConnectivityCheck: true });
+        const realtime = helper.AblyRealtime(options(helper));
+        const attempts = recordTransportAttempts(helper, realtime);
+
+        realtime.connection.once('disconnected', function (stateChange) {
+          try {
+            expect(attempts).to.not.include(baseTransport(helper));
+            expect(stateChange.reason.code).to.equal(80003, 'check code');
+          } catch (err) {
+            helper.closeAndFinish(done, realtime, err);
+            return;
+          }
+          helper.closeAndFinish(done, realtime);
+        });
+
+        realtime.connection.once('connected', function () {
+          helper.closeAndFinish(done, realtime, new Error('Connection should not have succeeded'));
+        });
+      });
+
       /** @nospec */
       it('ws_primary_host_fails', function (done) {
         const helper = this.test.helper;
@@ -142,6 +244,23 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
 
         // expect client to transition to disconnected rather than attempting base transport (which would succeed in this instance)
         realtime.connection.on('disconnected', function () {
+          helper.closeAndFinish(done, realtime);
+        });
+      });
+
+      /**
+       * With no base transport to fall back to there is nothing a websocket
+       * connectivity check could usefully tell us, so an immediately-rejected
+       * handshake must go straight to disconnected rather than waiting on one.
+       *
+       * @specpartial RTN14d
+       */
+      it('ws_rejected_immediately_with_no_base_transport', function (done) {
+        const helper = this.test.helper;
+        Config.WebSocket = rejectingWebSocket();
+        const realtime = helper.AblyRealtime({ transports: ['web_socket'] });
+
+        realtime.connection.once('disconnected', function () {
           helper.closeAndFinish(done, realtime);
         });
       });

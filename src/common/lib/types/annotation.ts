@@ -62,13 +62,11 @@ class Annotation extends BaseMessage {
   name?: string;
   count?: number;
 
-  async encode(): Promise<WireAnnotation> {
+  async encode(options: ChannelOptions): Promise<WireAnnotation> {
     const res = Object.assign(new WireAnnotation(), this, {
       action: actions.indexOf(this.action || 'annotation.create'),
     });
-    // note: we do not pass cipheroptions/channeloptions here as annotations are not
-    // encrypted (as the data needs to be parsed by the server for summarisation)
-    return encode(res, {});
+    return encode(res, options);
   }
 
   static fromValues(values: Properties<Annotation>): Annotation {

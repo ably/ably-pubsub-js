@@ -143,7 +143,7 @@ var createCryptoClass = function (config: IPlatformConfig, bufferUtils: typeof B
       try {
         return config.getRandomArrayBuffer((keyLength || DEFAULT_KEYLENGTH) / 8);
       } catch (err) {
-        throw new ErrorInfo('Failed to generate random key: ' + (err as Error).message, 400, 50000);
+        throw new ErrorInfo('Failed to generate random key: ' + (err as Error).message, 50000, 500);
       }
     }
 

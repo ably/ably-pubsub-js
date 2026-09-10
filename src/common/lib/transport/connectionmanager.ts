@@ -163,6 +163,7 @@ class ConnectionManager extends EventEmitter {
   } = { isProcessing: false, queue: [] };
   webSocketSlowTimer: NodeJS.Timeout | null;
   wsCheckResult: boolean | null;
+  wsCheckPromise: Promise<boolean> | null;
   webSocketGiveUpTimer: NodeJS.Timeout | null;
   abandonedWebSocket: boolean;
   connectCounter: number;
@@ -257,6 +258,7 @@ class ConnectionManager extends EventEmitter {
     this.forceFallbackHost = false;
     this.connectCounter = 0;
     this.wsCheckResult = null;
+    this.wsCheckPromise = null;
     this.webSocketSlowTimer = null;
     this.webSocketGiveUpTimer = null;
     this.abandonedWebSocket = false;
@@ -1046,25 +1048,25 @@ class ConnectionManager extends EventEmitter {
         'ConnectionManager WebSocket slow timer',
         'checking connectivity',
       );
-      this.checkWsConnectivity()
-        .then(() => {
+      this.checkWsConnectivityOnce().then((wsAvailable) => {
+        /* The log level has to be a literal Logger.LOG_* for the stripLogs
+         * build plugin to be able to decide whether to strip the call */
+        if (wsAvailable) {
           Logger.logAction(
             this.logger,
             Logger.LOG_MINOR,
             'ConnectionManager WebSocket slow timer',
             'ws connectivity check succeeded',
           );
-          this.wsCheckResult = true;
-        })
-        .catch(() => {
+        } else {
           Logger.logAction(
             this.logger,
             Logger.LOG_MAJOR,
             'ConnectionManager WebSocket slow timer',
             'ws connectivity check failed',
           );
-          this.wsCheckResult = false;
-        });
+        }
+      });
       if (this.realtime.http.checkConnectivity) {
         Utils.whenPromiseSettles(this.realtime.http.checkConnectivity(), (err, connectivity) => {
           if (err || !connectivity) {
@@ -1102,17 +1104,14 @@ class ConnectionManager extends EventEmitter {
   startWebSocketGiveUpTimer(transportParams: TransportParams) {
     this.webSocketGiveUpTimer = Platform.Config.setTimeout(() => {
       if (!this.wsCheckResult) {
-        Logger.logAction(
-          this.logger,
-          Logger.LOG_MINOR,
-          'ConnectionManager WebSocket give up timer',
-          'websocket connection took more than 10s; ' + (this.baseTransport ? 'trying base transport' : ''),
-        );
         if (this.baseTransport) {
-          this.abandonedWebSocket = true;
-          this.proposedTransport?.dispose();
-          this.pendingTransport?.dispose();
-          this.connectBase(transportParams, ++this.connectCounter);
+          Logger.logAction(
+            this.logger,
+            Logger.LOG_MINOR,
+            'ConnectionManager WebSocket give up timer',
+            'websocket connection took more than ' + this.options.timeouts.webSocketConnectTimeout + 'ms',
+          );
+          this.abandonWebSocketForBaseTransport(transportParams);
         } else {
           // if we don't have a base transport to fallback to, just let the websocket connection attempt time out
           Logger.logAction(
@@ -1435,6 +1434,7 @@ class ConnectionManager extends EventEmitter {
   connectWs(transportParams: TransportParams, connectCount: number) {
     Logger.logAction(this.logger, Logger.LOG_MICRO, 'ConnectionManager.connectWs()');
     this.wsCheckResult = null;
+    this.wsCheckPromise = null;
     this.abandonedWebSocket = false;
     this.startWebSocketSlowTimer();
     this.startWebSocketGiveUpTimer(transportParams);
@@ -1454,6 +1454,84 @@ class ConnectionManager extends EventEmitter {
         error: new ErrorInfo('No transports left to try', 80000, 404),
       });
     }
+  }
+
+  /* Abandon the websocket transport and connect on the base transport instead. */
+  abandonWebSocketForBaseTransport(transportParams: TransportParams): void {
+    Logger.logAction(
+      this.logger,
+      Logger.LOG_MINOR,
+      'ConnectionManager.abandonWebSocketForBaseTransport()',
+      'websocket connectivity appears to be unavailable; trying base transport',
+    );
+    this.abandonedWebSocket = true;
+    this.cancelWebSocketSlowTimer();
+    this.cancelWebSocketGiveUpTimer();
+    this.proposedTransport?.dispose();
+    this.pendingTransport?.dispose();
+    this.connectBase(transportParams, ++this.connectCounter);
+  }
+
+  /*
+   * Called when a websocket attempt has failed on every candidate host without
+   * becoming viable. The webSocketGiveUpTimer only covers websocket attempts
+   * that are *slow*; a network that rejects the upgrade outright fails every
+   * host in milliseconds, and notifying `disconnected` cancels that timer. So
+   * find out whether websockets work on this network at all before giving up.
+   *
+   * Returns whether it has taken over the connection attempt.
+   */
+  checkWsAvailabilityBeforeGivingUp(
+    transportParams: TransportParams,
+    connectCount: number,
+    giveUp: (err: IPartialErrorInfo) => void,
+  ): boolean {
+    if (!this.baseTransport || this.abandonedWebSocket) {
+      return false;
+    }
+
+    if (this.wsCheckResult) {
+      /* Websockets work here, so the hosts are at fault rather than the
+       * transport — same condition the give-up timer applies */
+      return false;
+    }
+
+    this.checkWsConnectivityOnce().then((wsAvailable) => {
+      if (connectCount !== this.connectCounter || this.abandonedWebSocket || this.state !== this.states.connecting) {
+        /* Superseded, most likely by the give-up timer */
+        return;
+      }
+      if (wsAvailable) {
+        giveUp(new ErrorInfo('Unable to connect (and no more fallback hosts to try)', 80003, 404));
+      } else {
+        this.abandonWebSocketForBaseTransport(transportParams);
+      }
+    });
+
+    /* If the check itself hangs, as on a network that silently drops
+     * handshakes, the still-running give-up timer is what moves us on */
+    return true;
+  }
+
+  /*
+   * Runs the websocket connectivity check, at most once per websocket connection
+   * attempt, recording the outcome in wsCheckResult. Never rejects; resolves to
+   * whether websocket connectivity appears to be available.
+   */
+  checkWsConnectivityOnce(): Promise<boolean> {
+    if (!this.wsCheckPromise) {
+      this.wsCheckPromise = this.checkWsConnectivity().then(
+        () => {
+          this.wsCheckResult = true;
+          return true;
+        },
+        () => {
+          this.wsCheckResult = false;
+          return false;
+        },
+      );
+    }
+    return this.wsCheckPromise;
   }
 
   tryTransportWithFallbacks(
@@ -1503,6 +1581,10 @@ class ConnectionManager extends EventEmitter {
     const tryFallbackHosts = () => {
       /* if there aren't any fallback hosts, fail */
       if (!candidateHosts.length) {
+        /* ...unless this was websocket, where the base transport may still work */
+        if (ws && this.checkWsAvailabilityBeforeGivingUp(transportParams, connectCount, giveUp)) {
+          return;
+        }
         giveUp(new ErrorInfo('Unable to connect (and no more fallback hosts to try)', 80003, 404));
         return;
       }

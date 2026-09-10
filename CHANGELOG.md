@@ -2,6 +2,26 @@
 
 This contains only the most important and/or user-facing changes; for a full changelog, see the commit history.
 
+## [2.28.0](https://github.com/ably/ably-js/tree/2.28.0) (2026-08-21)
+
+[Full Changelog](https://github.com/ably/ably-js/compare/2.27.0...2.28.0)
+
+### What's Changed
+
+- Roll out e2e encryption of `data` payloads on annotations. They were previously a message type whose publish path deliberately did not apply the channel's encryption (and were documented accordingly), but the reasons for this no longer apply, so there is no reason now not to enable e2e encryption on annotation payloads. [#2277](https://github.com/ably/ably-js/pull/2277)
+
+## [2.27.0](https://github.com/ably/ably-js/tree/2.27.0) (2026-08-10)
+
+[Full Changelog](https://github.com/ably/ably-js/compare/2.26.0...2.27.0)
+
+### What's Changed
+
+- Fall back to the base transport when a proxy rejects the WebSocket handshake outright, rather than reporting `disconnected` after exhausting every host [#2285](https://github.com/ably/ably-js/pull/2285)
+- Move connection resumability decisions from the client to the server: `Connection#id`, `Connection#key` and a channel's `channelSerial` are retained through `SUSPENDED`, and reconnection always attempts a resume. `Connection#createRecoveryKey()` consequently returns a recovery key in `SUSPENDED`, where it previously returned `null` [#2273](https://github.com/ably/ably-js/pull/2273)
+- Fix a resumed attach advancing the channel's attach serial, which broke the contiguity of `untilAttach` history with the realtime message stream [#2276](https://github.com/ably/ably-js/pull/2276)
+- Fix stale presence members surviving when a new presence sync replaces one still in progress [#2261](https://github.com/ably/ably-js/pull/2261)
+- Expand the docstrings on `Auth`, `RealtimeChannel`, `RealtimePresence`, `RealtimeAnnotations` and `RestAnnotations` to cover prerequisites, side effects and failure modes, and link the REST `Channel` and `Presence` members to their reference pages [#2242](https://github.com/ably/ably-js/pull/2242) [#2243](https://github.com/ably/ably-js/pull/2243) [#2244](https://github.com/ably/ably-js/pull/2244) [#2245](https://github.com/ably/ably-js/pull/2245) [#2282](https://github.com/ably/ably-js/pull/2282)
+
 ## [2.26.0](https://github.com/ably/ably-js/tree/2.26.0) (2026-07-22)
 
 [Full Changelog](https://github.com/ably/ably-js/compare/2.25.0...2.26.0)

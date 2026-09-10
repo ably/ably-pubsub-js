@@ -87,7 +87,7 @@ class RestAnnotations {
     methodName: string,
   ): Promise<void> {
     const annotation = constructValidateAnnotation(msgOrSerial, annotationValues, methodName);
-    const wireAnnotation = await annotation.encode();
+    const wireAnnotation = await annotation.encode(this.channel.channelOptions);
 
     const client = this.channel.client,
       options = client.options,

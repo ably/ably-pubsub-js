@@ -2,6 +2,7 @@ import Logger from '../util/logger';
 import * as Utils from '../util/utils';
 import Multicaster, { MulticasterInstance } from '../util/multicaster';
 import ErrorInfo, { IPartialErrorInfo } from '../types/errorinfo';
+import type { ErrorCode } from '../types/errorcodes';
 import { RequestResultError, RequestParams, RequestResult } from '../../types/http';
 import * as API from '../../../../ably';
 import BaseClient from './baseclient';
@@ -28,17 +29,27 @@ function isRealtime(client: BaseClient): client is BaseRealtime {
   return !!(client as BaseRealtime).connection;
 }
 
+/* Fallbacks this SDK supplies when the callback's error carries no code of its own. Annotated
+ * so they are checked against the registry; the `err.code` below cannot be, because it comes
+ * from the application's authCallback rather than from this repository. */
+const AUTH_CALLBACK_ERROR_CODE: ErrorCode = 40170;
+const AUTH_CALLBACK_FORBIDDEN_CODE: ErrorCode = 40300;
+
 /* A client auth callback may give errors in any number of formats; normalise to an ErrorInfo or PartialErrorInfo */
 function normaliseAuthcallbackError(err: any) {
   if (!Utils.isErrorInfoOrPartialErrorInfo(err)) {
-    return new ErrorInfo(Utils.inspectError(err), err.code || 40170, err.statusCode || 401);
+    return new ErrorInfo(
+      Utils.inspectError(err),
+      (err.code as ErrorCode) || AUTH_CALLBACK_ERROR_CODE,
+      err.statusCode || 401,
+    );
   }
   /* network errors will not have an inherent error code */
   if (!err.code) {
     if (err.statusCode === 403) {
-      err.code = 40300;
+      err.code = AUTH_CALLBACK_FORBIDDEN_CODE;
     } else {
-      err.code = 40170;
+      err.code = AUTH_CALLBACK_ERROR_CODE;
       /* normalise statusCode to 401 per RSA4e */
       err.statusCode = 401;
     }

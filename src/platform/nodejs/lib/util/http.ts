@@ -1,6 +1,7 @@
 import Platform from 'common/platform';
 import Defaults from 'common/lib/util/defaults';
 import ErrorInfo from 'common/lib/types/errorinfo';
+import type { ErrorCode } from 'common/lib/types/errorcodes';
 import {
   ErrnoException,
   RequestBody,
@@ -164,11 +165,13 @@ const Http: IPlatformHttpStatic = class {
       }
 
       const error = (body as { error: ErrorInfo }).error
-        ? ErrorInfo.fromValues((body as { error: ErrorInfo }).error)
+        ? ErrorInfo.fromWireValues((body as { error: ErrorInfo }).error)
         : new ErrorInfo(
             (headers['x-ably-errormessage'] as string) ||
               'Error response received from server: ' + statusCode + ' body was: ' + Platform.Config.inspect(body),
-            Number(headers['x-ably-errorcode']),
+            // Read off a response header, so the server chose it and it can't be checked
+            // against the registry.
+            Number(headers['x-ably-errorcode']) as ErrorCode,
             statusCode,
           );
 

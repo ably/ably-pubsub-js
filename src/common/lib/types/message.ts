@@ -6,7 +6,6 @@ import {
   wireToJSON,
   normalizeCipherOptions,
   EncodingDecodingContext,
-  CipherOptions,
   strMsg,
 } from './basemessage';
 import * as Utils from '../util/utils';
@@ -93,7 +92,7 @@ export async function _fromEncodedArray(encodedArray: Properties<WireMessage>[],
   );
 }
 
-export async function encodeArray(messages: Array<Message>, options: CipherOptions): Promise<Array<WireMessage>> {
+export async function encodeArray(messages: Array<Message>, options: ChannelOptions): Promise<Array<WireMessage>> {
   return Promise.all(messages.map((message) => message.encode(options)));
 }
 
@@ -164,7 +163,7 @@ class Message extends BaseMessage {
     }
   }
 
-  async encode(options: CipherOptions): Promise<WireMessage> {
+  async encode(options: ChannelOptions): Promise<WireMessage> {
     const res = Object.assign(new WireMessage(), this, {
       action: actions.indexOf(this.action || 'message.create'),
     });
@@ -207,7 +206,7 @@ export class WireMessage extends BaseMessage {
 
   // for contexts where some decoding errors need to be handled specially by the caller
   async decodeWithErr(
-    inputContext: CipherOptions | EncodingDecodingContext | ChannelOptions,
+    inputContext: EncodingDecodingContext | ChannelOptions,
     logger: Logger,
   ): Promise<{ decoded: Message; err: ErrorInfo | undefined }> {
     const res: Message = Object.assign(new Message(), {
@@ -225,10 +224,7 @@ export class WireMessage extends BaseMessage {
     return { decoded: res, err: err };
   }
 
-  async decode(
-    inputContext: CipherOptions | EncodingDecodingContext | ChannelOptions,
-    logger: Logger,
-  ): Promise<Message> {
+  async decode(inputContext: EncodingDecodingContext | ChannelOptions, logger: Logger): Promise<Message> {
     const { decoded } = await this.decodeWithErr(inputContext, logger);
     return decoded;
   }

@@ -106,7 +106,7 @@ describe('uts/rest/unit/types/error_types', function () {
       { code: 40400, status: 404, meaning: 'Not found' },
       { code: 50000, status: 500, meaning: 'Internal server error' },
       { code: 50003, status: 500, meaning: 'Timeout' },
-    ];
+    ] as const;
 
     for (const tc of cases) {
       const error = new Ably.ErrorInfo(tc.meaning, tc.code, tc.status);

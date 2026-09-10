@@ -6,7 +6,6 @@ import Message, {
   getMessagesSize,
   encodeArray as encodeMessagesArray,
 } from '../types/message';
-import { CipherOptions } from '../types/basemessage';
 import ErrorInfo from '../types/errorinfo';
 import { PaginatedResult } from './paginatedresource';
 import Resource from './resource';
@@ -136,7 +135,7 @@ class RestChannel {
       });
     }
 
-    const wireMessages = await encodeMessagesArray(messages, this.channelOptions as CipherOptions);
+    const wireMessages = await encodeMessagesArray(messages, this.channelOptions);
 
     /* RSL1i */
     const size = getMessagesSize(wireMessages),

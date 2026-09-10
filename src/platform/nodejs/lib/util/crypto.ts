@@ -180,7 +180,7 @@ var createCryptoClass = function (bufferUtils: typeof BufferUtils) {
       try {
         return generateRandom((keyLength || DEFAULT_KEYLENGTH) / 8);
       } catch (err) {
-        throw new ErrorInfo('Failed to generate random key: ' + (err as Error).message, 500, 50000);
+        throw new ErrorInfo('Failed to generate random key: ' + (err as Error).message, 50000, 500);
       }
     }
 

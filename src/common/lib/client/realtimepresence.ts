@@ -2,7 +2,6 @@ import * as Utils from '../util/utils';
 import EventEmitter from '../util/eventemitter';
 import Logger from '../util/logger';
 import PresenceMessage, { WirePresenceMessage } from '../types/presencemessage';
-import type { CipherOptions } from '../types/basemessage';
 import ErrorInfo, { PartialErrorInfo } from '../types/errorinfo';
 import { flags } from '../types/protocolmessagecommon';
 import RealtimeChannel from './realtimechannel';
@@ -127,7 +126,7 @@ class RealtimePresence extends EventEmitter {
     if (clientId) {
       presence.clientId = clientId;
     }
-    const wirePresMsg = await presence.encode(channel.channelOptions as CipherOptions);
+    const wirePresMsg = await presence.encode(channel.channelOptions);
 
     switch (channel.state) {
       case 'attached':
@@ -195,7 +194,7 @@ class RealtimePresence extends EventEmitter {
     if (clientId) {
       presence.clientId = clientId;
     }
-    const wirePresMsg = await presence.encode(channel.channelOptions as CipherOptions);
+    const wirePresMsg = await presence.encode(channel.channelOptions);
 
     switch (channel.state) {
       case 'attached':

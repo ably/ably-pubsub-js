@@ -1,6 +1,6 @@
 ![Ably Chat Header](/images/JavaScriptSDK-github.png)
 [![npm version](https://img.shields.io/npm/v/ably.svg?style=flat)](https://img.shields.io/npm/v/ably.svg?style=flat)
-[![License](https://badgen.net/github/license/ably/ably-js)](https://github.com/ably/ably-js/blob/main/LICENSE)
+[![License](https://badgen.net/github/license/ably/ably-pubsub-js)](https://github.com/ably/ably-pubsub-js/blob/main/LICENSE)
 
 ---
 
@@ -35,13 +35,13 @@ Ably aims to support a wide range of platforms and all current browser versions,
 
 The following platforms are supported:
 
-| Platform    | Support                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| JavaScript  | ES2017                                                                                   |
-| Node.js     | See `engines` in [package.json](https://github.com/ably/ably-js/blob/main/package.json). |
-| React       | >=16.8.x                                                                                 |
-| TypeScript  | Type definitions are included in the package.                                            |
-| Web Workers | Browser bundle and [modular](#modular-variant) support.                                  |
+| Platform    | Support                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| JavaScript  | ES2017                                                                                          |
+| Node.js     | See `engines` in [package.json](https://github.com/ably/ably-pubsub-js/blob/main/package.json). |
+| React       | >=16.8.x                                                                                        |
+| TypeScript  | Type definitions are included in the package.                                                   |
+| Web Workers | Browser bundle and [modular](#modular-variant) support.                                         |
 
 > [!NOTE]
 > Versions 1.2.x of the SDK support Internet Explorer >=9 and other older browsers, as well as Node.js >=8.17.
@@ -133,7 +133,7 @@ In order to further reduce bundle size, the modular variant of the SDK performs 
 
 If you require more verbose logging, use the default variant of the SDK.
 
-For more information view the [TypeDoc references](https://sdk.ably.com/builds/ably/ably-js/main/typedoc/modules/modular.html).
+For more information view the [TypeDoc references](https://sdk.ably.com/builds/ably/ably-pubsub-js/main/typedoc/modules/modular.html).
 
 </details>
 
@@ -147,13 +147,13 @@ Read the [CONTRIBUTING.md](./CONTRIBUTING.md) guidelines to contribute to Ably.
 
 ## Releases
 
-The [CHANGELOG.md](/ably/ably-js/blob/main/CHANGELOG.md) contains details of the latest releases for this SDK. You can also view all Ably releases on [changelog.ably.com](https://changelog.ably.com).
+The [CHANGELOG.md](/ably/ably-pubsub-js/blob/main/CHANGELOG.md) contains details of the latest releases for this SDK. You can also view all Ably releases on [changelog.ably.com](https://changelog.ably.com).
 
 ---
 
 ## Support, feedback, and troubleshooting
 
-For help or technical support, visit Ably's [support page](https://ably.com/support) or [GitHub Issues](https://github.com/ably/ably-js-nativescript/issues) for community-reported bugs and discussions.
+For help or technical support, visit Ably's [support page](https://ably.com/support) or [GitHub Issues](https://github.com/ably/ably-pubsub-js/issues) for community-reported bugs and discussions.
 
 ### Chrome extensions
 
@@ -221,7 +221,7 @@ export default function AblyClientProvider({ children }) {
 }
 ```
 
-Avoid creating the client inside [React](https://github.com/ably/ably-js/blob/main/docs/react.md#Usage) component bodies, as this leads to a new connection on every render. Use the `useEffect` + `useState` pattern shown above, or move the client to a shared provider at the layout level.
+Avoid creating the client inside [React](https://github.com/ably/ably-pubsub-js/blob/main/docs/react.md#Usage) component bodies, as this leads to a new connection on every render. Use the `useEffect` + `useState` pattern shown above, or move the client to a shared provider at the layout level.
 
 In development environments that use Hot Module Replacement (HMR), such as React, Vite, or Next.js, saving a file can recreate the Ably.Realtime client, while previous instances remain connected. Over time, this leads to a growing number of active connections with each code edit. To fix: Move the client to a separate file (e.g., `ably-client.js`) and import it. This ensures the client is recreated only when that file changes.
 

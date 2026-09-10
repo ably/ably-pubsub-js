@@ -270,7 +270,7 @@ class Request extends EventEmitter {
           return;
         }
 
-        var err = body.error && ErrorInfo.fromValues(body.error);
+        var err = body.error && ErrorInfo.fromWireValues(body.error);
         if (!err) {
           err = new PartialErrorInfo(
             'Error response received from server: ' + statusCode + ', body was: ' + util.inspect(body),

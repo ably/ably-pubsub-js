@@ -1,6 +1,7 @@
 import * as Utils from 'common/lib/util/utils';
 import EventEmitter from 'common/lib/util/eventemitter';
 import ErrorInfo, { IPartialErrorInfo, PartialErrorInfo } from 'common/lib/types/errorinfo';
+import type { ErrorCode } from 'common/lib/types/errorcodes';
 import Logger from 'common/lib/util/logger';
 import Defaults from 'common/lib/util/defaults';
 import HttpMethods from 'common/constants/HttpMethods';
@@ -15,7 +16,7 @@ function isAblyError(responseBody: unknown, headers: Record<string, string>): re
 
 function getAblyError(responseBody: unknown, headers: Record<string, string>) {
   if (isAblyError(responseBody, headers)) {
-    return responseBody.error && ErrorInfo.fromValues(responseBody.error);
+    return responseBody.error && ErrorInfo.fromWireValues(responseBody.error);
   }
 }
 
@@ -175,7 +176,7 @@ class XHRRequest extends EventEmitter implements IXHRRequest {
     const errorHandler = (
       errorEvent: ProgressEvent<EventTarget>,
       message: string,
-      code: number | null,
+      code: ErrorCode | null,
       statusCode: number,
     ) => {
       let errorMessage = message + ' (event type: ' + errorEvent.type + ')';

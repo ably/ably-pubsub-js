@@ -105,7 +105,7 @@ export class LiveCounter extends LiveObject<LiveCounterData, LiveCounterUpdate> 
       throw new this._client.ErrorInfo(
         `Cannot apply object operation with objectId=${op.objectId}, to this LiveCounter with objectId=${this.getObjectId()}`,
         92000,
-        500,
+        400,
       );
     }
 
@@ -180,14 +180,14 @@ export class LiveCounter extends LiveObject<LiveCounterData, LiveCounterUpdate> 
   overrideWithObjectState(objectMessage: ObjectMessage): LiveCounterUpdate | LiveObjectUpdateNoop {
     const objectState = objectMessage.object;
     if (objectState == null) {
-      throw new this._client.ErrorInfo(`Missing object state; LiveCounter objectId=${this.getObjectId()}`, 92000, 500);
+      throw new this._client.ErrorInfo(`Missing object state; LiveCounter objectId=${this.getObjectId()}`, 92000, 400);
     }
 
     if (objectState.objectId !== this.getObjectId()) {
       throw new this._client.ErrorInfo(
         `Invalid object state: object state objectId=${objectState.objectId}; LiveCounter objectId=${this.getObjectId()}`,
         92000,
-        500,
+        400,
       );
     }
 
@@ -197,7 +197,7 @@ export class LiveCounter extends LiveObject<LiveCounterData, LiveCounterUpdate> 
         throw new this._client.ErrorInfo(
           `Invalid object state: object state createOp objectId=${objectState.createOp?.objectId}; LiveCounter objectId=${this.getObjectId()}`,
           92000,
-          500,
+          400,
         );
       }
 
@@ -205,7 +205,7 @@ export class LiveCounter extends LiveObject<LiveCounterData, LiveCounterUpdate> 
         throw new this._client.ErrorInfo(
           `Invalid object state: object state createOp action=${objectState.createOp?.action}; LiveCounter objectId=${this.getObjectId()}`,
           92000,
-          500,
+          400,
         );
       }
     }

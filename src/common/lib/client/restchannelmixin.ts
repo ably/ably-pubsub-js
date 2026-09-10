@@ -4,7 +4,6 @@ import ErrorInfo from '../types/errorinfo';
 import RealtimeChannel from './realtimechannel';
 import * as Utils from '../util/utils';
 import Message, { WireMessage, _fromEncodedArray, _fromEncoded, serialize as serializeMessage } from '../types/message';
-import { CipherOptions } from '../types/basemessage';
 import Defaults from '../util/defaults';
 import PaginatedResource, { PaginatedResult } from './paginatedresource';
 import Resource from './resource';
@@ -118,7 +117,7 @@ export class RestChannelMixin {
     requestMessage.action = action;
     requestMessage.version = operation;
 
-    const encoded = await requestMessage.encode(channel.channelOptions as CipherOptions);
+    const encoded = await requestMessage.encode(channel.channelOptions);
     const requestBody = serializeMessage(encoded, client._MsgPack, format);
 
     let method = Resource.patch;

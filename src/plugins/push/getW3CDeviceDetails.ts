@@ -25,7 +25,21 @@ export async function getW3CPushDeviceDetails(machine: ActivationStateMachine) {
   const GotPushDeviceDetails = machine.GotPushDeviceDetails;
   const { ErrorInfo, Defaults } = machine.client;
 
-  const permission = await Notification.requestPermission();
+  let permission: NotificationPermission = Notification.permission;
+
+  if (permission === 'default') {
+    try {
+      // throws exception in iOS
+      permission = await Notification.requestPermission();
+    } catch (err) {
+      machine.handleEvent(
+        new GettingPushDeviceDetailsFailed(
+          new ErrorInfo('Failed to request permission to send notifications', 400, 40000),
+        ),
+      );
+      return;
+    }
+  }
 
   if (permission !== 'granted') {
     const err =

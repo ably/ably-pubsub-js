@@ -9,10 +9,12 @@ import {
   Primitive,
   Value,
 } from '../../../liveobjects';
+import { DefaultInstance } from './instance';
 import { LiveCounter } from './livecounter';
 import { LiveCounterValueType } from './livecountervaluetype';
 import { LiveMapValueType } from './livemapvaluetype';
 import { LiveObject, LiveObjectData, LiveObjectUpdate, LiveObjectUpdateNoop } from './liveobject';
+import { DefaultPathObject } from './pathobject';
 import {
   getObjectDataPrimitive,
   MapRemove,
@@ -185,6 +187,19 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
         typeof value !== 'object')
     ) {
       throw new client.ErrorInfo('Map value data type is unsupported', 40013, 400); // OD4a
+    }
+
+    // RTLMV4c1 - live objects obtained from the channel, and the public objects that wrap them,
+    // are not valid map values. Without this check they would fall through to the JSON encoding
+    // branch and fail with a confusing serialization error (or leak internal state to the wire).
+    // To assign an object to a key, a new object must be created via the LiveMap.create() or
+    // LiveCounter.create() value types instead.
+    if (value instanceof LiveObject || value instanceof DefaultPathObject || value instanceof DefaultInstance) {
+      throw new client.ErrorInfo(
+        'Map value data type is unsupported: a reference to an existing object cannot be assigned as a map value; use LiveMap.create() or LiveCounter.create() to create a new object',
+        40013,
+        400,
+      );
     }
   }
 

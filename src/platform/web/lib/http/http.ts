@@ -15,8 +15,8 @@ export type HTTPRequestImplementations = Pick<ModularPlugins, 'XHRRequest' | 'Fe
 function createMissingImplementationError() {
   return new ErrorInfo(
     'No HTTP request plugin provided. Provide at least one of the FetchRequest or XHRRequest plugins.',
-    400,
     40000,
+    400,
   );
 }
 

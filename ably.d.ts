@@ -2545,7 +2545,7 @@ export declare interface RealtimeAnnotations {
    *
    * Does not implicitly attach the channel. It rejects with an {@link ErrorInfo} on a channel in the `failed` or `suspended` state, or when the connection is unusable.
    *
-   * Annotation data is never encrypted, even when {@link ChannelOptions.cipher} is set, because the server must be able to read it to build summaries.
+   * Annotation data is encrypted when {@link ChannelOptions.cipher} is set, as it is for messages and presence messages.
    *
    * @param message - The message to annotate.
    * @param annotation - The annotation to publish. It must include at least the `type`. Other required fields depend on the annotation type.
@@ -2566,7 +2566,7 @@ export declare interface RealtimeAnnotations {
    *
    * Does not implicitly attach the channel. It rejects with an {@link ErrorInfo} on a channel in the `failed` or `suspended` state, or when the connection is unusable.
    *
-   * Annotation data is never encrypted, even when {@link ChannelOptions.cipher} is set, because the server must be able to read it to build summaries.
+   * Annotation data is encrypted when {@link ChannelOptions.cipher} is set, as it is for messages and presence messages.
    *
    * @param messageSerial - The serial field of the message to annotate.
    * @param annotation - The annotation to publish. It must include at least the `type`. Other required fields depend on the annotation type.
@@ -2864,7 +2864,7 @@ export declare interface RestAnnotations {
    *
    * Message annotations must be enabled for the channel's namespace by a [rule](https://ably.com/docs/messages/annotations), and the key or token must have the `annotation-publish` capability. Without either the server rejects the operation, so the call rejects with an {@link ErrorInfo}.
    *
-   * Annotation data is never encrypted, even when {@link ChannelOptions.cipher} is set, because the server must be able to read it to build summaries.
+   * Annotation data is encrypted when {@link ChannelOptions.cipher} is set, as it is for messages and presence messages.
    *
    * @param message - The message to annotate.
    * @param annotation - The annotation to publish. It must include at least the `type`. Other required fields depend on the annotation type.
@@ -2883,7 +2883,7 @@ export declare interface RestAnnotations {
    *
    * Message annotations must be enabled for the channel's namespace by a [rule](https://ably.com/docs/messages/annotations), and the key or token must have the `annotation-publish` capability. Without either the server rejects the operation, so the call rejects with an {@link ErrorInfo}.
    *
-   * Annotation data is never encrypted, even when {@link ChannelOptions.cipher} is set, because the server must be able to read it to build summaries.
+   * Annotation data is encrypted when {@link ChannelOptions.cipher} is set, as it is for messages and presence messages.
    *
    * @param messageSerial - The serial field of the message to annotate.
    * @param annotation - The annotation to publish. It must include at least the `type`. Other required fields depend on the annotation type.

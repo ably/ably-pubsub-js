@@ -1,5 +1,5 @@
 import Logger from '../util/logger';
-import { BaseMessage, encode, decode, wireToJSON, normalizeCipherOptions, CipherOptions, strMsg } from './basemessage';
+import { BaseMessage, encode, decode, wireToJSON, normalizeCipherOptions, strMsg } from './basemessage';
 import * as API from '../../../../ably';
 import * as Utils from '../util/utils';
 
@@ -87,7 +87,7 @@ class PresenceMessage extends BaseMessage {
     };
   }
 
-  async encode(options: CipherOptions): Promise<WirePresenceMessage> {
+  async encode(options: ChannelOptions): Promise<WirePresenceMessage> {
     const res = Object.assign(new WirePresenceMessage(), this, {
       action: actions.indexOf(this.action || 'present'),
     });

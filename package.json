@@ -1,10 +1,10 @@
 {
   "name": "ably",
   "description": "Realtime client library for Ably, the realtime messaging service",
-  "version": "2.26.0",
+  "version": "2.28.0",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/ably/ably-js/issues",
+    "url": "https://github.com/ably/ably-pubsub-js/issues",
     "email": "support@ably.com"
   },
   "main": "./build/ably-node.js",
@@ -164,7 +164,7 @@
   "engines": {
     "node": ">=16"
   },
-  "repository": "ably/ably-js",
+  "repository": "ably/ably-pubsub-js",
   "jspm": {
     "registry": "npm",
     "directories": {
@@ -206,6 +206,7 @@
     "modulereport": "tsc --noEmit --esModuleInterop scripts/moduleReport.ts && esr scripts/moduleReport.ts",
     "speccoveragereport": "tsc --noEmit --esModuleInterop --target ES2017 --moduleResolution node scripts/specCoverageReport.ts && esr scripts/specCoverageReport.ts",
     "process-private-api-data": "tsc --noEmit --esModuleInterop --strictNullChecks scripts/processPrivateApiData/run.ts && esr scripts/processPrivateApiData/run.ts",
-    "docs": "typedoc"
+    "docs": "typedoc",
+    "generate:errorcodes-ts": "node test/common/ably-common/errors/scripts/generate-errorcodes-ts.js --format=type --out src/common/lib/types/errorcodes.ts"
   }
 }

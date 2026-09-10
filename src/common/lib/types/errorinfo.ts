@@ -1,9 +1,10 @@
 import Platform from 'common/platform';
 import * as Utils from '../util/utils';
 import * as API from '../../../../ably';
+import type { ErrorCode } from './errorcodes';
 
 export interface IPartialErrorInfo extends Error {
-  code: number | null;
+  code: ErrorCode | null;
   statusCode?: number;
   cause?: ErrorInfo | PartialErrorInfo;
   href?: string;
@@ -24,6 +25,13 @@ function toString(err: ErrorInfo | PartialErrorInfo) {
   return result;
 }
 
+/**
+ * The values of an error decoded from a server response body or a ProtocolMessage. `code` is
+ * a plain `number` rather than an {@link ErrorCode} because the server chose it, and may use
+ * codes this version of the client does not know about, so it cannot be checked against the
+ * registry. Reached only via {@link ErrorInfo.fromWireValues}; errors this SDK raises itself
+ * use {@link ErrorInfoValues}.
+ */
 export interface IConvertibleToErrorInfo {
   message: string;
   code: number;
@@ -34,6 +42,7 @@ export interface IConvertibleToErrorInfo {
   href?: string;
 }
 
+/** As {@link IConvertibleToErrorInfo}, for the partial case. */
 export interface IConvertibleToPartialErrorInfo {
   message: string;
   code: number | null;
@@ -44,19 +53,45 @@ export interface IConvertibleToPartialErrorInfo {
   href?: string;
 }
 
+/**
+ * The values an error raised by this SDK is constructed from. Identical to
+ * {@link IConvertibleToErrorInfo} except that `code` must be a registered Ably error code,
+ * so that an unregistered code, or a `code`/`statusCode` transposition, fails to compile.
+ * This is the shape to use for any error written in this repository.
+ */
+export interface ErrorInfoValues extends IConvertibleToErrorInfo {
+  code: ErrorCode;
+}
+
+/** As {@link ErrorInfoValues}, for the partial case. */
+export interface PartialErrorInfoValues extends IConvertibleToPartialErrorInfo {
+  code: ErrorCode | null;
+}
+
+/**
+ * Apply the help.ably.io href default shared by the `fromValues` factories. Errors built
+ * with `new ErrorInfo(...)` deliberately do not get it.
+ */
+function withHelpHref<T extends ErrorInfo | PartialErrorInfo>(err: T): T {
+  if (err.code && !err.href) {
+    err.href = 'https://help.ably.io/error/' + err.code;
+  }
+  return err;
+}
+
 export default class ErrorInfo extends Error implements IPartialErrorInfo, API.ErrorInfo {
-  code: number;
+  code: ErrorCode;
   statusCode: number;
   cause?: ErrorInfo;
   href?: string;
   detail?: Record<string, string>;
   remediation?: string;
 
-  constructor(message: string, code: number, statusCode: number, cause?: ErrorInfo, detail?: Record<string, string>);
-  constructor(values: IConvertibleToErrorInfo);
+  constructor(message: string, code: ErrorCode, statusCode: number, cause?: ErrorInfo, detail?: Record<string, string>);
+  constructor(values: ErrorInfoValues);
   constructor(
-    messageOrValues: string | IConvertibleToErrorInfo,
-    code?: number,
+    messageOrValues: string | ErrorInfoValues,
+    code?: ErrorCode,
     statusCode?: number,
     cause?: ErrorInfo,
     detail?: Record<string, string>,
@@ -84,7 +119,7 @@ export default class ErrorInfo extends Error implements IPartialErrorInfo, API.E
       if (typeof Object.setPrototypeOf !== 'undefined') {
         Object.setPrototypeOf(this, ErrorInfo.prototype);
       }
-      this.code = code as number;
+      this.code = code as ErrorCode;
       this.statusCode = statusCode as number;
       this.cause = cause;
       this.detail = detail;
@@ -95,21 +130,29 @@ export default class ErrorInfo extends Error implements IPartialErrorInfo, API.E
     return toString(this);
   }
 
-  static fromValues(values: IConvertibleToErrorInfo): ErrorInfo {
-    // Delegate shape validation and field assignment to the options-object constructor;
-    // fromValues only adds the help.ably.io href default for server-decoded errors that
-    // arrive without one. SDK-thrown errors that use `new ErrorInfo({...})` directly do
-    // not get this default, by design.
-    const result = new ErrorInfo(values);
-    if (result.code && !result.href) {
-      result.href = 'https://help.ably.io/error/' + result.code;
-    }
-    return result;
+  /**
+   * Build an error this SDK is raising itself, adding the help.ably.io href default. `code`
+   * is checked against the registry. To build an error out of a server response body or a
+   * ProtocolMessage, use {@link ErrorInfo.fromWireValues} instead.
+   */
+  static fromValues(values: ErrorInfoValues): ErrorInfo {
+    // Shape validation and field assignment are delegated to the options-object constructor.
+    return withHelpHref(new ErrorInfo(values));
+  }
+
+  /**
+   * Build an error out of data received from the server — a response body, or the `error`
+   * field of a ProtocolMessage. The cast is deliberate: the server chose this `code`, so
+   * unlike {@link ErrorInfo.fromValues} it is not checked against the registry. Prefer
+   * `fromValues` unless the code really did come from the server.
+   */
+  static fromWireValues(values: IConvertibleToErrorInfo): ErrorInfo {
+    return withHelpHref(new ErrorInfo(values as ErrorInfoValues));
   }
 }
 
 export class PartialErrorInfo extends Error implements IPartialErrorInfo {
-  code: number | null;
+  code: ErrorCode | null;
   statusCode?: number;
   cause?: ErrorInfo | PartialErrorInfo;
   href?: string;
@@ -118,15 +161,15 @@ export class PartialErrorInfo extends Error implements IPartialErrorInfo {
 
   constructor(
     message: string,
-    code: number | null,
+    code: ErrorCode | null,
     statusCode?: number,
     cause?: ErrorInfo | PartialErrorInfo,
     detail?: Record<string, string>,
   );
-  constructor(values: IConvertibleToPartialErrorInfo);
+  constructor(values: PartialErrorInfoValues);
   constructor(
-    messageOrValues: string | IConvertibleToPartialErrorInfo,
-    code?: number | null,
+    messageOrValues: string | PartialErrorInfoValues,
+    code?: ErrorCode | null,
     statusCode?: number,
     cause?: ErrorInfo | PartialErrorInfo,
     detail?: Record<string, string>,
@@ -154,7 +197,7 @@ export class PartialErrorInfo extends Error implements IPartialErrorInfo {
       if (typeof Object.setPrototypeOf !== 'undefined') {
         Object.setPrototypeOf(this, PartialErrorInfo.prototype);
       }
-      this.code = code as number | null;
+      this.code = code as ErrorCode | null;
       this.statusCode = statusCode;
       this.cause = cause;
       this.detail = detail;
@@ -165,13 +208,8 @@ export class PartialErrorInfo extends Error implements IPartialErrorInfo {
     return toString(this);
   }
 
-  static fromValues(values: IConvertibleToPartialErrorInfo): PartialErrorInfo {
-    // Same shape as ErrorInfo.fromValues - delegate validation/assignment to the
-    // options-object constructor; href default applies only to the server-decoded path.
-    const result = new PartialErrorInfo(values);
-    if (result.code && !result.href) {
-      result.href = 'https://help.ably.io/error/' + result.code;
-    }
-    return result;
+  /** As {@link ErrorInfo.fromValues}, for the partial case. */
+  static fromValues(values: PartialErrorInfoValues): PartialErrorInfo {
+    return withHelpHref(new PartialErrorInfo(values));
   }
 }

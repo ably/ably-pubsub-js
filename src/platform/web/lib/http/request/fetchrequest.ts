@@ -12,7 +12,7 @@ function isAblyError(responseBody: unknown, headers: Headers): responseBody is {
 
 function getAblyError(responseBody: unknown, headers: Headers) {
   if (isAblyError(responseBody, headers)) {
-    return responseBody.error && ErrorInfo.fromValues(responseBody.error);
+    return responseBody.error && ErrorInfo.fromWireValues(responseBody.error);
   }
 }
 

@@ -3,7 +3,7 @@ import * as API from '../../../../ably';
 import { PresenceMessagePlugin } from '../client/modularplugins';
 import { AnnotationsPlugin } from '../client/modularplugins';
 import * as Utils from '../util/utils';
-import ErrorInfo from './errorinfo';
+import ErrorInfo, { type IConvertibleToErrorInfo } from './errorinfo';
 import { WireMessage } from './message';
 import PresenceMessage, { WirePresenceMessage } from './presencemessage';
 import Annotation, { WireAnnotation } from './annotation';
@@ -46,7 +46,7 @@ export function fromDeserialized(
 ): ProtocolMessage {
   let error: ErrorInfo | undefined;
   if (deserialized.error) {
-    error = ErrorInfo.fromValues(deserialized.error as ErrorInfo);
+    error = ErrorInfo.fromWireValues(deserialized.error as IConvertibleToErrorInfo);
   }
 
   let messages: WireMessage[] | undefined;
@@ -132,7 +132,7 @@ export function stringify(
     result +=
       '; state=' + toStringArray(objectsPlugin.WireObjectMessage.fromValuesArray(msg.state, Utils, MessageEncoding));
   }
-  if (msg.error) result += '; error=' + ErrorInfo.fromValues(msg.error).toString();
+  if (msg.error) result += '; error=' + ErrorInfo.fromWireValues(msg.error).toString();
   if (msg.auth && msg.auth.accessToken) result += '; token=' + msg.auth.accessToken;
   if (msg.flags) result += '; flags=' + flagNames.filter(msg.hasFlag).join(',');
   if (msg.params) {

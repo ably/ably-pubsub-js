@@ -10,18 +10,22 @@ import type { IUntypedCryptoStatic } from 'common/types/ICryptoStatic';
 import type { ChannelOptions } from '../../types/channel';
 import type ProtocolMessage from './protocolmessage';
 
-export type CipherOptions = {
-  channelCipher: {
-    encrypt: Function;
-    algorithm: 'aes';
-  };
-  cipher?: {
-    channelCipher: {
-      encrypt: Function;
-      algorithm: 'aes';
-    };
-  };
+/**
+ * ChannelOptions on which encryption is fully configured, so a payload can be encrypted without
+ * further checks. Narrow to this with isEncrypted().
+ */
+export type EncryptedChannelOptions = ChannelOptions & {
+  cipher: API.CipherParams;
+  channelCipher: NonNullable<ChannelOptions['channelCipher']>;
 };
+
+/**
+ * Both fields are set together by normaliseChannelOptions and normalizeCipherOptions, but options
+ * that have bypassed those are not necessarily consistent, so check both.
+ */
+export function isEncrypted(options: ChannelOptions | null | undefined): options is EncryptedChannelOptions {
+  return !!options && !!options.cipher && !!options.channelCipher;
+}
 
 export type EncodingDecodingContext = {
   channelOptions: ChannelOptions;
@@ -33,7 +37,7 @@ export type EncodingDecodingContext = {
   baseEncodedPreviousPayload?: Buffer | BrowserBufferlike;
 };
 
-function normaliseContext(context: CipherOptions | EncodingDecodingContext | ChannelOptions): EncodingDecodingContext {
+function normaliseContext(context: EncodingDecodingContext | ChannelOptions): EncodingDecodingContext {
   if (!context || !(context as EncodingDecodingContext).channelOptions) {
     return {
       channelOptions: context as ChannelOptions,
@@ -60,7 +64,7 @@ export function normalizeCipherOptions(
   return options ?? {};
 }
 
-async function encrypt<T extends BaseMessage>(msg: T, cipherOptions: CipherOptions): Promise<T> {
+async function encrypt<T extends BaseMessage>(msg: T, cipherOptions: EncryptedChannelOptions): Promise<T> {
   const { data, encoding } = await encryptData(msg.data, msg.encoding, cipherOptions);
   msg.data = data;
   msg.encoding = encoding;
@@ -70,7 +74,7 @@ async function encrypt<T extends BaseMessage>(msg: T, cipherOptions: CipherOptio
 export async function encryptData(
   data: any,
   encoding: string | null | undefined,
-  cipherOptions: CipherOptions,
+  cipherOptions: EncryptedChannelOptions,
 ): Promise<{ data: any; encoding: string | null | undefined }> {
   let cipher = cipherOptions.channelCipher;
   let dataToEncrypt = data;
@@ -94,14 +98,14 @@ export async function encryptData(
  * Encodes and encrypts message's payload. Mutates the message object.
  * Implements RSL4 and RSL5.
  */
-export async function encode<T extends BaseMessage>(msg: T, options: unknown): Promise<T> {
+export async function encode<T extends BaseMessage>(msg: T, options: ChannelOptions | null): Promise<T> {
   const { data, encoding } = encodeData(msg.data, msg.encoding);
 
   msg.data = data;
   msg.encoding = encoding;
 
-  if (options != null && (options as CipherOptions).cipher) {
-    return encrypt(msg, options as CipherOptions);
+  if (isEncrypted(options)) {
+    return encrypt(msg, options);
   } else {
     return msg;
   }
@@ -143,7 +147,7 @@ export function encodeData(
 
 export async function decode<T extends BaseMessage>(
   message: T,
-  inputContext: CipherOptions | EncodingDecodingContext | ChannelOptions,
+  inputContext: EncodingDecodingContext | ChannelOptions,
 ): Promise<void> {
   // data can be decoded partially and throw an error on a later decoding step.
   // so we need to reassign the data and encoding values we got, and only then throw an error if there is one
@@ -162,7 +166,7 @@ export async function decode<T extends BaseMessage>(
 export async function decodeData(
   data: any,
   encoding: string | null | undefined,
-  inputContext: CipherOptions | EncodingDecodingContext | ChannelOptions,
+  inputContext: EncodingDecodingContext | ChannelOptions,
 ): Promise<{
   error?: ErrorInfo;
   data: any;

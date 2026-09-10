@@ -237,7 +237,7 @@ export class Http {
       return tryAHost(hosts);
     } catch (err) {
       // Handle any unexpected error, to ensure we always meet our contract of not throwing any errors
-      return { error: new ErrorInfo(`Unexpected error in Http.do: ${Utils.inspectError(err)}`, 500, 50000) };
+      return { error: new ErrorInfo(`Unexpected error in Http.do: ${Utils.inspectError(err)}`, 50000, 500) };
     }
   }
 
@@ -263,7 +263,7 @@ export class Http {
       return result;
     } catch (err) {
       // Handle any unexpected error, to ensure we always meet our contract of not throwing any errors
-      return { error: new ErrorInfo(`Unexpected error in Http.doUri: ${Utils.inspectError(err)}`, 500, 50000) };
+      return { error: new ErrorInfo(`Unexpected error in Http.doUri: ${Utils.inspectError(err)}`, 50000, 500) };
     }
   }
 }

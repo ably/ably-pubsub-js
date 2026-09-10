@@ -301,7 +301,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
       throw new this._client.ErrorInfo(
         `Cannot apply object operation with objectId=${op.objectId}, to this LiveMap with objectId=${this.getObjectId()}`,
         92000,
-        500,
+        400,
       );
     }
 
@@ -390,14 +390,14 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
   overrideWithObjectState(objectMessage: ObjectMessage): LiveMapUpdate<T> | LiveObjectUpdateNoop {
     const objectState = objectMessage.object;
     if (objectState == null) {
-      throw new this._client.ErrorInfo(`Missing object state; LiveMap objectId=${this.getObjectId()}`, 92000, 500);
+      throw new this._client.ErrorInfo(`Missing object state; LiveMap objectId=${this.getObjectId()}`, 92000, 400);
     }
 
     if (objectState.objectId !== this.getObjectId()) {
       throw new this._client.ErrorInfo(
         `Invalid object state: object state objectId=${objectState.objectId}; LiveMap objectId=${this.getObjectId()}`,
         92000,
-        500,
+        400,
       );
     }
 
@@ -405,7 +405,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
       throw new this._client.ErrorInfo(
         `Invalid object state: object state map semantics=${objectState.map?.semantics}; LiveMap semantics=${this._semantics}`,
         92000,
-        500,
+        400,
       );
     }
 
@@ -415,7 +415,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
         throw new this._client.ErrorInfo(
           `Invalid object state: object state createOp objectId=${objectState.createOp?.objectId}; LiveMap objectId=${this.getObjectId()}`,
           92000,
-          500,
+          400,
         );
       }
 
@@ -423,7 +423,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
         throw new this._client.ErrorInfo(
           `Invalid object state: object state createOp action=${objectState.createOp?.action}; LiveMap objectId=${this.getObjectId()}`,
           92000,
-          500,
+          400,
         );
       }
 
@@ -431,7 +431,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
         throw new this._client.ErrorInfo(
           `Invalid object state: object state createOp map semantics=${objectState.createOp.mapCreate?.semantics}; LiveMap semantics=${this._semantics}`,
           92000,
-          500,
+          400,
         );
       }
     }
@@ -738,7 +738,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
       throw new this._client.ErrorInfo(
         `Cannot apply MAP_CREATE op on LiveMap objectId=${this.getObjectId()}; map's semantics=${this._semantics}, but op expected ${mapCreate?.semantics}`,
         92000,
-        500,
+        400,
       );
     }
 
@@ -781,7 +781,7 @@ export class LiveMap<T extends Record<string, Value> = Record<string, Value>>
       throw new ErrorInfo(
         `Invalid object data for MAP_SET op on objectId=${this.getObjectId()} on key="${op.key}"`,
         92000,
-        500,
+        400,
       );
     }
 

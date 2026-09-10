@@ -448,7 +448,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
               function (cb) {
                 connection.once('failed', function (stateChange) {
                   try {
-                    expect(stateChange.reason.code).to.equal(40101, 'check correct code propogated');
+                    expect(stateChange.reason.code).to.equal(40101, 'check correct code propagated');
                   } catch (err) {
                     cb(err);
                     return;

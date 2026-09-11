@@ -816,8 +816,6 @@ describe('uts/rest/unit/fallback', function () {
 
   // UTS: rest/unit/REC1b2/endpoint-ipv6-address-2
   it('REC1b2 - endpoint as IPv6 address', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     const mock = new MockHttpClient({
       onConnectionAttempt: (conn) => conn.respond_with_success(),
@@ -828,17 +826,12 @@ describe('uts/rest/unit/fallback', function () {
     });
     installMockHttp(mock);
 
-    // Spec: endpoint '::1' should be treated as an explicit IPv6 hostname.
-    // DEVIATION: ably-js constructs an invalid URI (no brackets around IPv6). See deviations.md.
-    try {
-      const client = new Ably.Rest({ key: 'app.key:secret', useBinaryProtocol: false, endpoint: '::1' });
-      await client.time();
+    const client = new Ably.Rest({ key: 'app.key:secret', useBinaryProtocol: false, endpoint: '::1' });
+    await client.time();
 
-      expect(captured).to.have.length(1);
-      expect(captured[0].url.hostname).to.satisfy((h: string) => h === '::1' || h === '[::1]');
-    } catch (e) {
-      expect.fail('IPv6 endpoint should work, but ably-js threw: ' + (e as Error).message);
-    }
+    expect(captured).to.have.length(1);
+    expect(captured[0].url.hostname).to.satisfy((h: string) => h === '::1' || h === '[::1]');
+    expect(captured[0].url.href).to.include('[::1]');
   });
 
   // UTS: rest/unit/REC1b3/nonprod-routing-policy-0

@@ -204,6 +204,160 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
+### push: RSH1b3/RSH1b5/RSH1c3/RSH1c4 - admin operations for the local device lack push device authentication
+
+**Spec (RSH1b3, RSH1b5, RSH1c3, RSH1c4)**: When the client has been activated as a push target device and an admin operation (`deviceRegistrations.save/remove/removeWhere`, `channelSubscriptions.save/remove`) references the present client's own `deviceId`, the request must include push device authentication (RSH6).
+
+**ably-js behavior**: `DeviceRegistrations` and `ChannelSubscriptions` (`src/common/lib/client/push.ts`) never add device-auth headers; the local device is not consulted when building admin requests.
+
+**Tests**: `push_device_auth.test.ts` — `RSH6a/admin-device-registrations-save-own-device-0`, `RSH6a/admin-channel-subscriptions-save-own-device-2`, `RSH6a/admin-remove-where-own-device-3`: the header assertions are `RUN_DEVIATIONS`-guarded (the rest of each test passes; observed admin request headers carry only basic key auth).
+
+**Fix**: planned as a separate PR. Note ably-java conforms (Android `Push.pushRequestHeaders(deviceId)` merges `X-Ably-DeviceToken` when the deviceId is the local device's).
+
+---
+
+### push: RSH3h/RSH8a1 - corrupt persisted state neither discarded nor survivable
+
+**Spec (RSH3h, RSH8a1)**: If loading the `LocalDevice` `id` or `deviceSecret` fails, all persisted LocalDevice attributes and all persisted machine data must be discarded, so the machine starts in `NotActivated`; an unrecognised persisted machine state must likewise fall back, never crash.
+
+**ably-js behavior**: two gaps. (1) `loadPersistedAsync()` loads an incomplete pair (seeded `deviceId`, missing `deviceSecret`) without discarding anything — the stale identity token and machine state are honoured, so `activate()` resolves immediately with zero requests. (2) Machine rehydration does `new ActivationStates[name]()` (`src/plugins/push/pushactivation.ts:314`); an unrecognised `ably.push.activationState` value throws `TypeError: ... is not a constructor`, rejecting `activate()` outright.
+
+**Tests**: `RSH8a1 - corrupt device state is discarded`, `RSH8a1 - unrecognised machine state falls back to NotActivated` (`push_activation_persistence.test.ts`), skipped via `RUN_DEVIATIONS`.
+
+**Fix**: planned as a separate PR.
+
+---
+
+### push: RSH3a2a/RSH3f1 - re-activation registration sync not implemented
+
+**Spec (RSH3a2a, RSH3a2a1–RSH3a2a4, RSH3f1a)**: `CalledActivate` on a device that already has a `deviceIdentityToken` validates the registration: the RSH3d3b PATCH sync (or custom `registerCallback`), preceded by the RSH3a2a1 clientId-compatibility check (61002), transitioning through `WaitingForRegistrationSync`.
+
+**ably-js behavior**: `NotActivated` + `CalledActivate` with a registered device re-queues the event into `WaitingForNewPushDeviceDetails`, which resolves `activate()` immediately — no sync request, no `registerCallback` validation call. The 61002 check exists (`pushactivation.ts:678`) but is dead code: `loadPersistedAsync()` overwrites `device.clientId` with the present client's `auth.clientId` (line 194) and clientId is never persisted, so a mismatch can never be observed. Consequently `AfterRegistrationSyncFailed` is unreachable via `activate()` (it is reachable via a failed `updateToken` sync).
+
+**Tests** (all `RUN_DEVIATIONS`-skipped): `RSH3a2a3/activate-existing-registration-sync-0`, `RSH3a2a2/...-register-callback-0`, `RSH3a2a1/activate-clientid-mismatch-0`, `RSH3e3c/sync-failure-then-reactivate-0`, `RSH3f2a/deactivate-after-sync-failure-0`, `RSH3g3b/deregister-failure-rollback-after-sync-failed-1` (`push_activation_state_machine.test.ts`); `RSH4/second-activate-queued-during-activate-sync-1` (`push_activation_event_queue.test.ts`).
+
+**Fix**: planned as a separate PR (implement the sync per the amended RSH3a2a3 — a PATCH, which ably-js's existing `updateRegistration()` already performs elsewhere).
+
+---
+
+### push: RSH3b1a/RSH3c1a/RSH3g1a - concurrent activate/deactivate rejected instead of coalesced
+
+**Spec**: a repeated `CalledActivate`/`CalledDeactivate` while one is in flight self-transitions; both calls resolve when the operation completes.
+
+**ably-js behavior**: `Push.activate()`/`deactivate()` reject a second concurrent call with ErrorInfo 40000 "Activation/Deactivation already in progress" (`src/common/lib/client/push.ts:67-74, 116-123`) before any event reaches the machine. Core single-request behaviour conforms.
+
+**Tests**: assertion-level guards in `RSH3b1a/activate-while-waiting-push-details-0`, `RSH3c1a/activate-while-registering-0`, `RSH3g1a/deactivate-while-deregistering-0` — the adapted branch asserts the 40000 rejection.
+
+---
+
+### push: RSH6a/RSH6b/RSH3d2b - device auth via bearer Authorization; no deviceSecret auth; no-token registration crashes
+
+**Spec (RSH6a)**: device auth adds an `X-Ably-DeviceToken` header carrying the `deviceIdentityToken`. **(RSH6b)**: with a `deviceSecret` but no identity token, `X-Ably-DeviceSecret` is used instead.
+
+**ably-js behavior**: the activation plugin's PATCH/DELETE use `authorization: Bearer base64(deviceIdentityToken)` (`pushactivation.ts:253`), or an `access_token` param; only `LocalDevice.listSubscriptions()` uses `X-Ably-DeviceToken` (`pushactivation.ts:126`). Observed live through the proxy: the device bearer **replaces** the client's key/token auth on those requests (both write the lowercase `authorization` header), so per RSH3d2b no other auth is present — and it works against the real service only because the `deviceIdentityToken` is itself an Ably token, authenticating as ordinary token auth rather than via the device-auth path (the same bearer is NOT accepted as device auth on `/push/channelSubscriptions`). There is no `X-Ably-DeviceSecret` path: `getAuthDetails` throws 50000 without an identity token, outside `deregister()`'s try/catch, so `deactivate()` never settles. Additionally, a `registerCallback` result lacking `deviceIdentityToken` crashes the machine (`TypeError` at `pushactivation.ts:776` via nextTick; `activate()` never settles) — the guard at line 384 only rejects a falsy registration.
+
+**Tests**: assertion-level guards in `RSH2b/deactivate-full-flow-0`, `RSH3d3b/update-token-patch-0` (adapted branch asserts the bearer header); full skip `RSH6b/device-secret-auth-before-identity-token-0` (`push_device_auth.test.ts`).
+
+**Fix**: header form planned as a separate PR; note ably-java/ably-cocoa send `X-Ably-DeviceToken` with a **base64-encoded** value, which RSH6a's wording doesn't mention — spec clarification needed on the value encoding.
+
+---
+
+### push: RSH3a1c - deactivate from NotActivated does not deregister a registered device
+
+**Spec (RSH3a1c)**: in `NotActivated`, on `CalledDeactivate`, a device with a `deviceIdentityToken` deregisters per RSH3d2.
+
+**ably-js behavior**: `NotActivated` resolves `CalledDeactivate` immediately without checking for a `deviceIdentityToken` — zero requests where the spec expects a DELETE with device auth.
+
+**Tests**: `RSH3a1c/deactivate-not-activated-with-token-0`, skipped via `RUN_DEVIATIONS`.
+
+---
+
+### push: RSH3d2c1 - deregistration status classification unimplemented
+
+**Spec (RSH3d2c1)**: `Deregistered` on 2xx, 401, or error code 40005; `DeregistrationFailed` otherwise.
+
+**ably-js behavior**: `deregister()` fires `DeregistrationFailed` on any request error — a 401 or 40005 DELETE makes `deactivate()` reject and roll back instead of clearing the registration.
+
+**Tests**: `RSH3d2c1/deregister-401-succeeds-0`, `RSH3d2c1/deregister-40005-succeeds-1` (unit), and `rest/proxy/RSH3d2c1/deregister-401-classified-0`, `rest/proxy/RSH3d2c1/deregister-40005-classified-1` (`test/uts/rest/integration/proxy/push_activation.test.ts` — observed live through the proxy: deactivate() rejects with the injected 40100/40005 error and rolls back), all skipped via `RUN_DEVIATIONS`.
+
+---
+
+### push: RSH3a2b - deviceSecret entropy below spec
+
+**Spec (RSH3a2b)**: `deviceSecret` must be created from secure random data with a digest of at least 32 bytes, base64-encoded.
+
+**ably-js behavior**: `resetId()` generates a ulid (26-char Crockford base32, ~19 bytes when base64-decoded per the test's method), well short of the 32-byte digest requirement.
+
+**Tests**: assertion-level guard in `RSH3a2b/device-id-secret-generation-0` (uniqueness assertions pass).
+
+---
+
+### push: RSH8d/RSH8e/RSH8f - clientId lifecycle not wired into LocalDevice
+
+**Spec**: a `clientId` learned late (RSA7b2/RSA7b3, per RSH8d) is set and persisted on the LocalDevice, triggering a registration sync when registered (RSH8e); a `clientId` in the registration response is adopted (RSH8f).
+
+**ably-js behavior**: `GotDeviceRegistration` captures only `deviceIdentityToken` — a response `clientId` is discarded (RSH8f). There is no hook from auth into the LocalDevice, and `auth.clientId` is not derived from TokenDetails at all (same root cause as the RSA7b deviation, issue [#2192](https://github.com/ably/ably-js/issues/2192)) — a late-identified token is silently ignored by the push layer (RSH8d/RSH8e).
+
+**Tests**: `RSH8f/clientid-from-registration-response-0`, `RSH8d/late-clientid-persisted-0`, `RSH8e/late-clientid-triggers-sync-0` (`local_device.test.ts`), skipped via `RUN_DEVIATIONS`.
+
+---
+
+### push: RSH8a - partial persisted state not loaded (recipient ignored without a device id)
+
+**Spec (RSH8a)**: the LocalDevice attributes are populated from persisted state "to the extent that they exist" — a persisted `ably.push.pushRecipient` with no id/secret pair is a legitimate partial state (consumed by RSH3a2c, which then skips the platform token request).
+
+**ably-js behavior**: `loadPersistedAsync()` reads `ably.push.pushRecipient` (and the identity token) only when `ably.push.deviceId` is persisted (`pushactivation.ts:196-206`); otherwise it calls `resetId()` and never reads the recipient, so activation falls through to `getPushDeviceDetails`/`requestToken`.
+
+**Tests**: `test/uts/rest/integration/push_activation.test.ts` seeds a deviceId/deviceSecret pair alongside the recipient as a workaround (DEVIATION-commented); ably-dart exhibited the same gap and was fixed.
+
+**Fix**: candidate for the same PR as the RSH3h/RSH8a1 discard fixes.
+
+---
+
+### push: AfterRegistrationSyncFailed not persisted
+
+**Spec**: which machine states are persisted is not prescribed, but the UTS suite observes settled state via the persisted `ably.push.activationState`.
+
+**ably-js behavior**: only `NotActivated` and `WaitingForNewPushDeviceDetails` are persistent (`isPersistentState`, `pushactivation.ts:896`); after a failed sync the persisted value still reads `WaitingForNewPushDeviceDetails`.
+
+**Tests**: assertion-level guards where the spec asserts a persisted `AfterRegistrationSyncFailed` (`push_update_token.test.ts` sync-failure test; `rest/proxy/RSH3e3d/sync-failure-recovery-0` in `test/uts/rest/integration/proxy/push_activation.test.ts`).
+
+---
+
+### push: RSH8l/PCP3a/PDT4 - APNs token variants unimplemented (pending token-variants spec extension)
+
+**Spec (PDT4, PCP3a, RSH8l2 — pending extension)**: `updateToken` with `apnsTokenType` targets a recipient slot in `apnsDeviceTokens`, preserving other registered variants.
+
+**ably-js behavior**: `apnsTokenType` is silently ignored; `updateToken({transportType: 'apns', token, apnsTokenType: 'pushToStart'})` resolves and PATCHes `{push: {recipient: {transportType: 'apns', deviceToken: token}}}` — clobbering the default token; no `apnsDeviceTokens` map exists (`push.ts:194-197` unconditionally replaces the recipient).
+
+**Tests**: `RSH8l2/update-token-push-to-start-10`, `RSH8l2/update-token-variant-preserves-others-11`, skipped via `RUN_DEVIATIONS`.
+
+**Fix**: to follow the token-variants spec extension PR.
+
+---
+
+### push_types: PCP2/PCP4/PCS5 - push type surface differences
+
+**Spec**: `DevicePushDetails.errorReason` (`ErrorInfo`), `state` enum (`Active`/`Failing`/`Failed`), `PushChannelSubscription.forDevice`/`forClientId` factories with exactly-one enforcement (PCS5); `DeviceDetails.metadata` a string map (PCD5).
+
+**ably-js behavior**: `fromValues` converts only a top-level `error` to `ErrorInfo` — a `push.errorReason` passes through as a plain object, and `toJSON()` writes the push error as `push.error`, dropping a spec-named `errorReason` from serialization; there is no `DevicePushState` enum (raw uppercase wire strings `ACTIVE`/`FAILING`/`FAILED`); the PCS5 factories do not exist (`fromValues` copies as-received, no exactly-one enforcement); `metadata` is *typed* `string` but round-trips a map at runtime (type-level only).
+
+**Tests**: assertion-level guards in `rest/unit/types/push_types.test.ts` (factories constructed via `fromValues` per the spec's sanctioned equivalent).
+
+---
+
+### push: RSH3e2c/RSH3e3d - updatedCallback not implemented (only the deprecated updateFailedCallback)
+
+**Spec (RSH3e2c, RSH3e3d)**: `Push#activate` accepts an `updatedCallback` which is called with no error on `RegistrationSynced` (when the sync was not triggered by `CalledActivate`) and with the error on `SyncRegistrationFailed`. RSH3e3a (`updateFailedCallback`, failure-only) is deprecated.
+
+**ably-js behavior**: `push.activate(registerCallback, updateFailedCallback)` exposes only the deprecated failure-only callback; there is no success notification path for background registration syncs.
+
+**Tests**: `push_update_token.test.ts` — `RSH3e3d/update-token-sync-failure-callback-4`: failure delivery adapted to `updateFailedCallback` (passes); the RSH3e2c success-callback assertion is `RUN_DEVIATIONS`-guarded.
+
+**Fix**: planned as a separate PR (additive: accept `updatedCallback`, keep `updateFailedCallback` as a deprecated alias for the failure case).
+
+---
+
 ### integration/push_admin: RSH1b2 - push device list pagination missing Link headers
 
 **Spec (RSH1b2)**: `deviceRegistrations.list` with `limit` should support pagination via `hasNext()`.
@@ -213,6 +367,16 @@ These tests assert spec behavior but are skipped by default because they are kno
 **Test**: `RSH1b2 - list supports pagination with limit` in `rest/integration/push_admin.test.ts`.
 
 **Issue**: [ably/realtime#8380](https://github.com/ably/realtime/issues/8380)
+
+---
+
+### integration/push_activation: registration-update PATCH rejected for ablyChannel-recipient devices (server issue, fixed pending deploy)
+
+**Server behavior**: `PATCH /push/deviceRegistrations/:deviceId` fails with 400 (code 40000, `unknown transport type 'ablyChannel'`) for any device whose **stored** recipient is `ablyChannel`, regardless of the PATCH body — so the registration sync can never land against an `ablyChannel`-registered device.
+
+**Tests**: `rest/integration/RSH2f/update-token-synced-0` (`rest/integration/push_activation.test.ts`) and `rest/proxy/RSH3e3d/sync-failure-recovery-0` (`rest/integration/proxy/push_activation.test.ts`), both of which sync a rotated token against an `ablyChannel`-seeded device. Skipped unconditionally (`this.skip()`) until the fix is deployed to the sandbox, then unskip.
+
+**Issue**: [ably/realtime#8591](https://github.com/ably/realtime/pull/8591) (fix merged, pending sandbox deploy)
 
 ---
 
@@ -268,9 +432,9 @@ The wire protocol uses numeric operation actions and JSON-stringified `json`/`in
 
 ## Mock Infrastructure Limitations
 
-### MsgPack encoding/decoding not supported
+### MsgPack encoding/decoding not supported (in this repo's harness — not a UTS limitation)
 
-The UTS mock HTTP infrastructure operates at the JSON level. It has no mechanism to encode/decode msgpack binary format.
+The UTS mock HTTP contract supports msgpack: `PendingRequest.body` is bytes, responses can carry raw byte bodies with a Content-Type, and the specs use `msgpack_encode`/`msgpack_decode` harness helpers (see the msgpack unit tests in `uts/rest/unit/{encoding/message_encoding.md, auth/token_renewal.md, presence/rest_presence.md, rest_client.md}`). It is **this repo's port** (`test/uts/mock_http.ts`) that operates at the JSON level (`respond_with` JSON-stringifies bodies; `PendingRequest.body` is `string | null`). Catch-up work: extend the mock to byte bodies and wire `@ably/msgpack-js` (already a dependency, and the platform's own msgpack implementation) as the encode/decode helpers, then implement the skipped tests below.
 
 **Tests affected (10 skipped)**:
 

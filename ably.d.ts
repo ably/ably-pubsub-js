@@ -6,7 +6,7 @@
 /**
  * You are currently viewing the default variant of the Ably JavaScript Client Library SDK. View the modular variant {@link modular | here}.
  *
- * To get started with the Ably JavaScript Client Library SDK, follow the [Quickstart Guide](https://ably.com/docs/quick-start-guide) or view the introductions to the [realtime](https://ably.com/docs/realtime/usage) and [REST](https://ably.com/docs/rest/usage) interfaces.
+ * To get started with the Ably JavaScript Client Library SDK, follow the [JavaScript quickstart](https://ably.com/docs/getting-started/javascript) or read [about Ably Pub/Sub](https://ably.com/docs/basics).
  *
  * @module
  */
@@ -478,7 +478,7 @@ export interface ClientOptions<Plugins = CorePlugins> extends AuthOptions {
   };
 
   /**
-   * Enables a connection to inherit the state of a previous connection that may have existed under a different instance of the Realtime library. This might typically be used by clients of the browser library to ensure connection state can be preserved when the user refreshes the page. A recovery key string can be explicitly provided, or alternatively if a callback function is provided, the client library will automatically persist the recovery key between page reloads and call the callback when the connection is recoverable. The callback is then responsible for confirming whether the connection should be recovered or not. See [connection state recovery](https://ably.com/docs/realtime/connection/#connection-state-recovery) for further information.
+   * Enables a connection to inherit the state of a previous connection that may have existed under a different instance of the Realtime library. This might typically be used by clients of the browser library to ensure connection state can be preserved when the user refreshes the page. A recovery key string can be explicitly provided, or alternatively if a callback function is provided, the client library will automatically persist the recovery key between page reloads and call the callback when the connection is recoverable. The callback is then responsible for confirming whether the connection should be recovered or not. See [connection state recovery](https://ably.com/docs/connect/states#connection-state-recovery) for further information.
    */
   recover?: string | recoverConnectionCallback;
 
@@ -653,15 +653,15 @@ export interface CorePlugins {
  */
 export interface AuthOptions {
   /**
-   * Called when a new token is required. The role of the callback is to obtain a fresh token, one of: an Ably Token string (in plain text format); a signed {@link TokenRequest}; a {@link TokenDetails} (in JSON format); an [Ably JWT](https://ably.com/docs/core-features/authentication.ably-jwt). See [the authentication documentation](https://ably.com/docs/realtime/authentication) for details of the Ably {@link TokenRequest} format and associated API calls.
+   * Called when a new token is required. The role of the callback is to obtain a fresh token, one of: an Ably Token string (in plain text format); a signed {@link TokenRequest}; a {@link TokenDetails} (in JSON format); an [Ably JWT](https://ably.com/docs/auth/token/jwt). See [the authentication documentation](https://ably.com/docs/realtime/authentication) for details of the Ably {@link TokenRequest} format and associated API calls.
    *
    * @param data - The parameters that should be used to generate the token.
-   * @param callback - A function which, upon success, the `authCallback` should call with one of: an Ably Token string (in plain text format); a signed `TokenRequest`; a `TokenDetails` (in JSON format); an [Ably JWT](https://ably.com/docs/core-features/authentication#ably-jwt). Upon failure, the `authCallback` should call this function with information about the error.
+   * @param callback - A function which, upon success, the `authCallback` should call with one of: an Ably Token string (in plain text format); a signed `TokenRequest`; a `TokenDetails` (in JSON format); an [Ably JWT](https://ably.com/docs/auth/token/jwt). Upon failure, the `authCallback` should call this function with information about the error.
    */
   authCallback?(
     data: TokenParams,
     /**
-     * A function which, upon success, the `authCallback` should call with one of: an Ably Token string (in plain text format); a signed `TokenRequest`; a `TokenDetails` (in JSON format); an [Ably JWT](https://ably.com/docs/core-features/authentication#ably-jwt). Upon failure, the `authCallback` should call this function with information about the error.
+     * A function which, upon success, the `authCallback` should call with one of: an Ably Token string (in plain text format); a signed `TokenRequest`; a `TokenDetails` (in JSON format); an [Ably JWT](https://ably.com/docs/auth/token/jwt). Upon failure, the `authCallback` should call this function with information about the error.
      *
      * @param error - Should be `null` if the auth request completed successfully, or containing details of the error if not.
      * @param tokenRequestOrDetails - A valid `TokenRequest`, `TokenDetails` or Ably JWT to be used for authentication.
@@ -695,7 +695,7 @@ export interface AuthOptions {
   authUrl?: string;
 
   /**
-   * The full API key string, as obtained from the [Ably dashboard](https://ably.com/dashboard). Use this option if you wish to use Basic authentication, or wish to be able to issue Ably Tokens without needing to defer to a separate entity to sign Ably {@link TokenRequest | `TokenRequest`s}. Read more about [Basic authentication](https://ably.com/docs/core-features/authentication#basic-authentication).
+   * The full API key string, as obtained from the [Ably dashboard](https://ably.com/dashboard). Use this option if you wish to use Basic authentication, or wish to be able to issue Ably Tokens without needing to defer to a separate entity to sign Ably {@link TokenRequest | `TokenRequest`s}. Read more about [Basic authentication](https://ably.com/docs/auth/basic).
    */
   key?: string;
 
@@ -707,17 +707,17 @@ export interface AuthOptions {
   queryTime?: boolean;
 
   /**
-   * An authenticated token. This can either be a {@link TokenDetails} object or token string (obtained from the `token` property of a {@link TokenDetails} component of an Ably {@link TokenRequest} response, or a JSON Web Token satisfying [the Ably requirements for JWTs](https://ably.com/docs/core-features/authentication#ably-jwt)). This option is mostly useful for testing: since tokens are short-lived, in production you almost always want to use an authentication method that enables the client library to renew the token automatically when the previous one expires, such as `authUrl` or `authCallback`. Read more about [Token authentication](https://ably.com/docs/core-features/authentication#token-authentication).
+   * An authenticated token. This can either be a {@link TokenDetails} object or token string (obtained from the `token` property of a {@link TokenDetails} component of an Ably {@link TokenRequest} response, or a JSON Web Token satisfying [the Ably requirements for JWTs](https://ably.com/docs/auth/token/jwt)). This option is mostly useful for testing: since tokens are short-lived, in production you almost always want to use an authentication method that enables the client library to renew the token automatically when the previous one expires, such as `authUrl` or `authCallback`. Read more about [Token authentication](https://ably.com/docs/auth/token).
    */
   token?: TokenDetails | string;
 
   /**
-   * An authenticated {@link TokenDetails} object (most commonly obtained from an Ably Token Request response). This option is mostly useful for testing: since tokens are short-lived, in production you almost always want to use an authentication method that enables the client library to renew the token automatically when the previous one expires, such as `authUrl` or `authCallback`. Use this option if you wish to use Token authentication. Read more about [Token authentication](https://ably.com/docs/core-features/authentication#token-authentication).
+   * An authenticated {@link TokenDetails} object (most commonly obtained from an Ably Token Request response). This option is mostly useful for testing: since tokens are short-lived, in production you almost always want to use an authentication method that enables the client library to renew the token automatically when the previous one expires, such as `authUrl` or `authCallback`. Use this option if you wish to use Token authentication. Read more about [Token authentication](https://ably.com/docs/auth/token).
    */
   tokenDetails?: TokenDetails;
 
   /**
-   * When `true`, forces token authentication to be used by the library. If a `clientId` is not specified in the {@link ClientOptions} or {@link TokenParams}, then the Ably Token issued is [anonymous](https://ably.com/docs/core-features/authentication#identified-clients).
+   * When `true`, forces token authentication to be used by the library. If a `clientId` is not specified in the {@link ClientOptions} or {@link TokenParams}, then the Ably Token issued is [anonymous](https://ably.com/docs/auth/identified-clients).
    */
   useTokenAuth?: boolean;
 
@@ -759,13 +759,13 @@ export type CapabilityOp = capabilityOp;
  */
 export interface TokenParams {
   /**
-   * The capabilities associated with this Ably Token. The capabilities value is a JSON-encoded representation of the resource paths and associated operations. Read more about capabilities in the [capabilities docs](https://ably.com/docs/core-features/authentication/#capabilities-explained).
+   * The capabilities associated with this Ably Token. The capabilities value is a JSON-encoded representation of the resource paths and associated operations. Read more about capabilities in the [capabilities docs](https://ably.com/docs/auth/capabilities).
    *
    * @defaultValue `'{"*":["*"]}'`
    */
   capability?: { [key: string]: capabilityOp[] | ['*'] } | string;
   /**
-   * A client ID, used for identifying this client when publishing messages or for presence purposes. The `clientId` can be any non-empty string, except it cannot contain a `*`. This option is primarily intended to be used in situations where the library is instantiated with a key. Note that a `clientId` may also be implicit in a token used to instantiate the library. An error is raised if a `clientId` specified here conflicts with the `clientId` implicit in the token. Find out more about [identified clients](https://ably.com/docs/core-features/authentication#identified-clients).
+   * A client ID, used for identifying this client when publishing messages or for presence purposes. The `clientId` can be any non-empty string, except it cannot contain a `*`. This option is primarily intended to be used in situations where the library is instantiated with a key. Note that a `clientId` may also be implicit in a token used to instantiate the library. An error is raised if a `clientId` specified here conflicts with the `clientId` implicit in the token. Find out more about [identified clients](https://ably.com/docs/auth/identified-clients).
    */
   clientId?: string;
   /**
@@ -815,11 +815,11 @@ export interface CipherParams {
  */
 export interface TokenDetails {
   /**
-   * The capabilities associated with this Ably Token. The capabilities value is a JSON-encoded representation of the resource paths and associated operations. Read more about capabilities in the [capabilities docs](https://ably.com/docs/core-features/authentication/#capabilities-explained).
+   * The capabilities associated with this Ably Token. The capabilities value is a JSON-encoded representation of the resource paths and associated operations. Read more about capabilities in the [capabilities docs](https://ably.com/docs/auth/capabilities).
    */
   capability: string;
   /**
-   * The client ID, if any, bound to this Ably Token. If a client ID is included, then the Ably Token authenticates its bearer as that client ID, and the Ably Token may only be used to perform operations on behalf of that client ID. The client is then considered to be an [identified client](https://ably.com/docs/core-features/authentication#identified-clients).
+   * The client ID, if any, bound to this Ably Token. If a client ID is included, then the Ably Token authenticates its bearer as that client ID, and the Ably Token may only be used to perform operations on behalf of that client ID. The client is then considered to be an [identified client](https://ably.com/docs/auth/identified-clients).
    */
   clientId?: string;
   /**
@@ -831,7 +831,7 @@ export interface TokenDetails {
    */
   issued: number;
   /**
-   * The [Ably Token](https://ably.com/docs/core-features/authentication#ably-tokens) itself. A typical Ably Token string appears with the form `xVLyHw.A-pwh7wicf3afTfgiw4k2Ku33kcnSA7z6y8FjuYpe3QaNRTEo4`.
+   * The [Ably Token](https://ably.com/docs/auth/token/ably-tokens) itself. A typical Ably Token string appears with the form `xVLyHw.A-pwh7wicf3afTfgiw4k2Ku33kcnSA7z6y8FjuYpe3QaNRTEo4`.
    */
   token: string;
 }
@@ -990,7 +990,7 @@ export type ResolvedChannelMode =
  */
 export interface ChannelOptions {
   /**
-   * Requests encryption for this channel when not null, and specifies encryption-related parameters (such as algorithm, chaining mode, key length and key). See [an example](https://ably.com/docs/realtime/encryption#getting-started). When running in a browser, encryption is only available when the current environment is a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts).
+   * Requests encryption for this channel when not null, and specifies encryption-related parameters (such as algorithm, chaining mode, key length and key). See [an example](https://ably.com/docs/channels/options/encryption#encrypt). When running in a browser, encryption is only available when the current environment is a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts).
    */
   cipher?: CipherParamOptions | CipherParams;
   /**
@@ -1155,7 +1155,7 @@ export interface ChannelStateChange {
    */
   reason?: ErrorInfo;
   /**
-   * Indicates whether message continuity on this channel is preserved, see [Nonfatal channel errors](https://ably.com/docs/realtime/channels#nonfatal-errors) for more info.
+   * Indicates whether message continuity on this channel is preserved, see [Nonfatal channel errors](https://ably.com/docs/channels/states#non-fatal-errors) for more info.
    */
   resumed: boolean;
   /**
@@ -4000,7 +4000,7 @@ export declare interface Connection
    */
   id?: string;
   /**
-   * A unique private connection key used to recover or resume a connection, assigned by Ably. This private connection key can also be used by other REST clients to publish on behalf of this client. See the [publishing over REST on behalf of a realtime client docs](https://ably.com/docs/rest/channels#publish-on-behalf) for more info. (If you want to explicitly recover a connection in a different SDK instance, see createRecoveryKey() instead)
+   * A unique private connection key used to recover or resume a connection, assigned by Ably. This private connection key can also be used by other REST clients to publish on behalf of this client. See the [publishing over REST on behalf of a realtime client docs](https://ably.com/docs/pub-sub/advanced#publish-on-behalf) for more info. (If you want to explicitly recover a connection in a different SDK instance, see createRecoveryKey() instead)
    */
   key?: string;
   /**

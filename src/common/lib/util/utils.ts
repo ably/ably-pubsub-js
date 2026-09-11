@@ -479,7 +479,7 @@ export function matchDerivedChannel(name: string) {
       statusCode: 400,
       remediation:
         'Pass a non-empty channel name to channels.getDerived(name, { filter: ... }) and put the filter expression in the filter option, not in the name. ' +
-        'A channel-params prefix such as "[?rewind=1]foo" is allowed. See https://ably.com/docs/channels#derived.',
+        'A channel-params prefix such as "[?rewind=1]foo" is allowed.',
     });
   }
   // Fail if there is already a channel qualifier, eg [meta]foo should fail instead of just overriding with [filter=xyz]foo

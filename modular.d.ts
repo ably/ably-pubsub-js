@@ -1,7 +1,7 @@
 /**
  * You are currently viewing the modular (tree-shakable) variant of the Ably JavaScript Client Library SDK. View the default variant {@link ably | here}.
  *
- * To get started with the Ably JavaScript Client Library SDK, follow the [Quickstart Guide](https://ably.com/docs/quick-start-guide) or view the introductions to the [realtime](https://ably.com/docs/realtime/usage) and [REST](https://ably.com/docs/rest/usage) interfaces.
+ * To get started with the Ably JavaScript Client Library SDK, follow the [JavaScript quickstart](https://ably.com/docs/getting-started/javascript) or read [about Ably Pub/Sub](https://ably.com/docs/basics).
  *
  * ## No `static` class functionality
  *

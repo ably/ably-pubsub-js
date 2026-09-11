@@ -77,31 +77,18 @@ describe('uts/rest/unit/channel/annotations', function () {
    *
    * Publishing an annotation without a type field should throw an error
    * with code 40003.
-   *
-   * NOTE: ably-js does not currently validate the type field in
-   * constructValidateAnnotation(). This test documents the spec
-   * requirement (RSAN1a3) as a known deviation — the publish succeeds
-   * without a type instead of throwing.
    */
   // UTS: rest/unit/RSAN1a3/publish-type-required-0
   it('RSAN1a3 - type required', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
-    const captured: any[] = [];
     const mock = new MockHttpClient({
       onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        captured.push(req);
-        req.respond_with(201, {});
-      },
+      onRequest: (req) => req.respond_with(201, {}),
     });
     installMockHttp(mock);
 
     const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
 
-    // Spec (RSAN1a3): publishing without a type MUST throw with code 40003.
-    // DEVIATION: ably-js does not validate type. See deviations.md.
     try {
       await ch.annotations.publish('msg-serial-1', { name: 'like' });
       expect.fail('Expected publish without type to throw with code 40003');

@@ -39,10 +39,10 @@ export function encodeAction(action: API.MessageAction): number {
 function getMessageSize(msg: WireMessage) {
   let size = 0;
   if (msg.name) {
-    size += msg.name.length;
+    size += Utils.dataSizeBytes(msg.name); // UTF-8 byte length
   }
   if (msg.clientId) {
-    size += msg.clientId.length;
+    size += Utils.dataSizeBytes(msg.clientId); // UTF-8 byte length
   }
   if (msg.extras) {
     size += JSON.stringify(msg.extras).length;

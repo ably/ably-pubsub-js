@@ -1,7 +1,7 @@
 import Platform from 'common/platform';
 import * as Utils from '../util/utils';
 import Transport from './transport';
-import Defaults from '../util/defaults';
+import Defaults, { formatHostForUri } from '../util/defaults';
 import Logger from '../util/logger';
 import ProtocolMessage, {
   serialize as serializeProtocolMessage,
@@ -52,7 +52,7 @@ class WebSocketTransport extends Transport {
       params = this.params,
       options = params.options;
     const wsScheme = options.tls ? 'wss://' : 'ws://';
-    const wsUri = wsScheme + this.wsHost + ':' + Defaults.getPort(options) + '/';
+    const wsUri = wsScheme + formatHostForUri(this.wsHost) + ':' + Defaults.getPort(options) + '/';
     Logger.logAction(this.logger, Logger.LOG_MINOR, 'WebSocketTransport.connect()', 'uri: ' + wsUri);
     Utils.whenPromiseSettles(
       this.auth.getAuthParams(),

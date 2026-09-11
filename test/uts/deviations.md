@@ -134,18 +134,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### fallback: REC1b2 - IPv6 endpoint address not bracketed
-
-**Spec (REC1b2)**: IPv6 addresses should be supported as endpoint values.
-
-**ably-js behavior**: URL construction produces `https://::1:443/time` instead of `https://[::1]:443/time`.
-
-**Test**: `REC1b2 - endpoint as IPv6 address`.
-
-**Issue**: [#2198](https://github.com/ably/ably-js/issues/2198)
-
----
-
 ### options_types: AO2 - authMethod default not stored
 
 **Spec (AO2)**: `authMethod` should default to `'GET'` and be stored in auth options.

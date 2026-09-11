@@ -6,7 +6,7 @@ import ProtocolMessage, {
 } from '../types/protocolmessage';
 import Transport from './transport';
 import Logger from '../util/logger';
-import Defaults from '../util/defaults';
+import Defaults, { formatHostForUri } from '../util/defaults';
 import ConnectionErrors from './connectionerrors';
 import Auth from '../client/auth';
 import ErrorInfo from '../types/errorinfo';
@@ -81,7 +81,7 @@ abstract class CometTransport extends Transport {
     const port = Defaults.getPort(options);
     const cometScheme = options.tls ? 'https://' : 'http://';
 
-    this.baseUri = cometScheme + host + ':' + port + '/comet/';
+    this.baseUri = cometScheme + formatHostForUri(host) + ':' + port + '/comet/';
     const connectUri = this.baseUri + 'connect';
     Logger.logAction(this.logger, Logger.LOG_MINOR, 'CometTransport.connect()', 'uri: ' + connectUri);
     Utils.whenPromiseSettles(this.auth.getAuthParams(), (err: Error | null, authParams?: Record<string, any>) => {

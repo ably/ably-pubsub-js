@@ -19,7 +19,7 @@ export class DefaultPresenceMessage extends PresenceMessage {
     return fromEncodedArray(Logger.defaultLogger, Platform.Crypto, encodedArray as WirePresenceMessage[], options);
   }
 
-  static fromValues(values: Properties<PresenceMessage>): PresenceMessage {
+  static fromValues(values: Omit<Properties<PresenceMessage>, 'memberKey'>): PresenceMessage {
     return PresenceMessage.fromValues(values);
   }
 }

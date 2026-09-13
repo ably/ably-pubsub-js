@@ -203,7 +203,6 @@ describe('uts/rest/integration/auth', function () {
    */
   // UTS: rest/integration/RSC10/token-renewal-expired-jwt-0
   it('RSC10 - token renewal with expired JWT', async function () {
-    if (!process.env.RUN_DEVIATIONS) this.skip(); // ably-js retry overwrites new auth header with stale one; see #2193
     const { keyName, keySecret } = getKeyParts(getApiKey());
 
     let callbackCount = 0;

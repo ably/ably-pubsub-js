@@ -65,6 +65,10 @@ export function normalizeCipherOptions(
 }
 
 async function encrypt<T extends BaseMessage>(msg: T, cipherOptions: EncryptedChannelOptions): Promise<T> {
+  if (msg.data == null) {
+    // no payload to encrypt; the null data field is omitted on the wire
+    return msg;
+  }
   const { data, encoding } = await encryptData(msg.data, msg.encoding, cipherOptions);
   msg.data = data;
   msg.encoding = encoding;
@@ -302,7 +306,14 @@ export function wireToJSON(this: BaseMessage, ...args: any[]): any {
   const format = args.length > 0 ? Utils.Format.json : Utils.Format.msgpack;
   const { data, encoding } = encodeDataForWire(this.data, this.encoding, format);
 
-  return Object.assign({}, this, { encoding, data });
+  const result: Record<string, any> = Object.assign({}, this, { encoding, data });
+  // RSL1e, RTL6i3: fields whose value is null are not sent to Ably
+  for (const key in result) {
+    if (result[key] == null) {
+      delete result[key];
+    }
+  }
+  return result;
 }
 
 /**

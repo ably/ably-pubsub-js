@@ -340,13 +340,6 @@ class Resource {
 
       const httpResult = await client.http.do(method, path, headers, body, params);
 
-      if (httpResult.error && Auth.isTokenErr(httpResult.error as ErrorInfo)) {
-        /* token has expired, so get a new one */
-        await client.auth.authorize(null, null);
-        /* retry ... */
-        return withAuthDetails(client, headers, params, doRequest);
-      }
-
       return {
         err: httpResult.error as ErrorInfo,
         body: httpResult.body as T | undefined,
@@ -357,6 +350,13 @@ class Resource {
     }
 
     let result = await withAuthDetails<T>(client, headers, params, doRequest);
+
+    if (result.err && Auth.isTokenErr(result.err as ErrorInfo)) {
+      /* rejected token (eg expired) — renew and retry the request once, so that the
+         renewed auth details are derived again from the supplied headers and params (RSA4b, RSC10) */
+      await client.auth.authorize(null, null);
+      result = await withAuthDetails<T>(client, headers, params, doRequest);
+    }
 
     if (envelope) {
       result = unenvelope(result, client._MsgPack, envelope);

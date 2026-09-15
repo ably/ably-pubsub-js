@@ -40,6 +40,10 @@ jobs:
       # commit; fail if the committed copy has drifted from the registry.
       - run: npm run generate:errorcodes-ts
       - run: git diff --exit-code -- packages/core/src/common/lib/types/errorcodes.ts
+      # The three packages release in lockstep; fail if any version site has drifted (the
+      # workspace package.json files, the wrappers' exact core peer pins, or the react-hooks
+      # agent constant). scripts/release.js is the authority on the site list.
+      - run: npm run check:versions
       # Type-checks the wrapper packages' sources and their hand-written declaration files
       # together, against the core resolved through the tsconfig's `paths`. The React hooks'
       # declaration files are generated rather than hand-written, so the `/react` subpath can only

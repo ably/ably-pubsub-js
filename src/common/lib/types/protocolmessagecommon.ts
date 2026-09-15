@@ -25,6 +25,8 @@ export const actions = {
   OBJECT: 19,
   OBJECT_SYNC: 20,
   ANNOTATION: 21,
+  PING: 22,
+  PONG: 23,
 };
 
 export const ActionName: string[] = [];

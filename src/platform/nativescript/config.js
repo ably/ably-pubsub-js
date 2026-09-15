@@ -24,7 +24,7 @@ var Config = {
   WebSocket: WebSocket,
   xhrSupported: XMLHttpRequest,
   allowComet: true,
-  useProtocolHeartbeats: true,
+  websocketHeartbeatsParam: 'bounce',
   supportsBinary: typeof TextDecoder !== 'undefined' && TextDecoder,
   preferBinary: false, // Motivation as on web; see `preferBinary` comment there.
   ArrayBuffer: ArrayBuffer,

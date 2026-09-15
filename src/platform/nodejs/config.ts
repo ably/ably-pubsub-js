@@ -9,7 +9,7 @@ const Config: IPlatformConfig = {
   userAgent: null,
   binaryType: 'nodebuffer' as BinaryType,
   WebSocket,
-  useProtocolHeartbeats: false,
+  websocketHeartbeatsParam: 'false',
   supportsBinary: true,
   preferBinary: true,
   nextTick: process.nextTick,

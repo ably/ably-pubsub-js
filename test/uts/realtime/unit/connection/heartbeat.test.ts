@@ -5,7 +5,8 @@
  * Source: uts/test/realtime/unit/connection/heartbeat_test.md
  *
  * ably-js Node.js uses WebSocket ping frames (RTN23b) since the `ws` library
- * exposes them. It sends `heartbeats=false` in the connection URL.
+ * exposes them. It sends `heartbeats=false` in the connection URL; the browser
+ * and React Native platforms send `heartbeats=bounce` (RTN23c).
  * The idle timer threshold is: maxIdleInterval + realtimeRequestTimeout.
  *
  * Both RTN23a (HEARTBEAT protocol messages) and RTN23b (ping frames)
@@ -41,23 +42,23 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
   // --- RTN23a: URL parameter ---
 
   /**
-   * RTN23a - heartbeats=true when ping frames not observable
+   * RTN23b - heartbeats=true when ping frames not observable
    *
-   * When the platform cannot observe WebSocket ping frames
-   * (useProtocolHeartbeats=true), the client sends heartbeats=true
-   * in the connection URL to request HEARTBEAT protocol messages.
+   * When the platform cannot observe WebSocket ping frames and cannot have its
+   * code suspended while the socket stays alive, the client sends
+   * heartbeats=true to request HEARTBEAT protocol messages.
    */
   // UTS: realtime/unit/RTN23a/heartbeats-true-query-param-0
-  it('RTN23a - heartbeats=true in connection URL when ping frames not observable', function (done) {
-    const savedUseProtocolHeartbeats = Platform.Config.useProtocolHeartbeats;
-    Platform.Config.useProtocolHeartbeats = true;
+  it('RTN23b - heartbeats=true in connection URL when ping frames not observable', function (done) {
+    const saved = Platform.Config.websocketHeartbeatsParam;
+    Platform.Config.websocketHeartbeatsParam = 'true';
 
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {
         const heartbeats = conn.url.searchParams.get('heartbeats');
         expect(heartbeats).to.equal('true');
         conn.respond_with_connected();
-        Platform.Config.useProtocolHeartbeats = savedUseProtocolHeartbeats;
+        Platform.Config.websocketHeartbeatsParam = saved;
         done();
       },
     });
@@ -65,6 +66,69 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
 
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+  });
+
+  /**
+   * RTN23c - heartbeats=bounce on a platform which may suspend our code
+   *
+   * The browser and React Native platform configs set
+   * websocketHeartbeatsParam to 'bounce'; this asserts that the value reaches
+   * the connection URL. (These tests run on Node, whose own default is
+   * 'false', so the config value is overridden for the duration.)
+   */
+  // UTS: realtime/unit/RTN23c/heartbeats-bounce-query-param-0
+  it('RTN23c - heartbeats=bounce in connection URL', function (done) {
+    const saved = Platform.Config.websocketHeartbeatsParam;
+    Platform.Config.websocketHeartbeatsParam = 'bounce';
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        expect(conn.url.searchParams.get('heartbeats')).to.equal('bounce');
+        conn.respond_with_connected();
+        Platform.Config.websocketHeartbeatsParam = saved;
+        done();
+      },
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+  });
+
+  /**
+   * RTC1f1 - a user-supplied transportParams.heartbeats wins over the
+   * platform default, including over 'bounce'.
+   */
+  // UTS: realtime/unit/RTN23c/heartbeats-bounce-user-override-0
+  it('RTN23c - transportParams.heartbeats overrides the bounce default', function (done) {
+    const saved = Platform.Config.websocketHeartbeatsParam;
+    Platform.Config.websocketHeartbeatsParam = 'bounce';
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        expect(conn.url.searchParams.get('heartbeats')).to.equal('true');
+        conn.respond_with_connected();
+        Platform.Config.websocketHeartbeatsParam = saved;
+        done();
+      },
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      transportParams: { heartbeats: 'true' },
       autoConnect: false,
       useBinaryProtocol: false,
     });

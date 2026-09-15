@@ -15,12 +15,13 @@ import { Ably, trackClient, installMockHttp, restoreAll } from './helpers';
 
 const side = process.env.UTS_SIDE || 'core';
 
-// What each mode must stamp, per client kind. Device REST is deliberately unstamped: the device
-// package ships no HTTP factory, only the core `Rest` re-export.
+// What each mode must stamp, per client kind — the side flags are versionless bare tokens
+// (see ably/ably-common#361). Device REST is deliberately unstamped: the device package ships
+// no HTTP factory, only the core `Rest` re-export.
 const expectedStamp: Record<string, { rest: string | null; realtime: string | null }> = {
   core: { rest: null, realtime: null },
-  device: { rest: null, realtime: 'ably-pubsub-device/' },
-  server: { rest: 'ably-pubsub-server/', realtime: 'ably-pubsub-server/' },
+  device: { rest: null, realtime: 'ably-pubsub-device' },
+  server: { rest: 'ably-pubsub-server', realtime: 'ably-pubsub-server' },
 };
 
 describe(`uts harness: side mode '${side}'`, function () {
@@ -50,10 +51,17 @@ describe(`uts harness: side mode '${side}'`, function () {
   }
 
   function assertStamp(agent: string, stamp: string | null) {
+    const tokens = agent.split(' ');
     if (stamp === null) {
-      expect(agent).to.not.include('ably-pubsub-');
+      // No side flag — but the SDK's own identifier (ably-pubsub-js/<version>) shares the
+      // prefix, so check for the flag tokens themselves rather than the substring.
+      expect(tokens).to.not.include('ably-pubsub-device');
+      expect(tokens).to.not.include('ably-pubsub-server');
     } else {
-      expect(agent).to.include(stamp);
+      // The flag must be present as a bare token: `name/undefined` (or any versioned form)
+      // means the versionless stamp regressed.
+      expect(tokens).to.include(stamp);
+      expect(agent).to.not.include(stamp + '/');
     }
   }
 

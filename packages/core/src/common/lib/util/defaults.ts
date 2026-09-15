@@ -10,7 +10,12 @@ import { IUntypedCryptoStatic } from 'common/types/ICryptoStatic';
 import { ChannelOptions } from 'common/types/channel';
 import { ModularPlugins } from '../client/modularplugins';
 
-let agent = 'ably-js/' + version;
+// The SDK family identifier. It renamed from `ably-js` with the per-side package split (this
+// version partitions the fleet: `ably-js/*` is legacy `ably`-package traffic, `ably-pubsub-js/*`
+// is new-package traffic), and it deliberately names the family rather than any one published
+// package — the side a client declares travels as a separate versionless agent entry stamped by
+// the per-side packages (see packages/shared/side.ts and the agents registry in ably-common).
+let agent = 'ably-pubsub-js/' + version;
 
 type CompleteDefaults = IDefaults & {
   ENDPOINT: string;
@@ -206,7 +211,11 @@ export function getAgentString(options: ClientOptions): string {
   let agentStr = Defaults.agent;
   if (options.agents) {
     for (var agent in options.agents) {
-      agentStr += ' ' + agent + '/' + options.agents[agent];
+      const version = options.agents[agent];
+      // An entry with no version is emitted bare, like the platform's own `browser` entry:
+      // versionless identifiers are flags (for example the per-side Pub/Sub packages' side
+      // declarations), and `name/undefined` is not a valid Ably-Agent token.
+      agentStr += ' ' + agent + (version ? '/' + version : '');
     }
   }
   return agentStr;

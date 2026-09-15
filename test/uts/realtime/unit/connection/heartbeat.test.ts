@@ -1,7 +1,7 @@
 /**
  * UTS: Heartbeat Tests
  *
- * Spec points: RTN23a, RTN23b
+ * Spec points: RTN23a, RTN23b, RTN23c
  * Source: uts/test/realtime/unit/connection/heartbeat_test.md
  *
  * ably-js Node.js uses WebSocket ping frames (RTN23b) since the `ws` library
@@ -834,6 +834,221 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
     // Connection stayed alive through all ping frames
     expect(connectionAttemptCount).to.equal(1);
     expect(client.connection.state).to.equal('connected');
+    client.close();
+  });
+  // --- RTN23c1/c2: PING/PONG ---
+
+  /**
+   * RTN23c1/RTN23c2 - a PING with an id is answered with a PONG echoing it
+   *
+   * The PONG must go out on the transport the PING arrived on, and must not
+   * carry a msgSerial (it is not an acked message).
+   */
+  // UTS: realtime/unit/RTN23c1/ping-answered-with-pong-0
+  it('RTN23c1 - PING with an id is answered with a PONG with the same id', async function () {
+    const fromClient: any[] = [];
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        mock.active_connection = conn;
+        conn.respond_with_connected();
+      },
+      onMessageFromClient: (msg) => fromClient.push(msg),
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+    await new Promise((resolve) => client.connection.once('connected', resolve));
+
+    mock.active_connection!.send_to_client({ action: 22, id: 'ping-id-1' });
+    await flushAsync();
+
+    const pongs = fromClient.filter((m) => m.action === 23);
+    expect(pongs).to.have.lengthOf(1);
+    expect(pongs[0].id).to.equal('ping-id-1');
+    expect(pongs[0].msgSerial).to.be.undefined;
+
+    client.close();
+  });
+
+  /**
+   * RTN23c2 - a PING with no id is answered with a PONG with no id
+   */
+  // UTS: realtime/unit/RTN23c2/ping-without-id-1
+  it('RTN23c2 - PING without an id is answered with a PONG without an id', async function () {
+    const fromClient: any[] = [];
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        mock.active_connection = conn;
+        conn.respond_with_connected();
+      },
+      onMessageFromClient: (msg) => fromClient.push(msg),
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+    await new Promise((resolve) => client.connection.once('connected', resolve));
+
+    mock.active_connection!.send_to_client({ action: 22 });
+    await flushAsync();
+
+    const pongs = fromClient.filter((m) => m.action === 23);
+    expect(pongs).to.have.lengthOf(1);
+    expect(pongs[0]).to.not.have.property('id');
+
+    client.close();
+  });
+
+  /**
+   * RTN23c1 - the client answers a PING whatever heartbeats param it sent
+   */
+  // UTS: realtime/unit/RTN23c1/ping-answered-regardless-of-param-2
+  it('RTN23c1 - PING is answered even when heartbeats=false was sent', async function () {
+    const fromClient: any[] = [];
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        expect(conn.url.searchParams.get('heartbeats')).to.equal('false');
+        mock.active_connection = conn;
+        conn.respond_with_connected();
+      },
+      onMessageFromClient: (msg) => fromClient.push(msg),
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      transportParams: { heartbeats: 'false' },
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+    await new Promise((resolve) => client.connection.once('connected', resolve));
+
+    mock.active_connection!.send_to_client({ action: 22, id: 'ping-id-2' });
+    await flushAsync();
+
+    expect(fromClient.filter((m) => m.action === 23).map((m) => m.id)).to.deep.equal(['ping-id-2']);
+
+    client.close();
+  });
+
+  /**
+   * RTN23a - a PING counts as activity and resets the idle timer
+   */
+  // UTS: realtime/unit/RTN23c/ping-resets-idle-timer-3
+  it('RTN23c - PING resets the idle timer', async function () {
+    let connectionAttemptCount = 0;
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        connectionAttemptCount++;
+        mock.active_connection = conn;
+        conn.respond_with_connected({
+          connectionId: `connection-id-${connectionAttemptCount}`,
+          connectionDetails: {
+            connectionKey: `connection-key-${connectionAttemptCount}`,
+            maxIdleInterval: 3000,
+            connectionStateTtl: 120000,
+          } as any,
+        });
+      },
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const httpMock = new MockHttpClient({
+      onConnectionAttempt: (conn) => conn.respond_with_success(),
+      onRequest: (req) => req.respond_with(200, 'yes'),
+    });
+    installMockHttp(httpMock);
+
+    const clock = enableFakeTimers();
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      realtimeRequestTimeout: 1000,
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+    await pumpTimers(clock);
+
+    expect(client.connection.state).to.equal('connected');
+
+    // Advance 2000ms (within the 3000+1000=4000ms threshold)
+    await clock.tickAsync(2000);
+    await pumpTimers(clock);
+
+    mock.active_connection!.send_to_client({ action: 22, id: 'ping-id-3' });
+    await pumpTimers(clock);
+
+    // 2000ms since the PING, still within the threshold if it reset the timer
+    await clock.tickAsync(2000);
+    await pumpTimers(clock);
+
+    expect(client.connection.state).to.equal('connected');
+    expect(connectionAttemptCount).to.equal(1);
+
+    // Now let it expire (4100ms since the PING)
+    await clock.tickAsync(2100);
+    await pumpTimers(clock);
+
+    expect(connectionAttemptCount).to.equal(2);
+    client.close();
+  });
+
+  /**
+   * RTN23c1 - an unsolicited PONG is ignored
+   */
+  // UTS: realtime/unit/RTN23c1/unsolicited-pong-ignored-4
+  it('RTN23c1 - an unsolicited PONG is ignored', async function () {
+    const stateChanges: string[] = [];
+
+    const mock = new MockWebSocket({
+      onConnectionAttempt: (conn) => {
+        mock.active_connection = conn;
+        conn.respond_with_connected();
+      },
+    });
+    installMockWebSocket(mock.constructorFn);
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+    await new Promise((resolve) => client.connection.once('connected', resolve));
+    client.connection.on((change: any) => stateChanges.push(change.current));
+
+    mock.active_connection!.send_to_client({ action: 23, id: 'stray-pong' });
+    await flushAsync();
+    await flushAsync();
+
+    expect(client.connection.state).to.equal('connected');
+    expect(stateChanges).to.deep.equal([]);
+
     client.close();
   });
 });

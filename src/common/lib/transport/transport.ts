@@ -169,6 +169,16 @@ abstract class Transport extends EventEmitter {
       case actions.SYNC:
         this.connectionManager.onChannelMessage(message, this);
         break;
+      case actions.PING:
+        // RTN23c1 requires the PONG on the transport the PING arrived on, so
+        // send it here rather than via the connection
+        this.send(
+          protocolMessageFromValues(message.id ? { action: actions.PONG, id: message.id } : { action: actions.PONG }),
+        );
+        break;
+      case actions.PONG:
+        // for now we never send PINGs, so an inbound PONG is unsolicited; ignore
+        break;
       case actions.ACTIVATE:
         // Ignored.
         break;

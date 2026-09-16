@@ -10,7 +10,13 @@ export interface ICommonPlatformConfig {
   logTimestamps: boolean;
   binaryType: BinaryType;
   WebSocket: typeof WebSocket | typeof import('ws');
-  useProtocolHeartbeats: boolean;
+  /**
+   * The value of the `heartbeats` transport param that a websocket transport on this
+   * platform should request by default — see RTN23b/RTN23c. `'false'` where websocket
+   * ping frames are observable, `'bounce'` where they are not and this platform may
+   * additionally suspend our code while leaving the socket alive to answer them.
+   */
+  websocketHeartbeatsParam: 'true' | 'false' | 'bounce';
   supportsBinary: boolean;
   preferBinary: boolean;
   nextTick: process.nextTick;

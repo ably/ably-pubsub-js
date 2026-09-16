@@ -13,7 +13,8 @@ export default function (bufferUtils: typeof BufferUtils): IPlatformConfig {
     WebSocket: WebSocket,
     xhrSupported: true,
     allowComet: true,
-    useProtocolHeartbeats: true,
+    // A backgrounded app's JavaScript is suspended while the OS may keep the socket open
+    websocketHeartbeatsParam: 'bounce',
     supportsBinary: !!(typeof TextDecoder !== 'undefined' && TextDecoder),
     preferBinary: false, // Motivation as on web; see `preferBinary` comment there.
     ArrayBuffer: typeof ArrayBuffer !== 'undefined' && ArrayBuffer,

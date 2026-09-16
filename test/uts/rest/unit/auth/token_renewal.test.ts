@@ -8,11 +8,6 @@
  * - Transparent retry on 40142/40140 server rejection
  * - No retry when no renewal mechanism is available
  * - Non-token 401 errors are not retried
- *
- * NOTE: ably-js has a header-overwrite bug in Resource.do() — see deviations.md.
- * The retry path passes merged headers (including old authorization) to
- * withAuthDetails, which overwrites the new auth header with the old one.
- * Tests here use requestCount-based mocking to avoid triggering infinite loops.
  */
 
 import { expect } from 'chai';
@@ -32,8 +27,6 @@ describe('uts/rest/unit/auth/token_renewal', function () {
    */
   // UTS: rest/unit/RSA4b/renewal-on-40142-0
   it('RSA4b - renewal on 40142 error', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     let callbackCount = 0;
     let requestCount = 0;
     const captured: any[] = [];
@@ -77,7 +70,6 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     expect(captured[0].headers.authorization).to.equal(expectedAuth1);
 
     // Second request should use renewed token (token-2)
-    // NOTE: ably-js has a header-overwrite bug — see deviations.md
     const expectedAuth2 = 'Bearer ' + Buffer.from('token-2').toString('base64');
     expect(captured[1].headers.authorization).to.equal(expectedAuth2);
   });
@@ -202,14 +194,9 @@ describe('uts/rest/unit/auth/token_renewal', function () {
 
   /**
    * RSC10 - REST request retried transparently after token renewal
-   *
-   * Uses requestCount-based mocking to avoid triggering the ably-js
-   * header-overwrite bug (see deviations.md).
    */
   // UTS: rest/unit/RSC10/request-retried-after-renewal-0
   it('RSC10 - transparent retry after renewal', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     let callbackCount = 0;
     let requestCount = 0;
     const captured: any[] = [];
@@ -252,7 +239,6 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     expect(captured[0].headers.authorization).to.equal(expectedAuth1);
 
     // Second request should use renewed token
-    // NOTE: ably-js has a header-overwrite bug — see deviations.md
     const expectedAuth2 = 'Bearer ' + Buffer.from('token-2').toString('base64');
     expect(captured[1].headers.authorization).to.equal(expectedAuth2);
   });
@@ -380,16 +366,9 @@ describe('uts/rest/unit/auth/token_renewal', function () {
    * RSA4b - Renewal limit (max 1 retry per spec)
    *
    * If the renewed token is also rejected, the error should propagate.
-   *
-   * NOTE: ably-js has no built-in renewal limit — the retry loop in
-   * Resource.do() is unbounded. Combined with the header-overwrite bug,
-   * this causes an infinite loop. The authCallback caps retries to
-   * prevent OOM. See deviations.md.
    */
   // UTS: rest/unit/RSA4b/renewal-limit-no-loop-3
   it('RSA4b - renewal limit', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     this.timeout(5000);
 
     let callbackCount = 0;
@@ -410,7 +389,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
       authCallback: function (params, callback) {
         callbackCount++;
         if (callbackCount > 3) {
-          // Cap retries to prevent infinite loop (ably-js has no limit)
+          // Cap renewals so a regression fails fast rather than looping forever
           callback(new Error('Token renewal limit exceeded') as any, null);
           return;
         }
@@ -425,9 +404,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
       expect(error).to.exist;
     }
 
-    // Spec (RSA4b): exactly 2 callbacks (initial + 1 renewal), 2 requests.
-    // DEVIATION: ably-js has no renewal limit — unbounded retry loop.
-    // The authCallback caps at 3 to prevent OOM. See deviations.md.
+    // Spec (RSA4b): exactly 2 callbacks (initial + 1 renewal), 2 requests
     expect(callbackCount).to.equal(2);
     expect(requestCount).to.equal(2);
   });

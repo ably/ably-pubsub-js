@@ -74,18 +74,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### token_renewal: RSA4b - Authorization header overwritten on retry / no retry limit
-
-**Spec (RSA4b/RSC10)**: Token renewal should use the new token's header and retry at most once.
-
-**ably-js behavior**: The retry sends the old token's authorization header. The retry loop is unbounded.
-
-**Tests**: `RSA4b - renewal on 40142 error`, `RSC10 - transparent retry after renewal`, `RSA4b - renewal limit`.
-
-**Issue**: [#2193](https://github.com/ably/ably-js/issues/2193)
-
----
-
 ### annotations: RSAN1c4 / RSC22d - idempotent IDs not generated
 
 **Spec (RSAN1c4)**: Annotations with empty `id` should get a generated idempotent ID. **Spec (RSC22d)**: Same for batch publish.
@@ -153,18 +141,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 **ably-js behavior**: Does not discard the previous sync.
 
 **Test**: `RTP18a - new sync discards previous in-flight sync`.
-
----
-
-### integration/auth: RSC10 - token renewal infinite loop with expired JWT
-
-**Spec (RSC10)**: When a REST request fails with a token error (40140-40149), the client should renew the token and retry.
-
-**ably-js behavior**: Same root cause as the unit test RSA4b deviation — `withAuthDetails` overwrites the new authorization header with the stale one from the previous attempt, causing an infinite retry loop. Confirmed against the sandbox: the authCallback is called hundreds of times, each returning a valid JWT, but the request always sends the old expired token.
-
-**Test**: `RSC10 - token renewal with expired JWT` in `rest/integration/auth.test.ts`.
-
-**Issue**: [#2193](https://github.com/ably/ably-js/issues/2193) (same root cause as unit test deviations RSA4b/RSC10)
 
 ---
 

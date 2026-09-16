@@ -497,7 +497,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
                 cb(err);
                 return;
               }
-              recoveryKey = connection.recoveryKey;
+              recoveryKey = connection.createRecoveryKey();
               cb();
             });
           },
@@ -752,7 +752,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
 
           connectionId = rxRealtime.connection.id;
           connectionKey = rxRealtime.connection.key;
-          recoveryKey = rxRealtime.connection.recoveryKey;
+          recoveryKey = rxRealtime.connection.createRecoveryKey();
 
           publishSubscribeWhileDisconnected(function (err) {
             if (err) {

@@ -19,9 +19,6 @@ let agent = 'ably-pubsub-js/' + version;
 
 type CompleteDefaults = IDefaults & {
   ENDPOINT: string;
-  ENVIRONMENT: string;
-  REST_HOST: string;
-  REALTIME_HOST: string;
   FALLBACK_HOSTS: string[];
   PORT: number;
   TLS_PORT: number;
@@ -64,9 +61,6 @@ type CompleteDefaults = IDefaults & {
 
 const Defaults = {
   ENDPOINT: 'main',
-  ENVIRONMENT: '',
-  REST_HOST: 'rest.ably.io',
-  REALTIME_HOST: 'realtime.ably.io',
   FALLBACK_HOSTS: [
     'main.a.fallback.ably-realtime.com',
     'main.b.fallback.ably-realtime.com',
@@ -185,7 +179,7 @@ function checkHost(host: string): void {
       code: 40000,
       statusCode: 400,
       remediation:
-        'Make every entry of `fallbackHosts` a string. If you set `restHost` or `realtimeHost`, pass each as a single string, not an array or object.',
+        'Make every entry of `fallbackHosts` a string. If you set `endpoint`, pass it as a single string, not an array or object.',
     });
   }
   if (!host.length) {
@@ -267,52 +261,12 @@ export function objectifyOptions(
   return optionsObj;
 }
 
-function checkIfClientOptionsAreValid(options: ClientOptions) {
-  // REC1b
-  if (options.endpoint && (options.environment || options.restHost || options.realtimeHost)) {
-    // RSC1b
-    throw new ErrorInfo({
-      message:
-        'The `endpoint` option cannot be used in conjunction with the `environment`, `restHost`, or `realtimeHost` options.',
-      code: 40106,
-      statusCode: 400,
-      remediation:
-        'Remove `environment`, `restHost`, and `realtimeHost` from `ClientOptions` and use only `endpoint`, which replaces them.',
-    });
-  }
-
-  // REC1c
-  if (options.environment && (options.restHost || options.realtimeHost)) {
-    // RSC1b
-    throw new ErrorInfo({
-      message: 'The `environment` option cannot be used in conjunction with the `restHost`, or `realtimeHost` options.',
-      code: 40106,
-      statusCode: 400,
-      remediation:
-        'Remove `environment`, `restHost`, and `realtimeHost` from `ClientOptions` and use only `endpoint`, which replaces them.',
-    });
-  }
-}
-
 export function normaliseOptions(
   options: ClientOptions,
   MsgPack: MsgPack | null,
   logger: Logger | null, // should only be omitted by tests
 ): NormalisedClientOptions {
   const loggerToUse = logger ?? Logger.defaultLogger;
-
-  // Deprecated options
-  if (options.environment) {
-    loggerToUse.deprecated('The `environment` client option', 'Use the `endpoint` client option instead.');
-  }
-  if (options.restHost) {
-    loggerToUse.deprecated('The `restHost` client option', 'Use the `endpoint` client option instead.');
-  }
-  if (options.realtimeHost) {
-    loggerToUse.deprecated('The `realtimeHost` client option', 'Use the `endpoint` client option instead.');
-  }
-
-  checkIfClientOptionsAreValid(options);
 
   if (typeof options.recover === 'function' && options.closeOnUnload === true) {
     Logger.logAction(
@@ -335,14 +289,11 @@ export function normaliseOptions(
   /* infer hosts and fallbacks based on the specified endpoint */
   const endpoint = options.endpoint || Defaults.ENDPOINT;
 
-  if (!options.fallbackHosts && !options.restHost && !options.realtimeHost && !options.port && !options.tlsPort) {
-    options.fallbackHosts = getEndpointFallbackHosts(options.environment || endpoint);
+  if (!options.fallbackHosts && !options.port && !options.tlsPort) {
+    options.fallbackHosts = getEndpointFallbackHosts(endpoint);
   }
 
-  const primaryDomainFromEnvironment = options.environment && `${options.environment}.realtime.ably.net`;
-  const primaryDomainFromLegacyOptions = options.restHost || options.realtimeHost || primaryDomainFromEnvironment;
-
-  const primaryDomain = primaryDomainFromLegacyOptions || getPrimaryDomainFromEndpoint(endpoint);
+  const primaryDomain = getPrimaryDomainFromEndpoint(endpoint);
 
   (options.fallbackHosts || []).concat(primaryDomain).forEach(checkHost);
 

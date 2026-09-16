@@ -158,25 +158,25 @@ class BaseClient {
   }
 
   /**
-   * RSH8
+   * Synchronous local-device accessor, for the push activation state machine only: its state
+   * transitions are synchronous, and {@link Push.activate} / {@link Push.deactivate} hydrate the
+   * device with {@link getDevice} before dispatching any event. Public callers use
+   * {@link getDevice}, which works on platforms with asynchronous push storage too.
    *
-   * @deprecated Use {@link getDevice} instead. `device()` reads the device state from storage
-   * synchronously, which is not possible on platforms with asynchronous storage such as React
-   * Native. In the next major release `device()` will become asynchronous.
+   * @internal
    */
-  device(): LocalDevice & API.LocalDevice {
+  deviceSync(): LocalDevice & API.LocalDevice {
     if (!this.options.plugins?.Push || !this.push.LocalDevice) {
       throwMissingPluginError('Push');
     }
     if (!this._device) {
       if (this.pushConfig?.storageIsAsync) {
         throw new ErrorInfo({
-          message:
-            'client.device() cannot load the local device synchronously: push storage on this platform is asynchronous',
+          message: 'the local device cannot be loaded synchronously: push storage on this platform is asynchronous',
           code: 40000,
           statusCode: 400,
-          remediation:
-            'Use await client.getDevice() instead. device() is deprecated and will become asynchronous in the next major release.',
+          // only reachable internally: the push activation state machine hydrates the device with
+          // getDevice() before dispatching the events that reach this accessor
         });
       }
       this._device = this.push.LocalDevice.load(this);

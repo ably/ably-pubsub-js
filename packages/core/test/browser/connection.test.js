@@ -340,7 +340,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
 
         realtime.connection.once('connected', function () {
           var connectionId = realtime.connection.id,
-            recoveryKey = realtime.connection.recoveryKey;
+            recoveryKey = realtime.connection.createRecoveryKey();
 
           document.dispatchEvent(refreshEvent);
           try {

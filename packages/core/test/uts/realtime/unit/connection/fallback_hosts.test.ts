@@ -195,7 +195,7 @@ describe('uts/realtime/unit/connection/fallback_hosts', function () {
   /**
    * RTN17g - Empty fallback set: custom host with no fallbacks
    *
-   * DEVIATION: ably-js with custom realtimeHost and fallbackHosts:[] goes to
+   * DEVIATION: ably-js with a custom endpoint and fallbackHosts:[] goes to
    * DISCONNECTED (not immediate error), then retries. We verify only the primary
    * host was tried and no fallback hosts were used.
    */
@@ -219,7 +219,7 @@ describe('uts/realtime/unit/connection/fallback_hosts', function () {
 
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
-      realtimeHost: 'custom.example.com',
+      endpoint: 'custom.example.com',
       fallbackHosts: [],
       autoConnect: false,
       useBinaryProtocol: false,

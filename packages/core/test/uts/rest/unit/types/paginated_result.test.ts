@@ -487,7 +487,7 @@ describe('uts/rest/unit/types/paginated_result', function () {
 
     const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
-      restHost: 'rest.ably.io',
+      endpoint: 'rest.ably.io',
       useBinaryProtocol: false,
     } as any);
     const channel = client.channels.get('test');

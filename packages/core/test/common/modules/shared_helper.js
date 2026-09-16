@@ -509,12 +509,6 @@ define([
       return client;
     }
 
-    AblyRealtimeWithoutEndpoint(options) {
-      const client = clientModule.AblyRealtimeWithoutEndpoint(this, options);
-      SharedHelper.activeClients.push(client);
-      return client;
-    }
-
     /* Slightly crude catch-all hook to close any dangling realtime clients left open
      * after a test fails without calling closeAndFinish */
     closeActiveClients() {

@@ -142,14 +142,13 @@ define(['ably', 'chai'], function (Ably, chai) {
      * @spec TO3k5
      * @spec TO3k6
      * @spec TO3d
-     * @specpartial REC1d1 - test primary domain is overridden by environment
-     * @specpartial REC1c - test with environment set other than 'production'
+     * @spec REC1b4
      */
-    it('Init with given environment', function () {
+    it('Init with given endpoint as routing policy', function () {
       const helper = this.test.helper;
 
       helper.recordPrivateApi('call.Defaults.normaliseOptions');
-      var normalisedOptions = Defaults.normaliseOptions({ environment: 'main' }, null, null);
+      var normalisedOptions = Defaults.normaliseOptions({ endpoint: 'main' }, null, null);
 
       expect(normalisedOptions.primaryDomain).to.equal('main.realtime.ably.net');
       expect(normalisedOptions.port).to.equal(80);
@@ -173,18 +172,13 @@ define(['ably', 'chai'], function (Ably, chai) {
      * @spec TO3k5
      * @spec TO3k6
      * @spec TO3d
-     * @specpartial REC1d1 - test restHost is overridden by environment
-     * @specpartial REC1c - test with environment set other than 'production'
+     * @spec REC1b4
      */
-    it('Init with local environment and non-default ports', function () {
+    it('Init with local endpoint and non-default ports', function () {
       const helper = this.test.helper;
 
       helper.recordPrivateApi('call.Defaults.normaliseOptions');
-      var normalisedOptions = Defaults.normaliseOptions(
-        { environment: 'local', port: 8080, tlsPort: 8081 },
-        null,
-        null,
-      );
+      var normalisedOptions = Defaults.normaliseOptions({ endpoint: 'local', port: 8080, tlsPort: 8081 }, null, null);
 
       expect(normalisedOptions.primaryDomain).to.equal('local.realtime.ably.net');
       expect(normalisedOptions.port).to.equal(8080);
@@ -200,28 +194,25 @@ define(['ably', 'chai'], function (Ably, chai) {
     });
 
     /**
-     * Missing spec point documenting that explicit restHost overrides realtimeHost too.
-     *
      * @spec TO3k2
      * @spec TO3k3
      * @spec TO3k4
      * @spec TO3k5
      * @spec TO3k6
      * @spec TO3d
-     * @spec REC1d1
-     * @spec REC1d2
-     * @specpartial RSC25 - test primary domain defined by restHost
+     * @specpartial RSC25 - test primary domain defined by an explicit-hostname endpoint
      */
     it('Init with given host', function () {
       const helper = this.test.helper;
 
       helper.recordPrivateApi('call.Defaults.normaliseOptions');
-      var normalisedOptions = Defaults.normaliseOptions({ restHost: 'test.org' }, null, null);
+      var normalisedOptions = Defaults.normaliseOptions({ endpoint: 'test.org' }, null, null);
 
       expect(normalisedOptions.primaryDomain).to.equal('test.org');
       expect(normalisedOptions.port).to.equal(80);
       expect(normalisedOptions.tlsPort).to.equal(443);
-      expect(normalisedOptions.fallbackHosts).to.equal(undefined);
+      /* an explicit-hostname endpoint has no fallback domains (REC2c2) */
+      expect(normalisedOptions.fallbackHosts).to.deep.equal([]);
       expect(normalisedOptions.tls).to.equal(true);
 
       helper.recordPrivateApi('call.Defaults.getHosts');
@@ -238,45 +229,9 @@ define(['ably', 'chai'], function (Ably, chai) {
      * @spec TO3k5
      * @spec TO3k6
      * @spec TO3d
-     * @spec REC1d1
-     * @spec REC1d2
-     * @specpartial RSC11 - test restHost is overridden by custom value
-     * @specpartial RTN17a - primary host for realtime can be overridden by realtimeHost
+     * @specpartial REC1b3 - test default endpoint in nonprod form
      */
-    it('Init with given restHost and realtimeHost', function () {
-      const helper = this.test.helper;
-
-      helper.recordPrivateApi('call.Defaults.normaliseOptions');
-      var normalisedOptions = Defaults.normaliseOptions(
-        { restHost: 'test.org', realtimeHost: 'ws.test.org' },
-        null,
-        null,
-      );
-
-      expect(normalisedOptions.primaryDomain).to.equal('test.org');
-      expect(normalisedOptions.port).to.equal(80);
-      expect(normalisedOptions.tlsPort).to.equal(443);
-      expect(normalisedOptions.fallbackHosts).to.equal(undefined);
-      expect(normalisedOptions.tls).to.equal(true);
-
-      helper.recordPrivateApi('call.Defaults.getHosts');
-      expect(Defaults.getHosts(normalisedOptions)).to.deep.equal([normalisedOptions.primaryDomain]);
-
-      helper.recordPrivateApi('call.Defaults.getPort');
-      expect(Defaults.getPort(normalisedOptions)).to.equal(443);
-    });
-
-    /**
-     * @spec TO3k2
-     * @spec TO3k3
-     * @spec TO3k4
-     * @spec TO3k5
-     * @spec TO3k6
-     * @spec TO3d
-     * @specpartial REC1d1 - test restHost is overridden by environment
-     * @specpartial REC1c - test with environment set other than 'production'
-     */
-    it('Init with no endpoint-related options and given default environment', function () {
+    it('Init with no endpoint-related options and a non-default default endpoint', function () {
       const helper = this.test.helper;
 
       helper.recordPrivateApi('write.Defaults.ENDPOINT');

@@ -9377,9 +9377,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             expectedCurrentFields: {
               mapCreate: { semantics: 'lww', entries: { foo: { tombstone: false, data: { string: 'bar' } } } },
             },
-            expectedDeprecatedFields: {
-              map: { semantics: 'lww', entries: { foo: { tombstone: false, data: { value: 'bar' } } } },
-            },
+            expectedAbsentFields: ['map'],
           },
           {
             description: 'MAP_CREATE with mapCreateWithObjectId._derivedFrom',
@@ -9401,28 +9399,25 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             expectedCurrentFields: {
               mapCreate: { semantics: 'lww', entries: { foo: { tombstone: false, data: { string: 'bar' } } } },
             },
-            expectedDeprecatedFields: {
-              map: { semantics: 'lww', entries: { foo: { tombstone: false, data: { value: 'bar' } } } },
-            },
-            expectedAbsentFields: ['mapCreateWithObjectId'],
+            expectedAbsentFields: ['mapCreateWithObjectId', 'map'],
           },
           {
             description: 'MAP_SET',
             operation: { action: 1, objectId: 'obj-1', mapSet: { key: 'foo', value: { string: 'bar' } } },
             expectedCurrentFields: { mapSet: { key: 'foo', value: { string: 'bar' } } },
-            expectedDeprecatedFields: { mapOp: { key: 'foo', data: { value: 'bar' } } },
+            expectedAbsentFields: ['mapOp'],
           },
           {
             description: 'MAP_REMOVE',
             operation: { action: 2, objectId: 'obj-1', mapRemove: { key: 'foo' } },
             expectedCurrentFields: { mapRemove: { key: 'foo' } },
-            expectedDeprecatedFields: { mapOp: { key: 'foo' } },
+            expectedAbsentFields: ['mapOp'],
           },
           {
             description: 'COUNTER_CREATE',
             operation: { action: 3, objectId: 'obj-2', counterCreate: { count: 42 } },
             expectedCurrentFields: { counterCreate: { count: 42 } },
-            expectedDeprecatedFields: { counter: { count: 42 } },
+            expectedAbsentFields: ['counter'],
           },
           {
             description: 'COUNTER_CREATE with counterCreateWithObjectId._derivedFrom',
@@ -9436,14 +9431,13 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               },
             },
             expectedCurrentFields: { counterCreate: { count: 42 } },
-            expectedDeprecatedFields: { counter: { count: 42 } },
-            expectedAbsentFields: ['counterCreateWithObjectId'],
+            expectedAbsentFields: ['counterCreateWithObjectId', 'counter'],
           },
           {
             description: 'COUNTER_INC',
             operation: { action: 4, objectId: 'obj-2', counterInc: { number: 5 } },
             expectedCurrentFields: { counterInc: { number: 5 } },
-            expectedDeprecatedFields: { counterOp: { amount: 5 } },
+            expectedAbsentFields: ['counterOp'],
           },
           {
             description: 'OBJECT_DELETE',
@@ -9457,22 +9451,13 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
           },
         ];
 
-        for (const {
-          description,
-          operation,
-          expectedCurrentFields,
-          expectedDeprecatedFields,
-          expectedAbsentFields,
-        } of scenarios) {
+        for (const { description, operation, expectedCurrentFields, expectedAbsentFields } of scenarios) {
           helper.recordPrivateApi('call.ObjectMessage.fromValues');
           const msg = objectMessageFromValues({ operation });
           helper.recordPrivateApi('call.ObjectMessage.toUserFacingMessage');
           const result = msg.toUserFacingMessage(channel);
 
           expectDeepSubset(result.operation, expectedCurrentFields, `${description}: Check current fields`);
-          if (expectedDeprecatedFields) {
-            expectDeepSubset(result.operation, expectedDeprecatedFields, `${description}: Check deprecated fields`);
-          }
           for (const field of expectedAbsentFields ?? []) {
             expect(result.operation[field], `${description}: check '${field}' is not set`).to.not.exist;
           }

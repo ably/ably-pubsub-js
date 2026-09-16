@@ -132,22 +132,6 @@ class Logger {
     }
   }
 
-  deprecated = (description: string, msg: string) => {
-    this.deprecationWarning(`${description} is deprecated and will be removed in a future version. ${msg}`);
-  };
-
-  renamedClientOption(oldName: string, newName: string) {
-    this.deprecationWarning(
-      `The \`${oldName}\` client option has been renamed to \`${newName}\`. Please update your code to use \`${newName}\` instead. \`${oldName}\` will be removed in a future version.`,
-    );
-  }
-
-  renamedMethod(className: string, oldName: string, newName: string) {
-    this.deprecationWarning(
-      `\`${className}\`’s \`${oldName}\` method has been renamed to \`${newName}\`. Please update your code to use \`${newName}\` instead. \`${oldName}\` will be removed in a future version.`,
-    );
-  }
-
   deprecationWarning(message: string) {
     if (this.shouldLog(LogLevels.Error)) {
       this.logErrorHandler(`Ably: Deprecation warning - ${message}`, LogLevels.Error);

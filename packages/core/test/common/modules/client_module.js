@@ -65,19 +65,11 @@ define(['ably', 'globals', 'test/common/modules/testapp_module'], function (Ably
     return new Ably.Realtime(ablyClientOptions(helper, options));
   }
 
-  function ablyRealtimeWithoutEndpoint(helper, options) {
-    helper = helper.addingHelperFunction('ablyRealtime');
-    const clientOptions = ablyClientOptions(helper, options);
-    delete clientOptions.endpoint;
-    return new Ably.Realtime(clientOptions);
-  }
-
   return (module.exports = {
     Ably: Ably,
     AblyHttp: ablyHttp,
     AblyHttpEcho: ablyHttpEcho,
     AblyRealtime: ablyRealtime,
-    AblyRealtimeWithoutEndpoint: ablyRealtimeWithoutEndpoint,
     ablyClientOptions,
   });
 });

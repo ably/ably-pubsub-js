@@ -25,42 +25,6 @@ define(['ably', 'chai'], function (Ably, chai) {
     });
 
     /**
-     * @spec REC1b1
-     * @spec REC1c1
-     */
-    it('constructor with conflict client options', function () {
-      expect(
-        () =>
-          new Ably.Realtime({
-            endpoint: 'nonprod:sandbox',
-            environment: 'sandbox',
-          }),
-      )
-        .to.throw()
-        .with.property('code', 40106);
-
-      expect(
-        () =>
-          new Ably.Realtime({
-            environment: 'nonprod:sandbox',
-            restHost: 'localhost',
-          }),
-      )
-        .to.throw()
-        .with.property('code', 40106);
-
-      expect(
-        () =>
-          new Ably.Realtime({
-            endpoint: 'nonprod:sandbox',
-            restHost: 'localhost',
-          }),
-      )
-        .to.throw()
-        .with.property('code', 40106);
-    });
-
-    /**
      * @spec RSE1
      * @spec RSE2
      */

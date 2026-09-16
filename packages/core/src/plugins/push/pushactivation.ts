@@ -155,8 +155,7 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
           message: 'The local device cannot be loaded synchronously: push storage on this platform is asynchronous',
           code: 40000,
           statusCode: 400,
-          remediation:
-            'Use await client.getDevice() instead of client.device(). device() reads storage synchronously and is deprecated.',
+          remediation: 'Use await client.getDevice(), which loads the local device from asynchronous storage.',
         });
       }
       this.platform = pushConfig.platform;
@@ -650,7 +649,7 @@ type ActivationEvent =
 // States
 //
 // Invariant: processEvent() implementations are synchronous and read the local device via the
-// synchronous machine.client.device(). This relies on Push.activate()/deactivate() pre-hydrating
+// synchronous machine.client.deviceSync(). This relies on Push.activate()/deactivate() pre-hydrating
 // the device (await client.getDevice()) and the machine state (await ensureInitialized()) before
 // dispatching any event. Never add a device() call reachable before that hydration has happened.
 abstract class ActivationState {
@@ -673,7 +672,7 @@ class NotActivated extends ActivationState {
       machine.callDeactivatedCallback(null);
       return new NotActivated();
     } else if (event instanceof CalledActivate) {
-      const device = machine.client.device();
+      const device = machine.client.deviceSync();
 
       if (device.deviceIdentityToken != null) {
         if (device.clientId && device.clientId !== machine.client.auth.clientId) {
@@ -724,7 +723,7 @@ class WaitingForPushDeviceDetails extends ActivationState {
       return new NotActivated();
     } else if (event instanceof GotPushDeviceDetails) {
       const client = machine.client;
-      const device = client.device();
+      const device = client.deviceSync();
 
       if (machine.registerCallback) {
         machine.callCustomRegisterer(device, true);
@@ -772,7 +771,7 @@ class WaitingForDeviceRegistration extends ActivationState {
     if (event instanceof CalledActivate) {
       return new WaitingForDeviceRegistration();
     } else if (event instanceof GotDeviceRegistration) {
-      const device = machine.client.device();
+      const device = machine.client.deviceSync();
       device.deviceIdentityToken = event.tokenDetails.token;
       device.persist();
       machine.callActivatedCallback(null);
@@ -856,7 +855,7 @@ class WaitingForDeregistration extends ActivationState {
     if (event instanceof CalledDeactivate) {
       return new WaitingForDeregistration(this.previousState);
     } else if (event instanceof Deregistered) {
-      const device = machine.client.device();
+      const device = machine.client.deviceSync();
       delete device.deviceIdentityToken;
       delete device.push.recipient;
       loggedStorageWrites(machine.client, 'WaitingForDeregistration.processEvent()', [

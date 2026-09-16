@@ -413,11 +413,6 @@ export interface ClientOptions<Plugins = CorePlugins> extends AuthOptions {
   endpoint?: string;
 
   /**
-   * @deprecated This property is deprecated and will be removed in a future version. Use the {@link ClientOptions.endpoint} client option instead.
-   */
-  environment?: string;
-
-  /**
    * Controls the verbosity of the logs output from the library. Valid values are: 0 (no logs), 1 (errors only), 2 (errors plus connection and channel state changes), 3 (high-level debug output), and 4 (full debug output).
    */
   logLevel?: number;
@@ -443,16 +438,6 @@ export interface ClientOptions<Plugins = CorePlugins> extends AuthOptions {
    * @defaultValue `true`
    */
   queueMessages?: boolean;
-
-  /**
-   * @deprecated This property is deprecated and will be removed in a future version. Use the {@link ClientOptions.endpoint} client option instead.
-   */
-  restHost?: string;
-
-  /**
-   * @deprecated This property is deprecated and will be removed in a future version. Use the {@link ClientOptions.endpoint} client option instead.
-   */
-  realtimeHost?: string;
 
   /**
    * An array of fallback hosts to be used in the case of an error necessitating the use of an alternative host. If you have been provided a set of custom fallback hosts by Ably, please specify them here.
@@ -1877,13 +1862,6 @@ export declare interface HttpClient {
    */
   push: Push;
   /**
-   * Retrieves a {@link LocalDevice} object that represents the current state of the device as a target for push notifications.
-   *
-   * @returns A {@link LocalDevice} object.
-   * @deprecated Use {@link getDevice} instead. `device()` reads the device state from storage synchronously, which is not possible on platforms with asynchronous storage such as React Native. In the next major release `device()` will become asynchronous.
-   */
-  device(): LocalDevice;
-  /**
    * Retrieves a {@link LocalDevice} object that represents the current state of the device as a target for push notifications, loading it from persistent storage if necessary.
    *
    * @returns A promise which resolves to a {@link LocalDevice} object.
@@ -1980,13 +1958,6 @@ export declare interface RealtimeClient {
    */
   push: Push;
   /**
-   * Retrieves a {@link LocalDevice} object that represents the current state of the device as a target for push notifications.
-   *
-   * @returns A {@link LocalDevice} object.
-   * @deprecated Use {@link getDevice} instead. `device()` reads the device state from storage synchronously, which is not possible on platforms with asynchronous storage such as React Native. In the next major release `device()` will become asynchronous.
-   */
-  device(): LocalDevice;
-  /**
    * Retrieves a {@link LocalDevice} object that represents the current state of the device as a target for push notifications, loading it from persistent storage if necessary.
    *
    * @returns A promise which resolves to a {@link LocalDevice} object.
@@ -2031,25 +2002,6 @@ export declare interface Auth {
    */
   authorize(tokenParams?: TokenParams, authOptions?: AuthOptions): Promise<TokenDetails>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link Auth.authorize | `realtime.auth.authorize(tokenParams)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * realtime.auth.authorize(tokenParams, authOptions, (err, token) => {});
-   *
-   * // v2:
-   * const token = await realtime.auth.authorize(tokenParams, authOptions);
-   * ```
-   * @param tokenParams - A {@link TokenParams} object.
-   * @param authOptions - An {@link AuthOptions} object.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  authorize(
-    tokenParams: TokenParams | null,
-    authOptions: AuthOptions | null,
-    callback: StandardCallback<TokenDetails>,
-  ): void;
-  /**
    * Creates and signs an Ably {@link TokenRequest} based on the specified {@link TokenParams} and {@link AuthOptions}. Use this to implement an Ably Token request callback for use by other clients.
    *
    * An API `key` value must be available locally to sign the request, supplied either in the client's {@link ClientOptions} or as `key` in the `authOptions` argument. Without a `key` the call rejects with an {@link ErrorInfo}, since a client using [token authentication](https://ably.com/docs/auth/token) cannot construct token requests itself and must instead obtain the {@link TokenRequest} from the key owner.
@@ -2067,25 +2019,6 @@ export declare interface Auth {
    */
   createTokenRequest(tokenParams?: TokenParams, authOptions?: AuthOptions): Promise<TokenRequest>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link Auth.createTokenRequest | `realtime.auth.createTokenRequest(tokenParams)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * realtime.auth.createTokenRequest(tokenParams, authOptions, (err, req) => {});
-   *
-   * // v2:
-   * const req = await realtime.auth.createTokenRequest(tokenParams, authOptions);
-   * ```
-   * @param tokenParams - A {@link TokenParams} object.
-   * @param authOptions - An {@link AuthOptions} object.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  createTokenRequest(
-    tokenParams: TokenParams | null,
-    authOptions: AuthOptions | null,
-    callback: StandardCallback<TokenRequest>,
-  ): void;
-  /**
    * Obtains an Ably Token according to the specified {@link TokenParams} and {@link AuthOptions}.
    *
    * Both {@link TokenParams} and {@link AuthOptions} are optional. When omitted or `null`, the client's stored defaults are used, as specified at instantiation or later updated by an `authorize()` request. Any values passed in replace, rather than merge with, those defaults.
@@ -2102,25 +2035,6 @@ export declare interface Auth {
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/auth#request-token
    */
   requestToken(TokenParams?: TokenParams, authOptions?: AuthOptions): Promise<TokenDetails>;
-  /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link Auth.requestToken | `realtime.auth.requestToken(tokenParams)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * realtime.auth.requestToken(tokenParams, authOptions, (err, token) => {});
-   *
-   * // v2:
-   * const token = await realtime.auth.requestToken(tokenParams, authOptions);
-   * ```
-   * @param tokenParams - A {@link TokenParams} object.
-   * @param authOptions - An {@link AuthOptions} object.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  requestToken(
-    tokenParams: TokenParams | null,
-    authOptions: AuthOptions | null,
-    callback: StandardCallback<TokenDetails>,
-  ): void;
   /**
    * Revokes the tokens specified by the provided array of {@link TokenRevocationTargetSpecifier}s.
    *
@@ -2242,20 +2156,6 @@ export declare interface RealtimePresence {
    */
   get(params?: RealtimePresenceParams): Promise<PresenceMessage[]>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimePresence.get | `channel.presence.get(params)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.presence.get(params, (err, members) => {});
-   *
-   * // v2:
-   * const members = await channel.presence.get(params);
-   * ```
-   * @param params - A {@link RealtimePresenceParams} object.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  get(params: RealtimePresenceParams | null, callback: StandardCallback<PresenceMessage[]>): void;
-  /**
    * Retrieves a {@link PaginatedResult} object, containing an array of historical {@link PresenceMessage} objects for the channel. Presence messages are returned from storage only when message persistence is enabled for the channel by a [rule](https://ably.com/docs/channels#rules). If message persistence is not enabled, only presence messages from the last two minutes are returned.
    *
    * @param params - A set of parameters which are used to specify which presence messages should be retrieved.
@@ -2267,20 +2167,6 @@ export declare interface RealtimePresence {
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/realtime-presence#history
    */
   history(params?: RealtimeHistoryParams): Promise<PaginatedResult<PresenceMessage>>;
-  /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimePresence.history | `channel.presence.history(params)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.presence.history(params, (err, result) => {});
-   *
-   * // v2:
-   * const result = await channel.presence.history(params);
-   * ```
-   * @param params - A {@link RealtimeHistoryParams} object.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  history(params: RealtimeHistoryParams | null, callback: StandardCallback<PaginatedResult<PresenceMessage>>): void;
   /**
    * Registers a listener that is called each time a {@link PresenceMessage} matching a given {@link PresenceAction}, or an action within an array of {@link PresenceAction | `PresenceAction`s}, is received on the channel, such as a new member entering the presence set. Implicitly attaches the channel unless {@link ChannelOptions.attachOnSubscribe} is `false`. Without the `presence_subscribe` mode the server delivers no presence events and the listener never fires.
    *
@@ -2307,25 +2193,6 @@ export declare interface RealtimePresence {
    */
   subscribe(listener?: messageCallback<PresenceMessage>): Promise<void>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimePresence.subscribe | `channel.presence.subscribe(action, listener)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.presence.subscribe('enter', listener, (err) => {});
-   *
-   * // v2:
-   * await channel.presence.subscribe('enter', listener);
-   * ```
-   * @param action - A {@link PresenceAction} or an array of {@link PresenceAction | `PresenceAction`s}.
-   * @param listener - An event listener function.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  subscribe(
-    action: PresenceAction | Array<PresenceAction>,
-    listener: messageCallback<PresenceMessage>,
-    callback: ErrorCallback,
-  ): void;
-  /**
    * Enters the presence set for the channel, optionally passing a `data` payload. Implicitly attaches the channel if it is not already attached.
    *
    * Requires an identified client. If the `clientId` is unset, or is the wildcard `*`, the call rejects with an {@link ErrorInfo}. Set a `clientId` in {@link ClientOptions} or in the token, or use {@link RealtimePresence.enterClient | `enterClient()`} to enter on behalf of another identity.
@@ -2342,20 +2209,6 @@ export declare interface RealtimePresence {
    */
   enter(data?: any): Promise<void>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimePresence.enter | `channel.presence.enter(data)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.presence.enter(data, (err) => {});
-   *
-   * // v2:
-   * await channel.presence.enter(data);
-   * ```
-   * @param data - The payload associated with the presence member.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  enter(data: any, callback: ErrorCallback): void;
-  /**
    * Updates the `data` payload for a presence member. If called before entering the presence set, this is treated as an {@link PresenceActions.ENTER} event. Implicitly attaches the channel if it is not already attached.
    *
    * Requires an identified client. If the `clientId` is unset, or is the wildcard `*`, the call rejects with an {@link ErrorInfo}. Use {@link RealtimePresence.updateClient | `updateClient()`} to update on behalf of another identity.
@@ -2370,20 +2223,6 @@ export declare interface RealtimePresence {
    */
   update(data?: any): Promise<void>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimePresence.update | `channel.presence.update(data)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.presence.update(data, (err) => {});
-   *
-   * // v2:
-   * await channel.presence.update(data);
-   * ```
-   * @param data - The payload to update for the presence member.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  update(data: any, callback: ErrorCallback): void;
-  /**
    * Leaves the presence set for the channel. Use {@link RealtimePresence.leaveClient | `leaveClient()`} to leave on behalf of another identity.
    *
    * Leaving does not implicitly attach the channel. It requires a channel in the `attached` state. On an `attaching` channel the call is queued until the channel attaches, unless {@link ClientOptions.queueMessages} is disabled. In any other channel state, or when the connection is unusable, it rejects with an {@link ErrorInfo}.
@@ -2397,20 +2236,6 @@ export declare interface RealtimePresence {
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/realtime-presence#leave
    */
   leave(data?: any): Promise<void>;
-  /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimePresence.leave | `channel.presence.leave(data)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.presence.leave(data, (err) => {});
-   *
-   * // v2:
-   * await channel.presence.leave(data);
-   * ```
-   * @param data - The payload associated with the presence member.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  leave(data: any, callback: ErrorCallback): void;
   /**
    * Enters the presence set of the channel for a given `clientId`. Enables a single client to update presence on behalf of any number of clients using a single connection. Implicitly attaches the channel if it is not already attached.
    *
@@ -3055,21 +2880,6 @@ export declare interface RealtimeChannel extends EventEmitter<channelEventCallba
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/realtime-channel#unsubscribe
    */
   unsubscribe(): void;
-  /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimeChannel.unsubscribe | `channel.unsubscribe(name, listener)`} — the v2 API is synchronous. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.unsubscribe('event', listener, (err) => {});
-   *
-   * // v2:
-   * channel.unsubscribe('event', listener);
-   * ```
-   * @param event - The event name.
-   * @param listener - An event listener function.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  unsubscribe(event: string, listener: messageCallback<InboundMessage>, callback: ErrorCallback): void;
 
   /**
    * A {@link RealtimePresence} object.
@@ -3131,20 +2941,6 @@ export declare interface RealtimeChannel extends EventEmitter<channelEventCallba
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/realtime-channel#history
    */
   history(params?: RealtimeHistoryParams): Promise<PaginatedResult<InboundMessage>>;
-  /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimeChannel.history | `channel.history(params)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.history(params, (err, result) => {});
-   *
-   * // v2:
-   * const result = await channel.history(params);
-   * ```
-   * @param params - A {@link RealtimeHistoryParams} object.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  history(params: RealtimeHistoryParams | null, callback: StandardCallback<PaginatedResult<InboundMessage>>): void;
   /**
    * Sets the {@link ChannelOptions} for the channel.
    *
@@ -3215,21 +3011,6 @@ export declare interface RealtimeChannel extends EventEmitter<channelEventCallba
    */
   subscribe(callback: messageCallback<InboundMessage>): Promise<ChannelStateChange | null>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimeChannel.subscribe | `channel.subscribe(name, listener)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.subscribe('event', listener, (err) => { if (err) console.error(err); });
-   *
-   * // v2:
-   * await channel.subscribe('event', listener);
-   * ```
-   * @param event - The event name.
-   * @param listener - An event listener function.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  subscribe(event: string, listener: messageCallback<InboundMessage>, callback: ErrorCallback): void;
-  /**
    * Publishes a single message to the channel with the given event name and payload.
    *
    * @param name - The event name.
@@ -3269,21 +3050,6 @@ export declare interface RealtimeChannel extends EventEmitter<channelEventCallba
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/realtime-channel#publish
    */
   publish(message: Message, options?: PublishOptions): Promise<PublishResult>;
-  /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link RealtimeChannel.publish | `channel.publish(name, data)`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * channel.publish('event', data, (err) => { if (err) console.error(err); });
-   *
-   * // v2:
-   * await channel.publish('event', data);
-   * ```
-   * @param name - The event name.
-   * @param data - The message payload.
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  publish(name: string, data: any, callback: ErrorCallback): void;
   /**
    * If the channel is already in the given state, resolves immediately with `null`. Otherwise resolves with the {@link ChannelStateChange} the next time the channel transitions to the given state. If the channel never transitions to the given state, the promise never settles and no error is raised.
    *
@@ -4027,19 +3793,6 @@ export declare interface Connection
    */
   ping(): Promise<number>;
   /**
-   * @deprecated v1 callback signature — no longer supported. Use {@link Connection.ping | `realtime.connection.ping()`} and `await` the returned promise. See [the v2 migration guide](https://github.com/ably/ably-js/blob/main/docs/migration-guides/v2/lib.md).
-   * @example
-   * ```ts
-   * // v1 (no longer supported — IDE shows this with strikethrough):
-   * realtime.connection.ping((err, responseTime) => {});
-   *
-   * // v2:
-   * const responseTime = await realtime.connection.ping();
-   * ```
-   * @param callback - v1 Node-style callback (no longer supported).
-   */
-  ping(callback: StandardCallback<number>): void;
-  /**
    * If the connection is already in the given state, returns a promise which immediately resolves to `null`. Else, calls {@link EventEmitter.once | `once()`} to return a promise which resolves the next time the connection transitions to the given state.
    *
    * @param targetState - The connection state to wait for.
@@ -4534,7 +4287,6 @@ export declare class Http implements HttpClient {
   ): Promise<BatchResult<BatchPublishSuccessResult | BatchPublishFailureResult>[]>;
   batchPresence(channels: string[]): Promise<BatchResult<BatchPresenceSuccessResult | BatchPresenceFailureResult>[]>;
   push: Push;
-  device(): LocalDevice;
   getDevice(): Promise<LocalDevice>;
 }
 
@@ -4597,7 +4349,6 @@ export declare class Realtime implements RealtimeClient {
   ): Promise<BatchResult<BatchPublishSuccessResult | BatchPublishFailureResult>[]>;
   batchPresence(channels: string[]): Promise<BatchResult<BatchPresenceSuccessResult | BatchPresenceFailureResult>[]>;
   push: Push;
-  device(): LocalDevice;
   getDevice(): Promise<LocalDevice>;
 }
 

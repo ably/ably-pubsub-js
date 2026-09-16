@@ -328,7 +328,6 @@ export declare class BaseHttp implements HttpClient {
   ): Promise<BatchResult<BatchPublishSuccessResult | BatchPublishFailureResult>[]>;
   batchPresence(channels: string[]): Promise<BatchResult<BatchPresenceSuccessResult | BatchPresenceFailureResult>[]>;
   push: Push;
-  device(): LocalDevice;
   getDevice(): Promise<LocalDevice>;
 }
 
@@ -383,7 +382,6 @@ export declare class BaseRealtime implements RealtimeClient {
   ): Promise<BatchResult<BatchPublishSuccessResult | BatchPublishFailureResult>[]>;
   batchPresence(channels: string[]): Promise<BatchResult<BatchPresenceSuccessResult | BatchPresenceFailureResult>[]>;
   push: Push;
-  device(): LocalDevice;
   getDevice(): Promise<LocalDevice>;
 }
 

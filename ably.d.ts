@@ -3883,6 +3883,10 @@ export declare interface PresenceMessage {
    */
   id: string;
   /**
+   * Combines the `connectionId` and `clientId` to ensure that multiple connected clients with the same `clientId` are uniquely identifiable.
+   */
+  readonly memberKey: string;
+  /**
    * The time the `PresenceMessage` was received by Ably, as milliseconds since the Unix epoch.
    */
   timestamp: number;

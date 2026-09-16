@@ -49,7 +49,7 @@ class RealtimePresence extends EventEmitter {
     super(channel.logger);
     this.channel = channel;
     this.syncComplete = false;
-    this.members = new PresenceMap(this, (item) => item.clientId + ':' + item.connectionId);
+    this.members = new PresenceMap(this, (item) => item.memberKey);
     // RTP17h: Store own members by clientId only.
     this._myMembers = new PresenceMap(this, (item) => item.clientId!);
     this.subscriptions = new EventEmitter(this.logger);

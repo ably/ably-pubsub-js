@@ -134,18 +134,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### presence_message_types: TP3h - memberKey not exposed
-
-**Spec (TP3h)**: `PresenceMessage` should expose a `memberKey` property.
-
-**ably-js behavior**: `memberKey` is not exposed on `PresenceMessage`.
-
-**Test**: `TP3h - memberKey format`.
-
-**Issue**: [#2202](https://github.com/ably/ably-js/issues/2202)
-
----
-
 ### channels: RTL4c - errorReason not cleared on successful re-attach
 
 **Spec (RTL4c, proposed)**: When a confirmation ATTACHED is received, the channel's errorReason should be set to null.

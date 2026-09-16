@@ -57,12 +57,18 @@ export async function _fromEncodedArray(
 }
 
 // for tree-shakability
-export function fromValues(values: Properties<PresenceMessage>) {
+export function fromValues(values: Omit<Properties<PresenceMessage>, 'memberKey'>) {
   return PresenceMessage.fromValues(values);
 }
 
 class PresenceMessage extends BaseMessage {
   action?: string;
+
+  /* TP3h: combines the connectionId and clientId so that multiple connected
+   * clients with the same clientId are uniquely identifiable */
+  get memberKey(): string {
+    return this.connectionId + ':' + this.clientId;
+  }
 
   /* Returns whether this presenceMessage is synthesized, i.e. was not actually
    * sent by the connection (usually means a leave event sent 15s after a
@@ -94,11 +100,11 @@ class PresenceMessage extends BaseMessage {
     return encode(res, options);
   }
 
-  static fromValues(values: Properties<PresenceMessage>): PresenceMessage {
+  static fromValues(values: Omit<Properties<PresenceMessage>, 'memberKey'>): PresenceMessage {
     return Object.assign(new PresenceMessage(), values);
   }
 
-  static fromValuesArray(values: Properties<PresenceMessage>[]): PresenceMessage[] {
+  static fromValuesArray(values: Omit<Properties<PresenceMessage>, 'memberKey'>[]): PresenceMessage[] {
     return values.map((v) => PresenceMessage.fromValues(v));
   }
 

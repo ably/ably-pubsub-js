@@ -5,7 +5,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
   const Crypto = Ably.Realtime.Platform.Crypto;
   describe('realtime/annotations', function () {
     this.timeout(10 * 1000);
-    let rest, helper, realtime;
+    let http, helper, realtime;
 
     before(function (done) {
       helper = Helper.forHook(this);
@@ -15,7 +15,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
           done(err);
           return;
         }
-        rest = helper.AblyRest({ clientId: Helper.randomString(10) });
+        http = helper.AblyHttp({ clientId: Helper.randomString(10) });
         done();
       });
     });
@@ -32,7 +32,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       const channel = realtime.channels.get('mutable:publish_subscribe_annotation', {
         modes: ['publish', 'subscribe', 'annotation_publish', 'annotation_subscribe'],
       });
-      const restChannel = rest.channels.get('mutable:publish_subscribe_annotation');
+      const httpChannel = http.channels.get('mutable:publish_subscribe_annotation');
       await channel.attach();
       let onMessage = channel.subscriptions.once();
       let onAnnotation = channel.annotations.subscriptions.once();
@@ -54,10 +54,10 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       assert.equal(summary.action, 'message.summary');
       assert.equal(summary.serial, message.serial);
 
-      // try again but with rest publish
+      // try again but with http publish
       onAnnotation = channel.annotations.subscriptions.once();
 
-      await restChannel.annotations.publish(message, { type: 'reaction:distinct.v1', name: '😕' });
+      await httpChannel.annotations.publish(message, { type: 'reaction:distinct.v1', name: '😕' });
       annotation = await onAnnotation;
       assert.equal(annotation.action, 'annotation.create');
       assert.equal(annotation.messageSerial, message.serial);
@@ -73,7 +73,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         cipher: { key },
         modes: ['publish', 'subscribe', 'annotation_publish', 'annotation_subscribe'],
       });
-      const restChannel = rest.channels.get(channelName, { cipher: { key } });
+      const httpChannel = http.channels.get(channelName, { cipher: { key } });
       await channel.attach();
       const onMessage = channel.subscriptions.once();
       let onAnnotation = channel.annotations.subscriptions.once();
@@ -96,13 +96,13 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
 
       // and again via the rest publish path
       onAnnotation = channel.annotations.subscriptions.once();
-      await restChannel.annotations.publish(message, {
+      await httpChannel.annotations.publish(message, {
         type: 'reaction:distinct.v1',
         name: '😕',
-        data: 'rest annotation data',
+        data: 'http annotation data',
       });
       annotation = await onAnnotation;
-      assert.equal(annotation.data, 'rest annotation data', 'check rest-published annotation data round-tripped');
+      assert.equal(annotation.data, 'http annotation data', 'check http-published annotation data round-tripped');
     });
 
     /* A round-trip test cannot catch a failure to encrypt: an unencrypted payload
@@ -117,9 +117,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         cipher: { key },
         modes: ['publish', 'subscribe', 'annotation_publish', 'annotation_subscribe'],
       });
-      // text protocol so the intercepted rest body can be parsed as JSON
-      const jsonRest = helper.AblyRest({ clientId: Helper.randomString(10), useBinaryProtocol: false });
-      const restChannel = jsonRest.channels.get(channelName, { cipher: { key } });
+      // text protocol so the intercepted http body can be parsed as JSON
+      const jsonHttp = helper.AblyHttp({ clientId: Helper.randomString(10), useBinaryProtocol: false });
+      const httpChannel = jsonHttp.channels.get(channelName, { cipher: { key } });
       await channel.attach();
       const onMessage = channel.subscriptions.once();
       await channel.publish('message', 'foobar');
@@ -159,27 +159,27 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       }
       assertEncrypted(sentAnnotation, 'realtime-published');
 
-      // rest publish path: intercept the serialized request body
+      // http publish path: intercept the serialized request body
       let postedAnnotation;
-      helper.recordPrivateApi('replace.rest.http.do');
-      const httpDoOrig = jsonRest.http.do;
-      jsonRest.http.do = function (method, path, headers, body, params) {
+      helper.recordPrivateApi('replace.http.httpRequester.do');
+      const httpDoOrig = jsonHttp.httpRequester.do;
+      jsonHttp.httpRequester.do = function (method, path, headers, body, params) {
         if (path.includes('/annotations') && body) {
           postedAnnotation = JSON.parse(body)[0];
         }
-        helper.recordPrivateApi('call.rest.http.do');
-        return httpDoOrig.call(jsonRest.http, method, path, headers, body, params);
+        helper.recordPrivateApi('call.http.httpRequester.do');
+        return httpDoOrig.call(jsonHttp.httpRequester, method, path, headers, body, params);
       };
 
       try {
-        await restChannel.annotations.publish(message, { type: 'reaction:distinct.v1', name: '😕', data: plaintext });
+        await httpChannel.annotations.publish(message, { type: 'reaction:distinct.v1', name: '😕', data: plaintext });
       } finally {
-        jsonRest.http.do = httpDoOrig;
+        jsonHttp.httpRequester.do = httpDoOrig;
       }
-      assertEncrypted(postedAnnotation, 'rest-published');
+      assertEncrypted(postedAnnotation, 'http-published');
     });
 
-    it('get all annotations rest request', async () => {
+    it('get all annotations http request', async () => {
       const channel = realtime.channels.get('mutable:get_all_annotations_for_a_message', {
         modes: ['publish', 'subscribe', 'annotation_publish', 'annotation_subscribe'],
       });

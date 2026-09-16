@@ -18,10 +18,10 @@ describe('uts/realtime/unit/channels/channel_history', function () {
   });
 
   /**
-   * RTL10a, RTL10c - RealtimeChannel#history supports all RestChannel#history params
+   * RTL10a, RTL10c - RealtimeChannel#history supports all HttpChannel#history params
    *
    * RealtimeChannel#history uses the same underlying REST endpoint as
-   * RestChannel#history. It supports start, end, direction, limit params
+   * HttpChannel#history. It supports start, end, direction, limit params
    * and returns a PaginatedResult containing Message objects.
    */
   // UTS: realtime/unit/RTL10a/supports-rest-params-0

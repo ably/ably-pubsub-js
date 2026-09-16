@@ -4,7 +4,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
   var expect = chai.expect;
   var goodHost;
 
-  describe('rest/fallbacks', function () {
+  describe('http/fallbacks', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -14,7 +14,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
           done(err);
           return;
         }
-        goodHost = helper.AblyRest().options.primaryDomain;
+        goodHost = helper.AblyHttp().options.primaryDomain;
         done();
       });
     });
@@ -24,42 +24,42 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      */
     it('Store working fallback', async function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest({
+      var http = helper.AblyHttp({
         endpoint: helper.unroutableHost,
         fallbackHosts: [goodHost],
         httpRequestTimeout: 3000,
       });
       var validUntil;
-      var serverTime = await rest.time();
+      var serverTime = await http.time();
       expect(serverTime, 'Check serverTime returned').to.be.ok;
-      helper.recordPrivateApi('read.rest._currentFallback');
-      var currentFallback = rest._currentFallback;
+      helper.recordPrivateApi('read.http._currentFallback');
+      var currentFallback = http._currentFallback;
       expect(currentFallback, 'Check current fallback stored').to.be.ok;
-      helper.recordPrivateApi('read.rest._currentFallback.host');
+      helper.recordPrivateApi('read.http._currentFallback.host');
       expect(currentFallback && currentFallback.host).to.equal(goodHost, 'Check good host set');
-      helper.recordPrivateApi('read.rest._currentFallback.validUntil');
+      helper.recordPrivateApi('read.http._currentFallback.validUntil');
       validUntil = currentFallback.validUntil;
       /* now try again, check that this time it uses the remembered good endpoint straight away */
-      var serverTime = await rest.time();
+      var serverTime = await http.time();
       expect(serverTime, 'Check serverTime returned').to.be.ok;
-      var currentFallback = rest._currentFallback;
-      helper.recordPrivateApi('read.rest._currentFallback.validUntil');
+      var currentFallback = http._currentFallback;
+      helper.recordPrivateApi('read.http._currentFallback.validUntil');
       expect(currentFallback.validUntil).to.equal(
         validUntil,
         'Check validUntil is the same (implying currentFallback has not been re-set)',
       );
       /* set the validUntil to the past and check that the stored fallback is forgotten */
       var now = Date.now();
-      helper.recordPrivateApi('write.rest._currentFallback.validUntil');
-      rest._currentFallback.validUntil = now - 1000;
-      var serverTime = await rest.time();
+      helper.recordPrivateApi('write.http._currentFallback.validUntil');
+      http._currentFallback.validUntil = now - 1000;
+      var serverTime = await http.time();
       expect(serverTime, 'Check serverTime returned').to.be.ok;
-      helper.recordPrivateApi('read.rest._currentFallback');
-      var currentFallback = rest._currentFallback;
+      helper.recordPrivateApi('read.http._currentFallback');
+      var currentFallback = http._currentFallback;
       expect(currentFallback, 'Check current fallback re-stored').to.be.ok;
-      helper.recordPrivateApi('read.rest._currentFallback.host');
+      helper.recordPrivateApi('read.http._currentFallback.host');
       expect(currentFallback && currentFallback.host).to.equal(goodHost, 'Check good host set again');
-      helper.recordPrivateApi('read.rest._currentFallback.validUntil');
+      helper.recordPrivateApi('read.http._currentFallback.validUntil');
       expect(currentFallback.validUntil > now, 'Check validUntil has been re-set').to.be.ok;
     });
 
@@ -69,29 +69,29 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      */
     it('Should use the primary domain as the first attempted for every connection attempt', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({
+      const http = helper.AblyHttp({
         endpoint: helper.unroutableHost,
         fallbackHosts: [goodHost],
         httpRequestTimeout: 3000,
       });
-      const originDoUri = rest.http.doUri.bind(rest.http);
+      const originDoUri = http.httpRequester.doUri.bind(http.httpRequester);
       const recordedHttpRequests = [];
 
-      rest.http.doUri = (method, uri, ...rest) => {
+      http.httpRequester.doUri = (method, uri, ...rest) => {
         recordedHttpRequests.push(uri);
         return originDoUri(method, uri, ...rest);
       };
 
-      await rest.time();
+      await http.time();
       expect(recordedHttpRequests.length).to.be.eq(2);
       expect(recordedHttpRequests[0]).to.be.eq(`https://${helper.unroutableHost}:443/time`);
       expect(recordedHttpRequests[1]).to.be.eq('https://sandbox.realtime.ably-nonprod.net:443/time');
 
       recordedHttpRequests.length = 0;
-      helper.recordPrivateApi('write.rest._currentFallback.validUntil');
-      rest._currentFallback.validUntil = Date.now() - 1000;
+      helper.recordPrivateApi('write.http._currentFallback.validUntil');
+      http._currentFallback.validUntil = Date.now() - 1000;
 
-      await rest.time();
+      await http.time();
       expect(recordedHttpRequests.length).to.be.eq(2);
       expect(recordedHttpRequests[0]).to.be.eq(`https://${helper.unroutableHost}:443/time`);
       expect(recordedHttpRequests[1]).to.be.eq('https://sandbox.realtime.ably-nonprod.net:443/time');
@@ -104,7 +104,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
         const httpRequestTimeout = 1000;
         // set httpMaxRetryDuration lower than httpRequestTimeout so it would timeout after default host attempt
         const httpMaxRetryDuration = Math.floor(httpRequestTimeout / 2);
-        const rest = helper.AblyRest({
+        const http = helper.AblyHttp({
           endpoint: helper.unroutableHost,
           fallbackHosts: [helper.unroutableHost],
           httpRequestTimeout,
@@ -114,7 +114,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
         let thrownError = null;
         try {
           // we expect it to fail due to max elapsed time reached for host retries
-          await rest.time();
+          await http.time();
         } catch (error) {
           thrownError = error;
         }
@@ -131,7 +131,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
         const httpRequestTimeout = 1000;
         // set httpMaxRetryDuration higher than httpRequestTimeout and lower than 2*httpRequestTimeout so it would timeout after first fallback host retry attempt
         const httpMaxRetryDuration = Math.floor(httpRequestTimeout * 1.5);
-        const rest = helper.AblyRest({
+        const http = helper.AblyHttp({
           endpoint: helper.unroutableHost,
           fallbackHosts: [helper.unroutableHost, helper.unroutableHost],
           httpRequestTimeout,
@@ -141,7 +141,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
         let thrownError = null;
         try {
           // we expect it to fail due to max elapsed time reached for host retries
-          await rest.time();
+          await http.time();
         } catch (error) {
           thrownError = error;
         }

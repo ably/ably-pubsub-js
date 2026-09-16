@@ -38,7 +38,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
   it('RSL1d - publish failure with restricted key returns error', async function () {
     const channelName = uniqueChannelName('forbidden-channel');
 
-    const restrictedClient = new Ably.Rest({
+    const restrictedClient = new Ably.Http({
       key: getApiKey(2), // per-channel capabilities
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -62,7 +62,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
    */
   // UTS: rest/integration/RSL1n/publish-result-serials-0.1
   it('RSL1n - single message publish returns result with serial', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -81,7 +81,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
 
   // UTS: rest/integration/RSL1n/publish-result-serials-0
   it('RSL1n - multiple message publish returns result with unique serials', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -117,7 +117,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
    */
   // UTS: rest/integration/RSL1k5/idempotent-client-ids-0
   it('RSL1k5 - idempotent publish with client-supplied ID', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -158,7 +158,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
    */
   // UTS: rest/integration/RSL1l1/publish-params-force-nack-0
   it('RSL1l1 - publish with _forceNack param is rejected', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -183,7 +183,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
   // UTS: rest/integration/RSL1m4/clientid-mismatch-rejected-0
   it('RSL1m4 - clientId mismatch in message is rejected', async function () {
     // Create a token with a specific clientId
-    const keyClient = new Ably.Rest({
+    const keyClient = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -192,7 +192,7 @@ describeEachProtocol('uts/rest/integration/publish', function (protocol) {
     const tokenDetails = await keyClient.auth.requestToken({ clientId: 'authenticated-client-id' });
 
     // Client using token with clientId
-    const tokenClient = new Ably.Rest({
+    const tokenClient = new Ably.Http({
       token: tokenDetails.token,
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',

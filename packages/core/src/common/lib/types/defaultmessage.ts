@@ -5,7 +5,7 @@ import Logger from '../util/logger';
 import type { Properties } from '../util/utils';
 
 /**
- `DefaultMessage` is the class returned by `DefaultRest` and `DefaultRealtime`’s `Message` static property. It introduces the static methods described in the `MessageStatic` interface of the public API of the non tree-shakable version of the library.
+ `DefaultMessage` is the class returned by `DefaultHttp` and `DefaultRealtime`’s `Message` static property. It introduces the static methods described in the `MessageStatic` interface of the public API of the non tree-shakable version of the library.
  */
 export class DefaultMessage extends Message {
   static async fromEncoded(encoded: unknown, inputOptions?: API.ChannelOptions): Promise<Message> {

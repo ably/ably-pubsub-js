@@ -40,7 +40,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.save({
       id: 'device-001',
       clientId: 'client-abc',
@@ -83,7 +83,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.deviceRegistrations.save({
       id: 'device-001',
       clientId: 'client-abc',
@@ -134,7 +134,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.get('device-001');
 
     expect(captured).to.have.length(1);
@@ -168,7 +168,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const device = await client.push.admin.deviceRegistrations.get('device-001');
 
     expect(device.id).to.equal('device-001');
@@ -204,7 +204,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.list({});
 
     expect(captured).to.have.length(1);
@@ -238,7 +238,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.list({ deviceId: 'device-001' });
 
     expect(captured).to.have.length(1);
@@ -275,7 +275,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.deviceRegistrations.list({ clientId: 'client-abc' });
 
     expect(result.items).to.have.length(2);
@@ -300,7 +300,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.remove('device-001');
 
     expect(captured).to.have.length(1);
@@ -325,7 +325,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     // Pass a plain string, not a DeviceDetails object
     await client.push.admin.deviceRegistrations.remove('my-device-id');
 
@@ -352,7 +352,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.removeWhere({ clientId: 'client-abc' });
 
     expect(captured).to.have.length(1);
@@ -379,7 +379,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.deviceRegistrations.get('unknown-device');
@@ -412,7 +412,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.get('device/special:id');
 
     expect(captured).to.have.length(1);
@@ -444,7 +444,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.list({ clientId: 'client-abc' });
 
     expect(captured).to.have.length(1);
@@ -475,7 +475,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.list({ limit: '2' });
 
     expect(captured).to.have.length(1);
@@ -500,7 +500,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.deviceRegistrations.save({
@@ -535,7 +535,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.remove('nonexistent');
 
     expect(captured).to.have.length(1);
@@ -561,7 +561,7 @@ describe('uts/rest/unit/push/push_device_registrations', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.deviceRegistrations.removeWhere({ deviceId: 'device-001' });
 
     expect(captured).to.have.length(1);

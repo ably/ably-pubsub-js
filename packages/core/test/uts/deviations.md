@@ -102,7 +102,7 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 **Spec (RSAN1c4)**: Annotations with empty `id` should get a generated idempotent ID. **Spec (RSC22d)**: Same for batch publish.
 
-**ably-js behavior**: Neither `RestAnnotations.publish()` nor `batchPublish()` generates idempotent IDs.
+**ably-js behavior**: Neither `HttpAnnotations.publish()` nor `batchPublish()` generates idempotent IDs.
 
 **Tests**: `RSAN1c4 - idempotent ID generated`, `RSC22d - batch publish generates idempotent IDs`.
 

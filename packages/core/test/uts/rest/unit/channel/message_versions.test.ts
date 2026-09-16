@@ -40,7 +40,7 @@ describe('uts/rest/unit/channel/getMessageVersions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
     await ch.getMessageVersions('msg-serial-1');
 
@@ -80,7 +80,7 @@ describe('uts/rest/unit/channel/getMessageVersions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
     const result = await ch.getMessageVersions('msg-serial-1');
 
@@ -121,7 +121,7 @@ describe('uts/rest/unit/channel/getMessageVersions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
     await ch.getMessageVersions('msg-serial-1', { direction: 'backwards', limit: '10' });
 

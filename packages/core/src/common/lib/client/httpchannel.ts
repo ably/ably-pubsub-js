@@ -1,6 +1,6 @@
 import * as Utils from '../util/utils';
 import Logger from '../util/logger';
-import RestPresence from './restpresence';
+import HttpPresence from './httppresence';
 import Message, {
   serialize as serializeMessage,
   getMessagesSize,
@@ -10,18 +10,18 @@ import ErrorInfo from '../types/errorinfo';
 import { PaginatedResult } from './paginatedresource';
 import Resource from './resource';
 import { ChannelOptions } from '../../types/channel';
-import BaseRest from './baseclient';
+import BaseHttp from './baseclient';
 import * as API from '../../../../ably';
 import Defaults, { normaliseChannelOptions } from '../util/defaults';
-import { RestHistoryParams } from './restchannelmixin';
+import { HttpHistoryParams } from './httpchannelmixin';
 import { RequestBody } from 'common/types/http';
 import type { PushChannel } from 'plugins/push';
-import type RestAnnotations from './restannotations';
-import type { RestObject } from 'plugins/liveobjects';
+import type HttpAnnotations from './httpannotations';
+import type { HttpObject } from 'plugins/liveobjects';
 
 const MSG_ID_ENTROPY_BYTES = 9;
 
-type RestPublishResponse = API.PublishResult & { channel?: string; messageId?: string };
+type HttpPublishResponse = API.PublishResult & { channel?: string; messageId?: string };
 
 function allEmptyIds(messages: Array<Message>) {
   return messages.every(function (message: Message) {
@@ -29,35 +29,35 @@ function allEmptyIds(messages: Array<Message>) {
   });
 }
 
-class RestChannel {
-  client: BaseRest;
+class HttpChannel {
+  client: BaseHttp;
   name: string;
-  presence: RestPresence;
+  presence: HttpPresence;
   channelOptions: ChannelOptions;
   _push?: PushChannel;
-  private _annotations: RestAnnotations | null = null;
-  get annotations(): RestAnnotations {
+  private _annotations: HttpAnnotations | null = null;
+  get annotations(): HttpAnnotations {
     if (!this._annotations) {
       Utils.throwMissingPluginError('Annotations');
     }
     return this._annotations;
   }
-  private _object?: RestObject;
+  private _object?: HttpObject;
 
-  constructor(client: BaseRest, name: string, channelOptions?: ChannelOptions) {
-    Logger.logAction(client.logger, Logger.LOG_MINOR, 'RestChannel()', 'started; name = ' + name);
+  constructor(client: BaseHttp, name: string, channelOptions?: ChannelOptions) {
+    Logger.logAction(client.logger, Logger.LOG_MINOR, 'HttpChannel()', 'started; name = ' + name);
     this.name = name;
     this.client = client;
-    this.presence = new RestPresence(this);
+    this.presence = new HttpPresence(this);
     this.channelOptions = normaliseChannelOptions(client._Crypto ?? null, this.logger, channelOptions);
     if (client.options.plugins?.Push) {
       this._push = new client.options.plugins.Push.PushChannel(this);
     }
     if (client._Annotations) {
-      this._annotations = new client._Annotations.RestAnnotations(this);
+      this._annotations = new client._Annotations.HttpAnnotations(this);
     }
     if (client._liveObjectsPlugin) {
-      this._object = new client._liveObjectsPlugin.RestObject(this);
+      this._object = new client._liveObjectsPlugin.HttpObject(this);
     }
   }
 
@@ -68,7 +68,7 @@ class RestChannel {
     return this._push;
   }
 
-  get object(): RestObject {
+  get object(): HttpObject {
     if (!this._object) {
       Utils.throwMissingPluginError('LiveObjects');
     }
@@ -83,9 +83,9 @@ class RestChannel {
     this.channelOptions = normaliseChannelOptions(this.client._Crypto ?? null, this.logger, options);
   }
 
-  async history(params?: RestHistoryParams | null): Promise<PaginatedResult<Message>> {
-    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RestChannel.history()', 'channel = ' + this.name);
-    return this.client.rest.channelMixin.history(this, params ?? null);
+  async history(params?: HttpHistoryParams | null): Promise<PaginatedResult<Message>> {
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.history()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.history(this, params ?? null);
   }
 
   async publish(...args: any[]): Promise<API.PublishResult> {
@@ -160,9 +160,9 @@ class RestChannel {
   ): Promise<API.PublishResult> {
     const client = this.client;
     const format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json;
-    const { body, unpacked } = await Resource.post<RestPublishResponse>(
+    const { body, unpacked } = await Resource.post<HttpPublishResponse>(
       client,
-      client.rest.channelMixin.basePath(this) + '/messages',
+      client.http.channelMixin.basePath(this) + '/messages',
       requestBody,
       headers,
       params,
@@ -170,20 +170,20 @@ class RestChannel {
       true,
     );
     const decoded =
-      (unpacked ? body : Utils.decodeBody<RestPublishResponse>(body, client._MsgPack, format)) ||
-      ({} as RestPublishResponse);
+      (unpacked ? body : Utils.decodeBody<HttpPublishResponse>(body, client._MsgPack, format)) ||
+      ({} as HttpPublishResponse);
     delete decoded['channel'];
     delete decoded['messageId'];
     return decoded;
   }
 
   async status(): Promise<API.ChannelDetails> {
-    return this.client.rest.channelMixin.status(this);
+    return this.client.http.channelMixin.status(this);
   }
 
   async getMessage(serialOrMessage: string | Message): Promise<Message> {
-    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RestChannel.getMessage()', 'channel = ' + this.name);
-    return this.client.rest.channelMixin.getMessage(this, serialOrMessage);
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.getMessage()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.getMessage(this, serialOrMessage);
   }
 
   async updateMessage(
@@ -191,8 +191,8 @@ class RestChannel {
     operation?: API.MessageOperation,
     params?: Record<string, any>,
   ): Promise<API.UpdateDeleteResult> {
-    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RestChannel.updateMessage()', 'channel = ' + this.name);
-    return this.client.rest.channelMixin.updateDeleteMessage(this, 'message.update', message, operation, params);
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.updateMessage()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.updateDeleteMessage(this, 'message.update', message, operation, params);
   }
 
   async deleteMessage(
@@ -200,8 +200,8 @@ class RestChannel {
     operation?: API.MessageOperation,
     params?: Record<string, any>,
   ): Promise<API.UpdateDeleteResult> {
-    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RestChannel.deleteMessage()', 'channel = ' + this.name);
-    return this.client.rest.channelMixin.updateDeleteMessage(this, 'message.delete', message, operation, params);
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.deleteMessage()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.updateDeleteMessage(this, 'message.delete', message, operation, params);
   }
 
   async appendMessage(
@@ -209,17 +209,17 @@ class RestChannel {
     operation?: API.MessageOperation,
     params?: Record<string, any>,
   ): Promise<API.UpdateDeleteResult> {
-    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RestChannel.appendMessage()', 'channel = ' + this.name);
-    return this.client.rest.channelMixin.updateDeleteMessage(this, 'message.append', message, operation, params);
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.appendMessage()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.updateDeleteMessage(this, 'message.append', message, operation, params);
   }
 
   async getMessageVersions(
     serialOrMessage: string | Message,
     params?: Record<string, any>,
   ): Promise<PaginatedResult<Message>> {
-    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RestChannel.getMessageVersions()', 'channel = ' + this.name);
-    return this.client.rest.channelMixin.getMessageVersions(this, serialOrMessage, params);
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.getMessageVersions()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.getMessageVersions(this, serialOrMessage, params);
   }
 }
 
-export default RestChannel;
+export default HttpChannel;

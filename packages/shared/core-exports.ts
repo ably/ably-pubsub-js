@@ -17,4 +17,4 @@
  * The type surface is handled separately, in each package's hand-written `index.d.ts`,
  * where `export * from '@ably/pubsub-core'` is safe because it resolves at compile time only.
  */
-export { Rest, Realtime, ErrorInfo } from '@ably/pubsub-core';
+export { Http, Realtime, ErrorInfo } from '@ably/pubsub-core';

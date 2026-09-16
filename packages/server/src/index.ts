@@ -1,19 +1,19 @@
-import { Realtime, Rest } from '@ably/pubsub-core';
+import { Realtime, Http } from '@ably/pubsub-core';
 import type * as Ably from '@ably/pubsub-core';
 import { optionsWithSideAgent, serverAgentIdentifier } from '../../shared/side';
 
 // Re-export the core's public value surface, so consumers of this package never need to
 // depend on `@ably/pubsub-core` directly. See ../../shared/core-exports.ts for why the list is
 // enumerated rather than star-re-exported.
-export { Rest, Realtime, ErrorInfo } from '../../shared/core-exports';
+export { Http, Realtime, ErrorInfo } from '../../shared/core-exports';
 
 // The contract of both factories, including how the MAU exemption is granted and why token
 // auth needs more than the agent entry, is documented on the declarations in ../index.d.ts,
 // which is what consumers see. Following the core, which keeps its documentation in
 // ably.d.ts rather than duplicating it here.
 
-export function createHttpClient(options: Ably.ClientOptions | string): Ably.Rest {
-  return new Rest(optionsWithSideAgent(options, serverAgentIdentifier));
+export function createHttpClient(options: Ably.ClientOptions | string): Ably.Http {
+  return new Http(optionsWithSideAgent(options, serverAgentIdentifier));
 }
 
 export function createRealtimeClient(options: Ably.ClientOptions | string): Ably.Realtime {

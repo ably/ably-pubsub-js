@@ -9,7 +9,7 @@ import { expect } from 'chai';
 import { MockHttpClient } from '../../../mock_http';
 import { Ably, installMockHttp, restoreAll } from '../../../helpers';
 
-const Message = Ably.Rest.Message;
+const Message = Ably.Http.Message;
 
 describe('uts/rest/unit/channel/idempotency', function () {
   afterEach(function () {
@@ -23,7 +23,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
    */
   // UTS: rest/unit/RSL1k1/idempotent-default-true-0
   it('RSL1k1 - idempotentRestPublishing defaults to true', function () {
-    const client = new Ably.Rest({ key: 'a.b:c' });
+    const client = new Ably.Http({ key: 'a.b:c' });
     expect(client.options.idempotentRestPublishing).to.equal(true);
   });
 
@@ -47,7 +47,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: true,
@@ -92,7 +92,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: true,
@@ -140,7 +140,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: true,
@@ -176,7 +176,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: false,
@@ -209,7 +209,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: true,
@@ -252,7 +252,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: true,
@@ -291,7 +291,7 @@ describe('uts/rest/unit/channel/idempotency', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       idempotentRestPublishing: true,

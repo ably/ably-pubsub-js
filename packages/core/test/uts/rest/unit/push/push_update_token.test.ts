@@ -90,7 +90,7 @@ describe('push_update_token', function () {
     opts?: { token?: ReactNativePushToken | (() => Promise<ReactNativePushToken>) },
   ) {
     const token = opts?.token ?? { transportType: 'fcm' as const, token: 'fcm-token-1' };
-    return new Ably.Rest({
+    return new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: {

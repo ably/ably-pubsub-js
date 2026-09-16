@@ -1,11 +1,11 @@
 'use strict';
 
 define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
-  var Defaults = Ably.Rest.Platform.Defaults;
+  var Defaults = Ably.Http.Platform.Defaults;
 
-  describe('rest/request', function () {
+  describe('http/request', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -15,7 +15,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
           done(err);
           return;
         }
-        rest = helper.AblyRest({ useBinaryProtocol: false });
+        http = helper.AblyHttp({ useBinaryProtocol: false });
         done();
       });
     });
@@ -28,7 +28,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @specpartial CSV2c - tests version is provided in http requests
      */
     Helper.testOnJsonMsgpack('request_version', async function (options, _, helper) {
-      const rest = helper.AblyRest(options);
+      const http = helper.AblyHttp(options);
       const version = 150; // arbitrarily chosen
 
       let savedResolve;
@@ -49,10 +49,10 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
         return new Promise(() => {});
       }
 
-      helper.recordPrivateApi('replace.rest.http.do');
-      rest.http.do = testRequestHandler;
+      helper.recordPrivateApi('replace.http.httpRequester.do');
+      http.httpRequester.do = testRequestHandler;
 
-      rest.request('get', '/time' /* arbitrarily chosen */, version, null, null, null);
+      http.request('get', '/time' /* arbitrarily chosen */, version, null, null, null);
       await promise;
     });
 
@@ -65,8 +65,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @specpartial RSC19f - basic test for passing a http method, path and version parameters
      */
     Helper.testOnJsonMsgpack('request_time', async function (options, _, helper) {
-      const rest = helper.AblyRest(options);
-      const res = await rest.request('get', '/time', 3, null, null, null);
+      const http = helper.AblyHttp(options);
+      const res = await http.request('get', '/time', 3, null, null, null);
       expect(res.statusCode).to.equal(200, 'Check statusCode');
       expect(res.success).to.equal(true, 'Check success');
       expect(Array.isArray(res.items), true, 'Check array returned').to.be.ok;
@@ -82,11 +82,11 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @spec HP7
      */
     Helper.testOnJsonMsgpack('request_404', async function (options, _, helper) {
-      const rest = helper.AblyRest(options);
+      const http = helper.AblyHttp(options);
       /* NB: can't just use /invalid or something as the CORS preflight will
        * fail. Need something superficially a valid path but where the actual
        * request fails */
-      const res = await rest.request('get', '/keys/ablyjs.test/requestToken', 3, null, null, null);
+      const res = await http.request('get', '/keys/ablyjs.test/requestToken', 3, null, null, null);
       expect(res.success).to.equal(false, 'Check res.success is false for a failure');
       expect(res.statusCode).to.equal(404, 'Check HPR.statusCode is 404');
       expect(res.errorCode).to.equal(40400, 'Check HPR.errorCode is 40400');
@@ -99,15 +99,15 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('request_network_error', async function () {
       const helper = this.test.helper;
-      rest = helper.AblyRest({ endpoint: helper.unroutableAddress });
+      http = helper.AblyHttp({ endpoint: helper.unroutableAddress });
       try {
-        var res = await rest.request('get', '/time', 3, null, null, null);
+        var res = await http.request('get', '/time', 3, null, null, null);
       } catch (err) {
         expect(err, 'Check get an err').to.be.ok;
         expect(!res, 'Check do not get a res').to.be.ok;
         return;
       }
-      expect.fail('Expected rest.request to throw');
+      expect.fail('Expected http.request to throw');
     });
 
     /**
@@ -121,21 +121,21 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @specpartial RSC19f - more tests with passing other methods, body and parameters
      */
     Helper.testOnJsonMsgpack('request_post_get_messages', async function (options, channelName, helper) {
-      const rest = helper.AblyRest(options);
+      const http = helper.AblyHttp(options);
       var channelPath = '/channels/' + channelName + '/messages',
         msgone = { name: 'faye', data: 'whittaker' },
         msgtwo = { name: 'martin', data: 'reed' };
 
-      var res = await rest.request('post', channelPath, 3, null, msgone, null);
+      var res = await http.request('post', channelPath, 3, null, msgone, null);
       expect(res.statusCode).to.equal(201, 'Check statusCode is 201');
       expect(res.success).to.equal(true, 'Check post was a success');
       expect(res.items && res.items.length).to.equal(1, 'Check number of results is as expected');
 
-      res = await rest.request('post', channelPath, 3, null, msgtwo, null);
+      res = await http.request('post', channelPath, 3, null, msgtwo, null);
       expect(res.statusCode).to.equal(201, 'Check statusCode is 201');
       expect(res.items && res.items.length).to.equal(1, 'Check number of results is as expected');
 
-      res = await rest.request('get', channelPath, 3, { limit: 1, direction: 'forwards' }, null, null);
+      res = await http.request('get', channelPath, 3, { limit: 1, direction: 'forwards' }, null, null);
       expect(res.statusCode).to.equal(200, 'Check statusCode is 200');
       expect(res.items.length).to.equal(1, 'Check only one msg returned');
       expect(res.items[0].name).to.equal(msgone.name, 'Check name is as expected');
@@ -150,7 +150,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       expect(res.items[0].data).to.equal(msgtwo.data, 'Check data is as expected');
 
       /* Finally check the messages the 'normal' way to make sure everything's as expected */
-      res = await rest.channels.get(channelName).history();
+      res = await http.channels.get(channelName).history();
       expect(res.items.length).to.equal(2, 'Check both msgs returned');
       expect(res.items[0].name).to.equal(msgtwo.name, 'Check name is as expected');
       expect(res.items[0].data).to.equal(msgtwo.data, 'Check data is as expected');
@@ -167,10 +167,10 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @specpartial RSC19f - more tests with POST method and passing body
      */
     Helper.testOnJsonMsgpack('request_batch_api_success', async function (options, name, helper) {
-      const rest = helper.AblyRest(options);
+      const http = helper.AblyHttp(options);
       var body = { channels: [name + '1', name + '2'], messages: { data: 'foo' } };
 
-      const res = await rest.request('POST', '/messages', 2, {}, body, {});
+      const res = await http.request('POST', '/messages', 2, {}, body, {});
       expect(res.success).to.equal(true, 'Check res.success is true for a success');
       expect(res.statusCode).to.equal(201, 'Check res.statusCode is 201 for a success');
       expect(res.errorCode).to.equal(null, 'Check res.errorCode is null for a success');
@@ -199,10 +199,10 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @specskip
      */
     Helper.testOnJsonMsgpack.skip('request_batch_api_partial_success', async function (options, name, helper) {
-      const rest = helper.AblyRest(options);
+      const http = helper.AblyHttp(options);
       var body = { channels: [name, '[invalid', ''], messages: { data: 'foo' } };
 
-      var res = await rest.request('POST', '/messages', 2, {}, body, {});
+      var res = await http.request('POST', '/messages', 2, {}, body, {});
       expect(res.success).to.equal(false, 'Check res.success is false for a partial failure');
       expect(res.statusCode).to.equal(400, 'Check HPR.statusCode is 400 for a partial failure');
       expect(res.errorCode).to.equal(40020, 'Check HPR.errorCode is 40020 for a partial failure');
@@ -227,8 +227,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       /** @specpartial RSC19f - tests put, patch, delete methods are supported */
       it('check' + method, async function () {
         const helper = this.test.helper.withParameterisedTestTitle('check');
-        var restEcho = helper.AblyRestEcho({ useBinaryProtocol: false });
-        var res = await restEcho.request(method, '/methods', 3, {}, {}, {});
+        var httpEcho = helper.AblyHttpEcho({ useBinaryProtocol: false });
+        var res = await httpEcho.request(method, '/methods', 3, {}, {}, {});
         expect(res.items[0] && res.items[0].method).to.equal(method);
       });
     });

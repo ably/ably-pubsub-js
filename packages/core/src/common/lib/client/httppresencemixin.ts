@@ -1,23 +1,23 @@
-import RestPresence from './restpresence';
+import HttpPresence from './httppresence';
 import RealtimePresence from './realtimepresence';
 import * as Utils from '../util/utils';
 import Defaults from '../util/defaults';
 import PaginatedResource, { PaginatedResult } from './paginatedresource';
 import PresenceMessage, { WirePresenceMessage, _fromEncodedArray } from '../types/presencemessage';
-import { RestChannelMixin } from './restchannelmixin';
+import { HttpChannelMixin } from './httpchannelmixin';
 
-export class RestPresenceMixin {
-  static basePath(presence: RestPresence | RealtimePresence) {
-    return RestChannelMixin.basePath(presence.channel) + '/presence';
+export class HttpPresenceMixin {
+  static basePath(presence: HttpPresence | RealtimePresence) {
+    return HttpChannelMixin.basePath(presence.channel) + '/presence';
   }
 
   static async history(
-    presence: RestPresence | RealtimePresence,
+    presence: HttpPresence | RealtimePresence,
     params: any,
   ): Promise<PaginatedResult<PresenceMessage>> {
     const client = presence.channel.client,
       format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = presence.channel.client.http.supportsLinkHeaders ? undefined : format,
+      envelope = presence.channel.client.httpRequester.supportsLinkHeaders ? undefined : format,
       headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);

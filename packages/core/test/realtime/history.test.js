@@ -51,12 +51,12 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      */
     it('history_until_attach', function (done) {
       const helper = this.test.helper;
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
       var realtime = helper.AblyRealtime();
-      var restChannel = rest.channels.get('persisted:history_until_attach');
+      var httpChannel = http.channels.get('persisted:history_until_attach');
 
       /* first, send a number of events to this channel before attaching */
-      parallelPublishMessages(done, restChannel, preAttachMessages, function () {
+      parallelPublishMessages(done, httpChannel, preAttachMessages, function () {
         /* second, connect and attach to the channel */
         try {
           Helper.whenPromiseSettles(realtime.connection.whenState('connected'), function () {
@@ -67,10 +67,10 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
                 return;
               }
 
-              /* third, send some more events post-attach (over rest, not using the
+              /* third, send some more events post-attach (over http, not using the
                * new realtime connection) */
 
-              parallelPublishMessages(done, restChannel, postAttachMessages, function () {
+              parallelPublishMessages(done, httpChannel, postAttachMessages, function () {
                 /* fourth, query history using the realtime connection with
                  * untilAttach both true, false, and not present, checking that
                  * the right messages are returned in each case */

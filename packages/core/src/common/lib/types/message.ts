@@ -14,10 +14,10 @@ import * as API from '../../../../ably';
 import type { IUntypedCryptoStatic } from 'common/types/ICryptoStatic';
 import type { ChannelOptions } from '../../types/channel';
 import type { Properties } from '../util/utils';
-import type RestChannel from '../client/restchannel';
+import type HttpChannel from '../client/httpchannel';
 import type RealtimeChannel from '../client/realtimechannel';
 import type ErrorInfo from './errorinfo';
-type Channel = RestChannel | RealtimeChannel;
+type Channel = HttpChannel | RealtimeChannel;
 
 const actions: API.MessageAction[] = [
   'message.create',

@@ -37,7 +37,7 @@ describe('uts/rest/unit/channel/getMessage', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
     await ch.getMessage('msg-serial-123');
 
@@ -73,7 +73,7 @@ describe('uts/rest/unit/channel/getMessage', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
     const msg = await ch.getMessage('serial-xyz');
 
@@ -112,7 +112,7 @@ describe('uts/rest/unit/channel/getMessage', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
     await ch.getMessage('serial/with:special+chars');
 
@@ -139,7 +139,7 @@ describe('uts/rest/unit/channel/getMessage', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test');
 
     try {

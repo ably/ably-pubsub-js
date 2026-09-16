@@ -4,7 +4,7 @@
  * Spec points: RTC6, RTC6a
  * Source: uts/test/realtime/unit/client/realtime_time.md
  *
- * RTC6a: RealtimeClient#time proxies to RestClient#time.
+ * RTC6a: RealtimeClient#time proxies to HttpClient#time.
  */
 
 import { expect } from 'chai';
@@ -17,7 +17,7 @@ describe('uts/realtime/unit/client/realtime_time', function () {
   });
 
   /**
-   * RTC6a - RealtimeClient#time proxies to RestClient#time
+   * RTC6a - RealtimeClient#time proxies to HttpClient#time
    *
    * time() makes a GET request to /time and returns the server timestamp.
    */

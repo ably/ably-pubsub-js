@@ -2,18 +2,18 @@
 
 define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
   var currentTime;
-  var rest;
+  var http;
   var expect = chai.expect;
   var echoServer = 'https://echo.ably.io';
 
-  describe('rest/auth', function () {
+  describe('http/auth', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
       const helper = Helper.forHook(this);
       helper.setupApp(function () {
-        rest = helper.AblyRest({ queryTime: true });
-        rest
+        http = helper.AblyHttp({ queryTime: true });
+        http
           .time()
           .then(function (time) {
             currentTime = time;
@@ -32,7 +32,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      * @specpartial TK2a - test default ttl 60 minutes
      */
     it('Base token generation case', async function () {
-      var tokenDetails = await rest.auth.requestToken();
+      var tokenDetails = await http.auth.requestToken();
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -42,7 +42,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
 
     /** @specpartial RSA8e - pass null for TokenParams */
     it('Base token generation with options', async function () {
-      var tokenDetails = await rest.auth.requestToken(null);
+      var tokenDetails = await http.auth.requestToken(null);
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -51,13 +51,13 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
 
     /**
      * Related to RSC1.
-     * @specpartial TO3j2 - test passing token in ClientOptions for Rest client
+     * @specpartial TO3j2 - test passing token in ClientOptions for Http client
      */
     it('Generate token and init library with it', async function () {
       const helper = this.test.helper;
-      var tokenDetails = await rest.auth.requestToken();
+      var tokenDetails = await http.auth.requestToken();
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
-      helper.AblyRest({ token: tokenDetails.token });
+      helper.AblyHttp({ token: tokenDetails.token });
     });
 
     /**
@@ -65,8 +65,8 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      * @specpartial RSA8b - test accepts timestamp from TokenParams parameters
      */
     it('Token generation with explicit timestamp', async function () {
-      var serverTime = await rest.time();
-      var tokenDetails = await rest.auth.requestToken({ timestamp: serverTime });
+      var serverTime = await http.time();
+      var tokenDetails = await http.auth.requestToken({ timestamp: serverTime });
       expect(tokenDetails.token).to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -80,7 +80,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
     it('Token generation with invalid timestamp', async function () {
       var badTime = Date.now() - 30 * 60 * 1000;
       try {
-        var tokenDetails = await rest.auth.requestToken({ timestamp: badTime });
+        var tokenDetails = await http.auth.requestToken({ timestamp: badTime });
       } catch (err) {
         expect(err.statusCode).to.equal(401, 'Verify token request rejected with bad timestamp');
         return;
@@ -90,7 +90,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
 
     /** @specpartial RSA9d - generate timestamp from current system time */
     it('Token generation with system timestamp', async function () {
-      var tokenDetails = await rest.auth.requestToken();
+      var tokenDetails = await http.auth.requestToken();
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -102,10 +102,10 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      * @spec TK2e
      */
     it('Token generation with duplicate nonce', async function () {
-      var serverTime = await rest.time();
-      await rest.auth.requestToken({ timestamp: serverTime, nonce: '1234567890123456' });
+      var serverTime = await http.time();
+      await http.auth.requestToken({ timestamp: serverTime, nonce: '1234567890123456' });
       try {
-        await rest.auth.requestToken({ timestamp: serverTime, nonce: '1234567890123456' });
+        await http.auth.requestToken({ timestamp: serverTime, nonce: '1234567890123456' });
       } catch (err) {
         expect(err.statusCode).to.equal(401, 'Verify request rejected with duplicated nonce');
         return;
@@ -119,7 +119,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Token generation with clientId', async function () {
       var testClientId = 'test client id';
-      var tokenDetails = await rest.auth.requestToken({ clientId: testClientId });
+      var tokenDetails = await http.auth.requestToken({ clientId: testClientId });
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -133,7 +133,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Token generation with empty string clientId should error', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ clientId: '' });
+        var tokenDetails = await http.auth.requestToken({ clientId: '' });
       } catch (err) {
         expect(err.code).to.equal(40012);
         return;
@@ -148,7 +148,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Token generation with capability that subsets key capability', async function () {
       var testCapability = { onlythischannel: ['subscribe'] };
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability });
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability });
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -165,7 +165,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
       const helper = this.test.helper;
       var testKeyOpts = { key: helper.getTestApp().keys[1].keyStr };
       var testCapability = JSON.parse(helper.getTestApp().keys[1].capability);
-      var tokenDetails = await rest.auth.requestToken(null, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken(null, testKeyOpts);
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -177,12 +177,12 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
     it('Token generation with explicit auth', async function () {
       const helper = this.test.helper;
       helper.recordPrivateApi('call.auth.getAuthHeaders');
-      const authHeaders = await rest.auth.getAuthHeaders();
+      const authHeaders = await http.auth.getAuthHeaders();
       helper.recordPrivateApi('write.auth.authOptions.requestHeaders');
-      rest.auth.authOptions.requestHeaders = authHeaders;
-      var tokenDetails = await rest.auth.requestToken();
+      http.auth.authOptions.requestHeaders = authHeaders;
+      var tokenDetails = await http.auth.requestToken();
       helper.recordPrivateApi('delete.auth.authOptions.requestHeaders');
-      delete rest.auth.authOptions.requestHeaders;
+      delete http.auth.authOptions.requestHeaders;
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -196,10 +196,10 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
     it('Token generation with explicit auth, different key', async function () {
       const helper = this.test.helper;
       helper.recordPrivateApi('call.auth.getAuthHeaders');
-      const authHeaders = await rest.auth.getAuthHeaders();
+      const authHeaders = await http.auth.getAuthHeaders();
       var testKeyOpts = { key: helper.getTestApp().keys[1].keyStr };
       var testCapability = JSON.parse(helper.getTestApp().keys[1].capability);
-      var tokenDetails = await rest.auth.requestToken(null, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken(null, testKeyOpts);
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.issued && tokenDetails.issued >= currentTime, 'Verify token issued').to.be.ok;
       expect(tokenDetails.expires && tokenDetails.expires > tokenDetails.issued, 'Verify token expires').to.be.ok;
@@ -213,7 +213,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Token generation with invalid mac', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ mac: '12345' });
+        var tokenDetails = await http.auth.requestToken({ mac: '12345' });
       } catch (err) {
         expect(err.statusCode).to.equal(401, 'Verify request rejected with bad mac');
         return;
@@ -224,8 +224,8 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
     /** @spec TO3j11 */
     it('Token generation with defaultTokenParams set and no tokenParams passed in', async function () {
       const helper = this.test.helper;
-      var rest1 = helper.AblyRest({ defaultTokenParams: { ttl: 123, clientId: 'foo' } });
-      var tokenDetails = await rest1.auth.requestToken();
+      var http1 = helper.AblyHttp({ defaultTokenParams: { ttl: 123, clientId: 'foo' } });
+      var tokenDetails = await http1.auth.requestToken();
       expect(tokenDetails.token, 'Verify token value').to.be.ok;
       expect(tokenDetails.clientId).to.equal('foo', 'Verify client id from defaultTokenParams used');
       expect(tokenDetails.expires - tokenDetails.issued).to.equal(123, 'Verify ttl from defaultTokenParams used');
@@ -237,8 +237,8 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Token generation: if tokenParams passed in, defaultTokenParams should be ignored altogether, not merged', async function () {
       const helper = this.test.helper;
-      var rest1 = helper.AblyRest({ defaultTokenParams: { ttl: 123, clientId: 'foo' } });
-      var tokenDetails = await rest1.auth.requestToken({ clientId: 'bar' }, null);
+      var http1 = helper.AblyHttp({ defaultTokenParams: { ttl: 123, clientId: 'foo' } });
+      var tokenDetails = await http1.auth.requestToken({ clientId: 'bar' }, null);
       expect(tokenDetails.clientId).to.equal(
         'bar',
         'Verify clientId passed in is used, not the one from defaultTokenParams',
@@ -255,9 +255,9 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Authorize with different args', async function () {
       var results = await Promise.all([
-        rest.auth.authorize(),
-        rest.auth.authorize(null),
-        rest.auth.authorize(null, null),
+        http.auth.authorize(),
+        http.auth.authorize(null),
+        http.auth.authorize(null, null),
       ]);
 
       results.forEach((tokenDetails) => {
@@ -270,7 +270,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      * @specpartial TK2a - test passing in custom ttl
      */
     it('Specify non-default ttl', async function () {
-      var tokenDetails = await rest.auth.requestToken({ ttl: 100 * 1000 });
+      var tokenDetails = await http.auth.requestToken({ ttl: 100 * 1000 });
       expect(tokenDetails.expires).to.equal(100 * 1000 + tokenDetails.issued, 'Verify non-default expiry period');
     });
 
@@ -280,7 +280,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Should error with excessive ttl', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ ttl: 365 * 24 * 60 * 60 * 1000 });
+        var tokenDetails = await http.auth.requestToken({ ttl: 365 * 24 * 60 * 60 * 1000 });
       } catch (err) {
         expect(err.statusCode).to.equal(400, 'Verify request rejected with excessive expiry');
         return;
@@ -294,7 +294,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Should error with negative ttl', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ ttl: -1 });
+        var tokenDetails = await http.auth.requestToken({ ttl: -1 });
       } catch (err) {
         expect(err.statusCode).to.equal(400, 'Verify request rejected with negative expiry');
         return;
@@ -307,7 +307,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('Should error with invalid ttl', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ ttl: 'notanumber' });
+        var tokenDetails = await http.auth.requestToken({ ttl: 'notanumber' });
       } catch (err) {
         expect(err.statusCode).to.equal(400, 'Verify request rejected with invalid expiry');
         return;
@@ -330,7 +330,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('createTokenRequest without authOptions', async function () {
       const helper = this.test.helper;
-      var tokenRequest = await rest.auth.createTokenRequest(null, null);
+      var tokenRequest = await http.auth.createTokenRequest(null, null);
       expect('mac' in tokenRequest, 'check tokenRequest contains a mac').to.be.ok;
       expect('nonce' in tokenRequest, 'check tokenRequest contains a nonce').to.be.ok;
       expect('timestamp' in tokenRequest, 'check tokenRequest contains a timestamp').to.be.ok;
@@ -345,7 +345,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('createTokenRequest uses the key it was initialized with if authOptions does not have a "key" key', async function () {
       const helper = this.test.helper;
-      var tokenRequest = await rest.auth.createTokenRequest();
+      var tokenRequest = await http.auth.createTokenRequest();
       expect(tokenRequest.keyName).to.equal(helper.getTestApp().keys[0].keyName);
     });
 
@@ -355,7 +355,7 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
      */
     it('createTokenRequest should serialise capability object as JSON', async function () {
       var capability = { '*': ['*'] };
-      var tokenRequest = await rest.auth.createTokenRequest({ capability: capability }, null);
+      var tokenRequest = await http.auth.createTokenRequest({ capability: capability }, null);
       expect(JSON.parse(tokenRequest.capability)).to.deep.equal(
         capability,
         'Verify createTokenRequest has JSON-stringified capability',
@@ -390,27 +390,27 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
 
         /* Mint the embedded token with a client pointed at the platform under test, then hand it to the echo server. */
         if (opts && opts.embedInnerToken) {
-          var innerTokenDetails = await helper.AblyRest().auth.requestToken();
+          var innerTokenDetails = await helper.AblyHttp().auth.requestToken();
           authParams.innerToken = innerTokenDetails.token;
         }
 
         helper.recordPrivateApi('call.Utils.toQueryString');
         var authUrl = echoServer + '/createJWT' + helper.Utils.toQueryString(authParams);
-        var restJWTRequester = helper.AblyRest({ authUrl: authUrl });
+        var httpJWTRequester = helper.AblyHttp({ authUrl: authUrl });
 
-        var tokenDetails = await restJWTRequester.auth.requestToken();
-        var restClient = helper.AblyRest({ token: tokenDetails.token });
-        await restClient.stats();
+        var tokenDetails = await httpJWTRequester.auth.requestToken();
+        var httpClient = helper.AblyHttp({ token: tokenDetails.token });
+        await httpClient.stats();
       });
     }
 
     // Tests below test the different combinations of authParams for JWT declared above, with valid keys
 
-    testJWTAuthParams('Basic rest JWT', {});
-    testJWTAuthParams('Rest JWT with return type ', { returnType: 'jwt' });
+    testJWTAuthParams('Basic http JWT', {});
+    testJWTAuthParams('Http JWT with return type ', { returnType: 'jwt' });
     /* Mint the embedded token here (via innerToken) so this works uniformly against cloud and local sandboxes. */
-    testJWTAuthParams('Rest embedded JWT', {}, { embedInnerToken: true });
-    testJWTAuthParams('Rest embedded JWT with encryption', { encrypted: 1 }, { embedInnerToken: true });
+    testJWTAuthParams('Http embedded JWT', {}, { embedInnerToken: true });
+    testJWTAuthParams('Http embedded JWT with encryption', { encrypted: 1 }, { embedInnerToken: true });
 
     /**
      * Related to RSA8g, RSA4f
@@ -421,65 +421,65 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
       var keys = { keyName: 'invalid.invalid', keySecret: 'invalidinvalid' };
       helper.recordPrivateApi('call.Utils.toQueryString');
       var authUrl = echoServer + '/createJWT' + helper.Utils.toQueryString(keys);
-      var restJWTRequester = helper.AblyRest({ authUrl: authUrl });
+      var httpJWTRequester = helper.AblyHttp({ authUrl: authUrl });
 
-      var tokenDetails = await restJWTRequester.auth.requestToken();
-      var restClient = helper.AblyRest({ token: tokenDetails.token });
+      var tokenDetails = await httpJWTRequester.auth.requestToken();
+      var httpClient = helper.AblyHttp({ token: tokenDetails.token });
       try {
-        var stats = await restClient.stats();
+        var stats = await httpClient.stats();
       } catch (err) {
         expect(err.code).to.equal(40400, 'Verify token is invalid because app id does not exist');
         expect(err.statusCode).to.equal(404, 'Verify token is invalid because app id does not exist');
         return;
       }
-      throw new Error('Expected restClient.stats() to throw token error');
+      throw new Error('Expected httpClient.stats() to throw token error');
     });
 
     /** @specpartial RSA8g - test using authCallback with JWT */
-    it('Rest JWT with authCallback', async function () {
+    it('Http JWT with authCallback', async function () {
       const helper = this.test.helper;
       var currentKey = helper.getTestApp().keys[0];
       var keys = { keyName: currentKey.keyName, keySecret: currentKey.keySecret };
       helper.recordPrivateApi('call.Utils.toQueryString');
       var authUrl = echoServer + '/createJWT' + helper.Utils.toQueryString(keys);
-      var restJWTRequester = helper.AblyRest({ authUrl: authUrl });
+      var httpJWTRequester = helper.AblyHttp({ authUrl: authUrl });
 
       var authCallback = function (tokenParams, callback) {
-        restJWTRequester.auth.requestToken().then(function (tokenDetails) {
+        httpJWTRequester.auth.requestToken().then(function (tokenDetails) {
           callback(null, tokenDetails.token);
         });
       };
 
-      var restClient = helper.AblyRest({ authCallback: authCallback });
-      var stats = await restClient.stats();
+      var httpClient = helper.AblyHttp({ authCallback: authCallback });
+      var stats = await httpClient.stats();
     });
 
     /**
      * Related to RSA8g, RSA4f, RSA8c, RSA8d
      * @nospec
      */
-    it('Rest JWT with authCallback and invalid keys', async function () {
+    it('Http JWT with authCallback and invalid keys', async function () {
       const helper = this.test.helper;
       var keys = { keyName: 'invalid.invalid', keySecret: 'invalidinvalid' };
       helper.recordPrivateApi('call.Utils.toQueryString');
       var authUrl = echoServer + '/createJWT' + helper.Utils.toQueryString(keys);
-      var restJWTRequester = helper.AblyRest({ authUrl: authUrl });
+      var httpJWTRequester = helper.AblyHttp({ authUrl: authUrl });
 
       var authCallback = function (tokenParams, callback) {
-        restJWTRequester.auth.requestToken().then(function (tokenDetails) {
+        httpJWTRequester.auth.requestToken().then(function (tokenDetails) {
           callback(null, tokenDetails.token);
         });
       };
 
-      var restClient = helper.AblyRest({ authCallback: authCallback });
+      var httpClient = helper.AblyHttp({ authCallback: authCallback });
       try {
-        await restClient.stats();
+        await httpClient.stats();
       } catch (err) {
         expect(err.code).to.equal(40400, 'Verify code is 40400');
         expect(err.statusCode).to.equal(404, 'Verify token is invalid because app id does not exist');
         return;
       }
-      throw new Error('Expected restClient.stats() to throw token error');
+      throw new Error('Expected httpClient.stats() to throw token error');
     });
 
     /**
@@ -491,14 +491,14 @@ define(['chai', 'shared_helper', 'async'], function (chai, Helper, async) {
       var authCallbackInvocations = 0;
       function authCallback(tokenParams, callback) {
         authCallbackInvocations++;
-        rest.auth.createTokenRequest(tokenParams).then(function (tokenRequest) {
+        http.auth.createTokenRequest(tokenParams).then(function (tokenRequest) {
           callback(null, tokenRequest);
         });
       }
 
       /* Example client-side using the token */
-      var restClient = helper.AblyRest({ authCallback: authCallback });
-      var channel = restClient.channels.get('auth_concurrent');
+      var httpClient = helper.AblyHttp({ authCallback: authCallback });
+      var channel = httpClient.channels.get('auth_concurrent');
 
       await Promise.all([channel.history(), channel.history()]);
       expect(authCallbackInvocations).to.equal(

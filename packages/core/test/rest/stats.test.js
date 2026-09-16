@@ -1,7 +1,7 @@
 'use strict';
 
 define(['shared_helper', 'chai'], function (Helper, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
 
   var lastYear = new Date().getUTCFullYear() - 1;
@@ -58,14 +58,14 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
     });
   }
 
-  describe('rest/stats', function () {
+  describe('http/stats', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
       // force a new app to be created with first argument true so that stats are not effected by other tests
       const helper = Helper.forHook(this);
       helper.setupApp(true, function () {
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         helper.createStats(helper.getTestApp(), statsFixtures, function (err) {
           if (err) {
             done(err);
@@ -87,16 +87,16 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      */
     it('contains expected fields', async () => {
       // To provoke a non-undefined `inProgress` in the response, we publish a message and fetch stats for the current hour. (I wasn’t able to provoke a non-undefined `inProgress` using stats API fixtures.)
-      const now = new Date(await rest.time());
+      const now = new Date(await http.time());
       // If the hour is about to turn, wait for it to turn (with a 5-second extra wait to hopefully account for clock differences between Ably servers).
       if (now.getUTCMinutes() === 59 && now.getUTCSeconds() > 45) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (5 + (60 - now.getUTCSeconds()))));
       }
-      await rest.channels.get('channel').publish('message', 'data');
+      await http.channels.get('channel').publish('message', 'data');
       // ably.com documentation says "The most recent statistics are delayed by up to six seconds."
       await new Promise((resolve) => setTimeout(resolve, 6000 + 4000 /* a bit of extra tolerance */));
 
-      const stats = (await rest.stats({ end: Date.now(), unit: 'hour' })).items[0];
+      const stats = (await http.stats({ end: Date.now(), unit: 'hour' })).items[0];
 
       expect(stats.entries).to.be.a('object');
       expect(stats.schema).to.be.a('string');
@@ -111,7 +111,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b4
      */
     it('appstats_minute0', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         start: lastYear + '-02-03:15:03',
         end: lastYear + '-02-03:15:05',
         direction: 'forwards',
@@ -135,7 +135,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b4
      */
     it('appstats_minute1', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         start: firstIntervalEpoch,
         end: secondIntervalEpoch,
         direction: 'forwards',
@@ -159,7 +159,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b4
      */
     it('appstats_hour0', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         start: lastYear + '-02-03:15',
         end: lastYear + '-02-03:18',
         direction: 'forwards',
@@ -185,7 +185,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @specskip
      */
     it.skip('appstats_day0', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02-03',
         direction: 'forwards',
         by: 'day',
@@ -210,7 +210,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @specskip
      */
     it.skip('appstats_month0', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02',
         direction: 'forwards',
         by: 'month',
@@ -234,7 +234,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b3
      */
     it('appstats_limit_backwards', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02-03:15:04',
         direction: 'backwards',
         limit: 1,
@@ -258,7 +258,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b3
      */
     it('appstats_limit_forwards', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02-03:15:04',
         direction: 'forwards',
         limit: 1,
@@ -282,7 +282,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b2
      */
     it('appstats_pagination_backwards', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02-03:15:05',
         direction: 'backwards',
         limit: 1,
@@ -326,7 +326,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b2
      */
     it('appstats_pagination_forwards', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02-03:15:05',
         direction: 'forwards',
         limit: 1,
@@ -370,7 +370,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec RSC6b2
      */
     it('appstats_pagination_omitted', async function () {
-      var page = await rest.stats({
+      var page = await http.stats({
         end: lastYear + '-02-03:15:05',
         limit: 1,
       });

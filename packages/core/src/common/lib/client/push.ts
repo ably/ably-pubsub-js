@@ -409,7 +409,7 @@ class DeviceRegistrations {
   async list(params: any): Promise<PaginatedResult<unknown>> {
     const client = this.client,
       format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = this.client.http.supportsLinkHeaders ? undefined : format,
+      envelope = this.client.httpRequester.supportsLinkHeaders ? undefined : format,
       headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);
@@ -509,7 +509,7 @@ class ChannelSubscriptions {
   async list(params: any): Promise<PaginatedResult<unknown>> {
     const client = this.client,
       format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = this.client.http.supportsLinkHeaders ? undefined : format,
+      envelope = this.client.httpRequester.supportsLinkHeaders ? undefined : format,
       headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);
@@ -545,7 +545,7 @@ class ChannelSubscriptions {
   async listChannels(params: any): Promise<PaginatedResult<unknown>> {
     const client = this.client,
       format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = this.client.http.supportsLinkHeaders ? undefined : format,
+      envelope = this.client.httpRequester.supportsLinkHeaders ? undefined : format,
       headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);

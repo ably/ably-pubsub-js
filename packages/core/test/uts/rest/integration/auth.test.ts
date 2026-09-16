@@ -38,7 +38,7 @@ describe('uts/rest/integration/auth', function () {
   it('RSA4 - basic auth with API key', async function () {
     const channelName = uniqueChannelName('test-RSA4');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -66,7 +66,7 @@ describe('uts/rest/integration/auth', function () {
 
     const channelName = uniqueChannelName('test-RSA8-jwt');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       token: jwt,
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -84,7 +84,7 @@ describe('uts/rest/integration/auth', function () {
    */
   // UTS: rest/integration/RSA8/token-auth-native-1
   it('RSA8 - token auth with native token', async function () {
-    const keyClient = new Ably.Rest({
+    const keyClient = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -96,7 +96,7 @@ describe('uts/rest/integration/auth', function () {
     expect(tokenDetails.expires).to.be.greaterThan(Date.now());
 
     const channelName = uniqueChannelName('test-RSA8-native');
-    const tokenClient = new Ably.Rest({
+    const tokenClient = new Ably.Http({
       token: tokenDetails.token,
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -114,14 +114,14 @@ describe('uts/rest/integration/auth', function () {
    */
   // UTS: rest/integration/RSA8/auth-callback-token-request-2
   it('RSA8 - authCallback with TokenRequest', async function () {
-    const tokenRequestClient = new Ably.Rest({
+    const tokenRequestClient = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
 
     const channelName = uniqueChannelName('test-RSA8-callback');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: async (_params: any, cb: any) => {
         try {
           const tokenRequest = await tokenRequestClient.auth.createTokenRequest(_params, null);
@@ -150,7 +150,7 @@ describe('uts/rest/integration/auth', function () {
 
     const channelName = uniqueChannelName('test-RSA8-jwt-callback');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
         try {
           const jwt = generateJWT({
@@ -184,7 +184,7 @@ describe('uts/rest/integration/auth', function () {
 
     const invalidKey = getAppId() + '.invalidKey:invalidSecret';
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: invalidKey,
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -210,7 +210,7 @@ describe('uts/rest/integration/auth', function () {
 
     const channelName = uniqueChannelName('test-RSC10-renewal');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
         callbackCount++;
         try {
@@ -268,7 +268,7 @@ describe('uts/rest/integration/auth', function () {
       ttl: 3600000,
     });
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       token: jwt,
       endpoint: SANDBOX_ENDPOINT,
     });

@@ -8,7 +8,7 @@ import { WireMessage } from './message';
 import PresenceMessage, { WirePresenceMessage } from './presencemessage';
 import Annotation, { WireAnnotation } from './annotation';
 import RealtimeAnnotations from '../client/realtimeannotations';
-import RestAnnotations from '../client/restannotations';
+import HttpAnnotations from '../client/httpannotations';
 import { flags, flagNames, channelModes, ActionName } from './protocolmessagecommon';
 import type { Properties } from '../util/utils';
 import type * as LiveObjectsPlugin from 'plugins/liveobjects';
@@ -96,7 +96,7 @@ export function makeFromDeserializedWithDependencies(dependencies?: {
         PresenceMessage,
         WirePresenceMessage,
       },
-      { Annotation, WireAnnotation, RealtimeAnnotations, RestAnnotations },
+      { Annotation, WireAnnotation, RealtimeAnnotations, HttpAnnotations },
       dependencies?.LiveObjectsPlugin ?? null,
     );
   };

@@ -286,7 +286,7 @@ class RealtimePresence extends EventEmitter {
   private async _historyImpl(params: RealtimeHistoryParams | null): Promise<PaginatedResult<PresenceMessage>> {
     Logger.logAction(this.logger, Logger.LOG_MICRO, 'RealtimePresence.history()', 'channel = ' + this.name);
     // We fetch this first so that any plugin-not-provided error takes priority over other errors
-    const restMixin = this.channel.client.rest.presenceMixin;
+    const httpMixin = this.channel.client.http.presenceMixin;
 
     if (params && params.untilAttach) {
       if (this.channel.state === 'attached') {
@@ -302,7 +302,7 @@ class RealtimePresence extends EventEmitter {
       }
     }
 
-    return restMixin.history(this, params);
+    return httpMixin.history(this, params);
   }
 
   setPresence(presenceSet: PresenceMessage[], isSync: boolean, syncChannelSerial?: string): void {

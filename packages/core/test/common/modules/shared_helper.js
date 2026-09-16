@@ -493,12 +493,12 @@ define([
       return clientModule.ablyClientOptions(this, options);
     }
 
-    AblyRest(options) {
-      return clientModule.AblyRest(this, options);
+    AblyHttp(options) {
+      return clientModule.AblyHttp(this, options);
     }
 
-    AblyRestEcho(options) {
-      return clientModule.AblyRestEcho(this, options);
+    AblyHttpEcho(options) {
+      return clientModule.AblyHttpEcho(this, options);
     }
 
     static activeClients = [];

@@ -36,7 +36,7 @@ describe('uts/rest/unit/time', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'app.key:secret' });
+    const client = new Ably.Http({ key: 'app.key:secret' });
     const result = await client.time();
 
     // Result should match the server timestamp
@@ -67,7 +67,7 @@ describe('uts/rest/unit/time', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'app.key:secret' });
+    const client = new Ably.Http({ key: 'app.key:secret' });
     await client.time();
 
     expect(captured).to.have.length(1);
@@ -108,7 +108,7 @@ describe('uts/rest/unit/time', function () {
     installMockHttp(mock);
 
     // Client has credentials, but time() should not use them
-    const client = new Ably.Rest({ key: 'app.key:secret' });
+    const client = new Ably.Http({ key: 'app.key:secret' });
     const result = await client.time();
 
     // Should succeed
@@ -141,7 +141,7 @@ describe('uts/rest/unit/time', function () {
     installMockHttp(mock);
 
     // Client with API key but using token auth to avoid RSC18 restriction
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       tls: false,
       useTokenAuth: true,
@@ -181,7 +181,7 @@ describe('uts/rest/unit/time', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'app.key:secret' });
+    const client = new Ably.Http({ key: 'app.key:secret' });
 
     try {
       await client.time();

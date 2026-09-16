@@ -3,7 +3,7 @@
 define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async, chai) {
   const expect = chai.expect;
 
-  describe('rest/message-operations', function () {
+  describe('http/message-operations', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -22,8 +22,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should return serials from publish', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:publish_serials');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:publish_serials');
 
       const result = await channel.publish('test-message', { value: 'test' });
       expect(result).to.have.property('serials');
@@ -37,8 +37,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should return multiple serials for batch publish', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:publish_batch_serials');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:publish_batch_serials');
 
       const messages = [
         { name: 'msg1', data: 'data1' },
@@ -61,8 +61,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should retrieve a message by serial', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_get');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_get');
 
       const { serials } = await channel.publish('test-message', { value: 'original' });
       const serial = serials[0];
@@ -80,8 +80,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should retrieve a message by passing a Message object', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_get_obj');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_get_obj');
 
       const { serials } = await channel.publish('test-message-obj', { value: 'original' });
       const serial = serials[0];
@@ -98,8 +98,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should update a message (with operation metadata)', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_update_meta');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_update_meta');
 
       const { serials } = await channel.publish('original-message', { value: 'original' });
       const serial = serials[0];
@@ -144,8 +144,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should delete a message (with operation metadata)', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_delete_meta');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_delete_meta');
 
       const { serials } = await channel.publish('message-to-delete', { value: 'will be deleted' });
       const serial = serials[0];
@@ -187,8 +187,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should retrieve all versions of a message', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_versions');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_versions');
 
       const { serials } = await channel.publish('versioned-message', { value: 'version-1' });
       const serial = serials[0];
@@ -219,8 +219,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should error when getMessage called without serial', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_error');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_error');
 
       try {
         await channel.getMessage({});
@@ -235,8 +235,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should error when updateMessage called without serial', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_error');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_error');
 
       try {
         await channel.updateMessage({ data: 'test' });
@@ -251,8 +251,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should error when deleteMessage called without serial', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_error');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_error');
 
       try {
         await channel.deleteMessage({});
@@ -267,8 +267,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should error when getMessageVersions called without serial', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_error');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_error');
 
       try {
         await channel.getMessageVersions({});
@@ -285,8 +285,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should append to a message (with operation metadata)', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_append_meta');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_append_meta');
 
       const { serials } = await channel.publish('original-message', 'Hello');
       const serial = serials[0];
@@ -329,8 +329,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      */
     it('Should error when appendMessage called without serial', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({});
-      const channel = rest.channels.get('mutable:updatesanddeletes_error');
+      const http = helper.AblyHttp({});
+      const channel = http.channels.get('mutable:updatesanddeletes_error');
 
       try {
         await channel.appendMessage({ data: 'test' });

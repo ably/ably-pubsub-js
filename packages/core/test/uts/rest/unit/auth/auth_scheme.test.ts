@@ -53,7 +53,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     try {
       await client.stats({} as any);
     } catch (e) {
@@ -73,7 +73,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({ token: 'explicit-token-string' });
+    const client = new Ably.Http({ token: 'explicit-token-string' });
     try {
       await client.stats({} as any);
     } catch (e) {
@@ -93,7 +93,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       tokenDetails: {
         token: 'token-from-details',
         expires: Date.now() + 3600000,
@@ -118,7 +118,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(tokenRoutingMock(captured, 'obtained-token'));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useTokenAuth: true,
     });
@@ -142,7 +142,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callback(null, 'callback-token');
       },
@@ -178,7 +178,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
     });
     try {
@@ -202,7 +202,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     installMockHttp(simpleMock(captured));
 
     try {
-      new Ably.Rest({});
+      new Ably.Http({});
       expect.fail('Should have thrown');
     } catch (error: any) {
       expect(error.code).to.equal(40106);
@@ -234,7 +234,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       tokenDetails: {
         token: 'expired-token',
         expires: Date.now() - 1000,
@@ -257,7 +257,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       authCallback: function (params, callback) {
         callback(null, 'callback-token');
@@ -282,7 +282,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({ key: 'app123.key456:secretXYZ' });
+    const client = new Ably.Http({ key: 'app123.key456:secretXYZ' });
     try {
       await client.stats({} as any);
     } catch (e) {
@@ -302,7 +302,7 @@ describe('uts/rest/unit/auth/auth_scheme', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       token: 'explicit-token',
       tls: false,
     });

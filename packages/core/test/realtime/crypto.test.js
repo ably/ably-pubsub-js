@@ -779,12 +779,12 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       }
 
       const helper = this.test.helper,
-        rest = helper.AblyRest(),
+        http = helper.AblyHttp(),
         channelName = 'encrypted_history',
         messageText = 'Test message';
 
       const key = await Crypto.generateRandomKey();
-      const channel = rest.channels.get(channelName, { cipher: { key: key } });
+      const channel = http.channels.get(channelName, { cipher: { key: key } });
       await channel.publish('event0', messageText);
       let items;
       await helper.waitFor(async () => {

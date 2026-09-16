@@ -43,7 +43,7 @@ describe('uts/rest/integration/revoke_tokens', function () {
   it('RSA17g, RSA17b, RSA17c, TRS2 - token revocation prevents subsequent use', async function () {
     const clientId = 'revoke-client-' + Math.random().toString(36).substring(2, 10);
 
-    const keyClient = new Ably.Rest({
+    const keyClient = new Ably.Http({
       key: getApiKey(4),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -94,13 +94,13 @@ describe('uts/rest/integration/revoke_tokens', function () {
       ttl: 3600000,
     });
 
-    const tokenRest = new Ably.Rest({
+    const tokenHttp = new Ably.Http({
       token: jwt,
       endpoint: SANDBOX_ENDPOINT,
     });
 
     try {
-      await tokenRest.auth.revokeTokens([{ type: 'clientId', value: 'anyone' }]);
+      await tokenHttp.auth.revokeTokens([{ type: 'clientId', value: 'anyone' }]);
       expect.fail('revokeTokens should have failed with token auth client');
     } catch (error: any) {
       expect(error.code).to.equal(40162);
@@ -119,7 +119,7 @@ describe('uts/rest/integration/revoke_tokens', function () {
   it('RSA17e, RSA17f - issuedBefore and allowReauthMargin', async function () {
     const clientId = 'revoke-margin-client-' + Math.random().toString(36).substring(2, 10);
 
-    const keyClient = new Ably.Rest({
+    const keyClient = new Ably.Http({
       key: getApiKey(4),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -154,7 +154,7 @@ describe('uts/rest/integration/revoke_tokens', function () {
   it('RSA17c, TRF2 - mixed success and failure', async function () {
     const clientId = 'revoke-mixed-client-' + Math.random().toString(36).substring(2, 10);
 
-    const keyClient = new Ably.Rest({
+    const keyClient = new Ably.Http({
       key: getApiKey(4),
       endpoint: SANDBOX_ENDPOINT,
     });

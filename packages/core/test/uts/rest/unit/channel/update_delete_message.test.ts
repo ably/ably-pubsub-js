@@ -10,7 +10,7 @@ import { MockHttpClient } from '../../../mock_http';
 import { Ably, installMockHttp, restoreAll } from '../../../helpers';
 
 function msg(fields: any) {
-  return Ably.Rest.Message.fromValues(fields);
+  return Ably.Http.Message.fromValues(fields);
 }
 
 describe('uts/rest/unit/channel/update_delete_message', function () {
@@ -36,7 +36,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.updateMessage(msg({ serial: 'msg-serial-1', name: 'updated', data: 'new-data' }));
 
@@ -66,7 +66,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.deleteMessage(msg({ serial: 'msg-serial-1' }));
 
@@ -94,7 +94,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.appendMessage(msg({ serial: 'msg-serial-1', data: 'appended' }));
 
@@ -123,7 +123,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.updateMessage(msg({ serial: 's1', data: 'updated' }), {
       clientId: 'user1',
@@ -157,7 +157,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.updateMessage(msg({ serial: 's1', data: 'updated' }));
 
@@ -184,7 +184,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
 
     const original = msg({ serial: 's1', name: 'original', data: 'original-data' });
@@ -213,7 +213,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     const result = await ch.updateMessage(msg({ serial: 's1', data: 'd' }));
 
@@ -238,7 +238,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     const result = await ch.updateMessage(msg({ serial: 's1', data: 'd' }));
 
@@ -262,7 +262,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.updateMessage(msg({ serial: 's1', data: 'd' }), undefined, { key: 'value', num: '42' });
 
@@ -289,7 +289,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
 
     // updateMessage should throw
@@ -337,7 +337,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.updateMessage(msg({ serial: 's1', data: { key: 'value' } }));
 
@@ -365,7 +365,7 @@ describe('uts/rest/unit/channel/update_delete_message', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const ch = client.channels.get('test-channel');
     await ch.updateMessage(msg({ serial: 'serial/special:chars', data: 'd' }));
 

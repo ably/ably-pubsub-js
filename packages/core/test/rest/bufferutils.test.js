@@ -7,7 +7,7 @@ define(['ably', 'chai'], function (Ably, chai) {
   var testBase64 = 'dGVzdA==';
   var testHex = '74657374';
 
-  describe('rest/bufferutils', function () {
+  describe('http/bufferutils', function () {
     /** @nospec */
     it('Basic encoding and decoding', function () {
       /* base64 */

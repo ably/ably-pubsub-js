@@ -83,14 +83,14 @@ function logResult(
     Logger.logActionNoStrip(
       logger,
       Logger.LOG_MICRO,
-      'Http.' + method + '()',
+      'HttpRequester.' + method + '()',
       'Received Error; ' + appendingParams(uri, params) + '; Error: ' + Utils.inspectError(result.error),
     );
   } else {
     Logger.logActionNoStrip(
       logger,
       Logger.LOG_MICRO,
-      'Http.' + method + '()',
+      'HttpRequester.' + method + '()',
       'Received; ' +
         appendingParams(uri, params) +
         '; Headers: ' +
@@ -110,7 +110,7 @@ function logRequest(method: HttpMethods, uri: string, body: RequestBody | null, 
     Logger.logActionNoStrip(
       logger,
       Logger.LOG_MICRO,
-      'Http.' + method + '()',
+      'HttpRequester.' + method + '()',
       'Sending; ' +
         appendingParams(uri, params) +
         '; Body' +
@@ -119,7 +119,7 @@ function logRequest(method: HttpMethods, uri: string, body: RequestBody | null, 
   }
 }
 
-export class Http {
+export class HttpRequester {
   private readonly platformHttp: IPlatformHttp;
   checkConnectivity?: () => Promise<boolean>;
 
@@ -237,7 +237,7 @@ export class Http {
       return tryAHost(hosts);
     } catch (err) {
       // Handle any unexpected error, to ensure we always meet our contract of not throwing any errors
-      return { error: new ErrorInfo(`Unexpected error in Http.do: ${Utils.inspectError(err)}`, 50000, 500) };
+      return { error: new ErrorInfo(`Unexpected error in HttpRequester.do: ${Utils.inspectError(err)}`, 50000, 500) };
     }
   }
 
@@ -263,7 +263,9 @@ export class Http {
       return result;
     } catch (err) {
       // Handle any unexpected error, to ensure we always meet our contract of not throwing any errors
-      return { error: new ErrorInfo(`Unexpected error in Http.doUri: ${Utils.inspectError(err)}`, 50000, 500) };
+      return {
+        error: new ErrorInfo(`Unexpected error in HttpRequester.doUri: ${Utils.inspectError(err)}`, 50000, 500),
+      };
     }
   }
 }

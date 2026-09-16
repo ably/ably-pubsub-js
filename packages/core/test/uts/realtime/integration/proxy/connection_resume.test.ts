@@ -409,8 +409,8 @@ describe('uts/realtime/integration/proxy/connection_resume', function () {
     });
 
     // Provision a real token from the sandbox so the initial connection succeeds
-    const restClient = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-    const tokenDetails = await restClient.auth.requestToken();
+    const httpClient = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+    const tokenDetails = await httpClient.auth.requestToken();
 
     // Use only the token string — no key, no authCallback — making it non-renewable
     const client = new Ably.Realtime({

@@ -1,5 +1,5 @@
 // Common
-import { BaseRest } from '../../common/lib/client/baserest';
+import { BaseHttp } from '../../common/lib/client/basehttp';
 import BaseRealtime from '../../common/lib/client/baserealtime';
 import Platform from '../../common/platform';
 import ErrorInfo from '../../common/lib/types/errorinfo';
@@ -42,6 +42,6 @@ export * from './modular/realtimepresence';
 export * from './modular/annotations';
 export * from './modular/transports';
 export * from './modular/http';
-export { Rest } from '../../common/lib/client/rest';
+export { Http } from '../../common/lib/client/http';
 export { FilteredSubscriptions as MessageInteractions } from '../../common/lib/client/filteredsubscriptions';
-export { BaseRest, BaseRealtime, ErrorInfo };
+export { BaseHttp, BaseRealtime, ErrorInfo };

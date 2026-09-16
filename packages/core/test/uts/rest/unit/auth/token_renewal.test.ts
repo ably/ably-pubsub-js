@@ -54,7 +54,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackCount++;
         callback(null, 'token-' + callbackCount);
@@ -105,7 +105,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackCount++;
         callback(null, 'token-' + callbackCount);
@@ -144,7 +144,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ token: 'static-token' });
+    const client = new Ably.Http({ token: 'static-token' });
 
     try {
       await client.stats({} as any);
@@ -186,7 +186,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
     });
 
@@ -230,7 +230,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackCount++;
         callback(null, 'token-' + callbackCount);
@@ -279,7 +279,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackCount++;
         callback(null, 'token-' + callbackCount);
@@ -329,7 +329,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackCount++;
         if (callbackCount === 1) {
@@ -406,7 +406,7 @@ describe('uts/rest/unit/auth/token_renewal', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackCount++;
         if (callbackCount > 3) {

@@ -15,9 +15,9 @@ import { FilteredSubscriptions } from './filteredsubscriptions';
 import { PresenceMap } from './presencemap';
 import PresenceMessage, { WirePresenceMessage } from '../types/presencemessage';
 import RealtimeAnnotations from './realtimeannotations';
-import RestAnnotations from './restannotations';
+import HttpAnnotations from './httpannotations';
 import Annotation, { WireAnnotation } from '../types/annotation';
-import { Http } from 'common/types/http';
+import { HttpRequester } from 'common/types/http';
 import Defaults from '../util/defaults';
 import Logger from '../util/logger';
 import { MessageEncoding } from '../types/basemessage';
@@ -47,7 +47,7 @@ export class DefaultRealtime extends BaseRealtime {
           Annotation,
           WireAnnotation,
           RealtimeAnnotations,
-          RestAnnotations,
+          HttpAnnotations,
         },
         WebSocketTransport,
         MessageInteractions: FilteredSubscriptions,
@@ -78,7 +78,7 @@ export class DefaultRealtime extends BaseRealtime {
   static _MsgPack: MsgPack | null = null;
 
   // Used by tests
-  static _Http = Http;
+  static _HttpRequester = HttpRequester;
   static _PresenceMap = PresenceMap;
   static _MessageEncoding = MessageEncoding;
 }

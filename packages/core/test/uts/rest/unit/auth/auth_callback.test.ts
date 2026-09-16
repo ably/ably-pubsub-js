@@ -48,7 +48,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
 
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callbackInvoked = true;
         callback(null, 'callback-token');
@@ -75,7 +75,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     installMockHttp(simpleMock(captured));
 
     const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-jwt-payload';
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, jwt);
       },
@@ -115,7 +115,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, {
           keyName: 'app.key',
@@ -157,7 +157,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         receivedParams = params;
         callback(null, 'test-token');
@@ -186,7 +186,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     const captured: any[] = [];
     installMockHttp(authUrlMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
     } as any);
     try {
@@ -229,7 +229,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
       authMethod: 'POST',
     } as any);
@@ -251,7 +251,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     const captured: any[] = [];
     installMockHttp(authUrlMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
       authHeaders: {
         'X-Custom-Header': 'custom-value',
@@ -277,7 +277,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     const captured: any[] = [];
     installMockHttp(authUrlMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
       authParams: {
         client_id: 'my-client',
@@ -304,7 +304,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     const jwt = 'eyJhbGciOiJIUzI1NiJ9.jwt-body.signature';
     installMockHttp(authUrlMock(captured, jwt));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/jwt',
     } as any);
     try {
@@ -326,7 +326,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(new Error('Authentication server unavailable'));
       },
@@ -367,7 +367,7 @@ describe('uts/rest/unit/auth/auth_callback', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
     } as any);
 

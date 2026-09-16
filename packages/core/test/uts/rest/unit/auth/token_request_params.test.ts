@@ -33,7 +33,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA5/ttl-null-when-unspecified-0
   it('RSA5 - TTL is null when not specified', async function () {
     setup();
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     const tokenRequest = await client.auth.createTokenRequest(null, null);
 
     // TTL should be null/undefined, not defaulted to 3600000
@@ -46,7 +46,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA5b/explicit-ttl-preserved-0
   it('RSA5b - Explicit TTL is preserved', async function () {
     setup();
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     const tokenRequest = await client.auth.createTokenRequest({ ttl: 7200000 }, null);
 
     expect(tokenRequest.ttl).to.equal(7200000);
@@ -58,7 +58,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA5c/ttl-from-default-params-0
   it('RSA5c - TTL from defaultTokenParams is used', async function () {
     setup();
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       defaultTokenParams: { ttl: 1800000 },
     });
@@ -73,7 +73,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA5d/explicit-ttl-overrides-default-0
   it('RSA5d - Explicit TTL overrides defaultTokenParams', async function () {
     setup();
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       defaultTokenParams: { ttl: 1800000 },
     });
@@ -88,7 +88,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA6/capability-null-when-unspecified-0
   it('RSA6 - Capability is null when not specified', async function () {
     setup();
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     const tokenRequest = await client.auth.createTokenRequest(null, null);
 
     // Capability should be null/undefined, not defaulted to '{"*":["*"]}'
@@ -101,7 +101,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA6b/explicit-capability-preserved-0
   it('RSA6b - Explicit capability is preserved', async function () {
     setup();
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     const tokenRequest = await client.auth.createTokenRequest(
       { capability: '{"channel-a":["publish","subscribe"]}' },
       null,
@@ -116,7 +116,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA6c/capability-from-default-params-0
   it('RSA6c - Capability from defaultTokenParams is used', async function () {
     setup();
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       defaultTokenParams: { capability: '{"*":["subscribe"]}' },
     });
@@ -131,7 +131,7 @@ describe('uts/rest/unit/auth/token_request_params', function () {
   // UTS: rest/unit/RSA6d/explicit-capability-overrides-default-0
   it('RSA6d - Explicit capability overrides defaultTokenParams', async function () {
     setup();
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       defaultTokenParams: { capability: '{"*":["subscribe"]}' },
     });

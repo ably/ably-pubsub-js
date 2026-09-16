@@ -19,7 +19,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
     });
   }
 
-  var rest, authToken, authToken2;
+  var http, authToken, authToken2;
   var testClientId = 'testclient',
     testClientId2 = 'testclient2';
 
@@ -99,8 +99,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
         }
         // Create authTokens associated with specific clientIds
         try {
-          rest = helper.AblyRest();
-          Helper.whenPromiseSettles(rest.auth.requestToken({ clientId: testClientId }), function (err, tokenDetails) {
+          http = helper.AblyHttp();
+          Helper.whenPromiseSettles(http.auth.requestToken({ clientId: testClientId }), function (err, tokenDetails) {
             if (err) {
               done(err);
               return;
@@ -114,7 +114,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
             }
 
             Helper.whenPromiseSettles(
-              rest.auth.requestToken({ clientId: testClientId2 }),
+              http.auth.requestToken({ clientId: testClientId2 }),
               function (err, tokenDetails) {
                 if (err) {
                   done(err);
@@ -1390,7 +1390,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       var channelName = 'enter_inherited_clientid';
 
       var authCallback = function (tokenParams, callback) {
-        Helper.whenPromiseSettles(rest.auth.requestToken({ clientId: testClientId }), function (err, tokenDetails) {
+        Helper.whenPromiseSettles(http.auth.requestToken({ clientId: testClientId }), function (err, tokenDetails) {
           if (err) {
             done(err);
             return;
@@ -1432,7 +1432,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       var channelName = 'enter_before_know_clientid';
 
       var enterInheritedClientId = function (cb) {
-        Helper.whenPromiseSettles(rest.auth.requestToken({ clientId: testClientId }), function (err, tokenDetails) {
+        Helper.whenPromiseSettles(http.auth.requestToken({ clientId: testClientId }), function (err, tokenDetails) {
           if (err) {
             done(err);
             return;
@@ -1890,7 +1890,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
             /* Request a token without the capabilities to be in the presence set */
             var tokenParams = { clientId: 'me', capability: {} };
             tokenParams.capability[channelName] = ['publish', 'subscribe'];
-            Helper.whenPromiseSettles(rest.auth.requestToken(tokenParams), function (err, tokenDetails) {
+            Helper.whenPromiseSettles(http.auth.requestToken(tokenParams), function (err, tokenDetails) {
               token = tokenDetails;
               cb(err);
             });

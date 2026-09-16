@@ -5,7 +5,7 @@ import { actions, flags } from '../types/protocolmessagecommon';
 import { fromValues as protocolMessageFromValues } from '../types/protocolmessage';
 import ErrorInfo from '../types/errorinfo';
 import RealtimeChannel from './realtimechannel';
-import RestAnnotations, { RestGetAnnotationsParams, constructValidateAnnotation } from './restannotations';
+import HttpAnnotations, { HttpGetAnnotationsParams, constructValidateAnnotation } from './httpannotations';
 import type { PaginatedResult } from './paginatedresource';
 import type Message from '../types/message';
 import type { Properties } from '../util/utils';
@@ -106,9 +106,9 @@ class RealtimeAnnotations {
 
   async get(
     msgOrSerial: string | Message,
-    params: RestGetAnnotationsParams | null,
+    params: HttpGetAnnotationsParams | null,
   ): Promise<PaginatedResult<Annotation>> {
-    return RestAnnotations.prototype.get.call(this, msgOrSerial, params);
+    return HttpAnnotations.prototype.get.call(this, msgOrSerial, params);
   }
 }
 

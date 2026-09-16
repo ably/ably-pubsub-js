@@ -251,8 +251,8 @@ class Auth {
    * - authCallback:  (optional) a JavaScript callback to be called to get auth information.
    *                  authCallback should be a function of (tokenParams, callback) that calls
    *                  the callback with (err, result), where result is any of:
-   *                  - a tokenRequest object (ie the result of a rest.auth.createTokenRequest call),
-   *                  - a tokenDetails object (ie the result of a rest.auth.requestToken call),
+   *                  - a tokenRequest object (ie the result of a http.auth.createTokenRequest call),
+   *                  - a tokenDetails object (ie the result of a http.auth.requestToken call),
    *                  - a token string
    *
    * - authUrl:       (optional) a URL to be used to GET or POST a set of token request
@@ -300,7 +300,7 @@ class Auth {
        * - When authorize called by an end user and have a realtime connection,
        * don't call back till new token has taken effect.
        * - Use this.client.connection as a proxy for (this.client instanceof BaseRealtime),
-       * which doesn't work in node as BaseRealtime isn't part of the vm context for Rest clients */
+       * which doesn't work in node as BaseRealtime isn't part of the vm context for Http clients */
       if (isRealtime(this.client)) {
         return new Promise((resolve, reject) => {
           (this.client as BaseRealtime).connection.connectionManager.onAuthUpdated(
@@ -366,7 +366,7 @@ class Auth {
    *                  capabilities of the specified key.
    *
    * - clientId:      (optional) a client ID to associate with the token; if not
-   *                  specified, a clientId passed in constructing the Rest interface will be used
+   *                  specified, a clientId passed in constructing the Http interface will be used
    *
    * - timestamp:     (optional) the time in ms since the epoch. If none is specified,
    *                  the system will be queried for a time value to use.
@@ -386,7 +386,7 @@ class Auth {
    *                  capabilities of the specified key.
    *
    * - clientId:      (optional) a client ID to associate with the token; if not
-   *                  specified, a clientId passed in constructing the Rest interface will be used
+   *                  specified, a clientId passed in constructing the Http interface will be used
    *
    * - timestamp:     (optional) the time in ms since the epoch. If none is specified,
    *                  the system will be queried for a time value to use.
@@ -398,8 +398,8 @@ class Auth {
    * - authCallback:  (optional) a JavaScript callback to be called to get auth information.
    *                  authCallback should be a function of (tokenParams, callback) that calls
    *                  the callback with (err, result), where result is any of:
-   *                  - a tokenRequest object (ie the result of a rest.auth.createTokenRequest call),
-   *                  - a tokenDetails object (ie the result of a rest.auth.requestToken call),
+   *                  - a tokenRequest object (ie the result of a http.auth.createTokenRequest call),
+   *                  - a tokenDetails object (ie the result of a http.auth.requestToken call),
    *                  - a token string
    *
    * - authUrl:       (optional) a URL to be used to GET or POST a set of token request
@@ -578,7 +578,7 @@ class Auth {
           headers['content-type'] = 'application/x-www-form-urlencoded';
           const body = Utils.toQueryString(authParams).slice(1); /* slice is to remove the initial '?' */
           Utils.whenPromiseSettles(
-            this.client.http.doUri(
+            this.client.httpRequester.doUri(
               HttpMethods.Post,
               resolvedAuthOptions.authUrl!,
               headers,
@@ -592,7 +592,13 @@ class Auth {
           );
         } else {
           Utils.whenPromiseSettles(
-            this.client.http.doUri(HttpMethods.Get, resolvedAuthOptions.authUrl!, authHeaders || {}, null, authParams),
+            this.client.httpRequester.doUri(
+              HttpMethods.Get,
+              resolvedAuthOptions.authUrl!,
+              authHeaders || {},
+              null,
+              authParams,
+            ),
             (err: any, result) =>
               err
                 ? authUrlRequestCallback(err) // doUri isn’t meant to throw an error, but handle any just in case
@@ -655,7 +661,13 @@ class Auth {
         'Sending POST to ' + path + '; Token params: ' + JSON.stringify(signedTokenParams),
       );
       Utils.whenPromiseSettles(
-        this.client.http.do(HttpMethods.Post, tokenUri, requestHeaders, JSON.stringify(signedTokenParams), null),
+        this.client.httpRequester.do(
+          HttpMethods.Post,
+          tokenUri,
+          requestHeaders,
+          JSON.stringify(signedTokenParams),
+          null,
+        ),
         (err: any, result) =>
           err
             ? tokenCb(err) // doUri isn’t meant to throw an error, but handle any just in case
@@ -820,7 +832,7 @@ class Auth {
    * @param authOptions
    * an object containing the request options:
    * - key:           the key to use. If not specified, a key passed in constructing
-   *                  the Rest interface will be used
+   *                  the Http interface will be used
    *
    * - queryTime      (optional) boolean indicating that the ably system should be
    *                  queried for the current time when none is specified explicitly
@@ -839,7 +851,7 @@ class Auth {
    *                  capabilities of the specified key.
    *
    * - clientId:      (optional) a client ID to associate with the token; if not
-   *                  specified, a clientId passed in constructing the Rest interface will be used
+   *                  specified, a clientId passed in constructing the Http interface will be used
    *
    * - timestamp:     (optional) the time in ms since the epoch. If none is specified,
    *                  the system will be queried for a time value to use.
@@ -1139,7 +1151,7 @@ class Auth {
     specifiers: TokenRevocationTargetSpecifier[],
     options?: TokenRevocationOptions,
   ): Promise<TokenRevocationResult> {
-    return this.client.rest.revokeTokens(specifiers, options);
+    return this.client.http.revokeTokens(specifiers, options);
   }
 
   /**

@@ -2,7 +2,7 @@
 
 define(['shared_helper', 'chai'], function (Helper, chai) {
   var currentTime;
-  var rest;
+  var http;
   var testApp;
   var expect = chai.expect;
   var invalid0 = {
@@ -15,15 +15,15 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
     channel0: [],
   };
 
-  describe('rest/capability', function () {
+  describe('http/capability', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
       const helper = Helper.forHook(this);
       helper.setupApp(function () {
-        rest = helper.AblyRest({ queryTime: true });
+        http = helper.AblyHttp({ queryTime: true });
         testApp = helper.getTestApp();
-        rest
+        http
           .time()
           .then(function (time) {
             currentTime = time;
@@ -46,7 +46,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
     it('Blanket intersection with specified key', async function () {
       var testKeyOpts = { key: testApp.keys[1].keyStr };
       var testCapability = JSON.parse(testApp.keys[1].capability);
-      var tokenDetails = await rest.auth.requestToken(null, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken(null, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(testCapability, 'Verify token capability');
     });
 
@@ -60,7 +60,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
     it('Equal intersection with specified key', async function () {
       var testKeyOpts = { key: testApp.keys[1].keyStr };
       var testCapability = JSON.parse(testApp.keys[1].capability);
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(testCapability, 'Verify token capability');
     });
 
@@ -72,7 +72,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[1].keyStr };
       var testCapability = { 'canpublish:test': ['subscribe'] };
       try {
-        var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+        var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       } catch (err) {
         expect(err.statusCode).to.equal(401, 'Verify request rejected with insufficient capability');
         return;
@@ -88,7 +88,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[2].keyStr };
       var testCapability = { channelx: ['publish'] };
       try {
-        var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+        var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       } catch (err) {
         expect(err.statusCode).to.equal(401, 'Verify request rejected with insufficient capability');
         return;
@@ -104,7 +104,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[2].keyStr };
       var testCapability = { channel2: ['presence', 'subscribe'] };
       var expectedIntersection = { channel2: ['subscribe'] };
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -119,7 +119,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
         channelx: ['presence', 'subscribe'],
       };
       var expectedIntersection = { channel2: ['subscribe'] };
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -131,7 +131,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[2].keyStr };
       var testCapability = { channel2: ['*'] };
       var expectedIntersection = { channel2: ['publish', 'subscribe'] };
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -143,7 +143,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[2].keyStr };
       var testCapability = { channel6: ['publish', 'subscribe'] };
       var expectedIntersection = { channel6: ['publish', 'subscribe'] };
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -155,7 +155,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[3].keyStr };
       var testCapability = { cansubscribe: ['subscribe'] };
       var expectedIntersection = testCapability;
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -167,7 +167,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[1].keyStr };
       var testCapability = { 'canpublish:check': ['publish'] };
       var expectedIntersection = testCapability;
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -179,7 +179,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
       var testKeyOpts = { key: testApp.keys[3].keyStr };
       var testCapability = { 'cansubscribe:*': ['subscribe'] };
       var expectedIntersection = testCapability;
-      var tokenDetails = await rest.auth.requestToken({ capability: testCapability }, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken({ capability: testCapability }, testKeyOpts);
       expect(JSON.parse(tokenDetails.capability)).to.deep.equal(expectedIntersection, 'Verify token capability');
     });
 
@@ -191,7 +191,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      */
     it('Invalid capabilities 1', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ capability: invalid0 });
+        var tokenDetails = await http.auth.requestToken({ capability: invalid0 });
       } catch (err) {
         expect(err.statusCode).to.equal(400, 'Verify request rejected with bad capability');
         return;
@@ -205,7 +205,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      */
     it('Invalid capabilities 2', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ capability: invalid1 });
+        var tokenDetails = await http.auth.requestToken({ capability: invalid1 });
       } catch (err) {
         expect(err.statusCode).to.equal(400, 'Verify request rejected with bad capability');
         return;
@@ -219,7 +219,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      */
     it('Invalid capabilities 3', async function () {
       try {
-        var tokenDetails = await rest.auth.requestToken({ capability: invalid2 });
+        var tokenDetails = await http.auth.requestToken({ capability: invalid2 });
       } catch (err) {
         expect(err.statusCode).to.equal(400, 'Verify request rejected with bad capability');
         return;

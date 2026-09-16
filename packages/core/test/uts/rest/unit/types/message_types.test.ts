@@ -8,7 +8,7 @@
 import { expect } from 'chai';
 import { Ably } from '../../../helpers';
 
-const Message = Ably.Rest.Message;
+const Message = Ably.Http.Message;
 
 describe('uts/rest/unit/types/message_types', function () {
   /**

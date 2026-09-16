@@ -1067,8 +1067,8 @@ class ConnectionManager extends EventEmitter {
           );
         }
       });
-      if (this.realtime.http.checkConnectivity) {
-        Utils.whenPromiseSettles(this.realtime.http.checkConnectivity(), (err, connectivity) => {
+      if (this.realtime.httpRequester.checkConnectivity) {
+        Utils.whenPromiseSettles(this.realtime.httpRequester.checkConnectivity(), (err, connectivity) => {
           if (err || !connectivity) {
             Logger.logAction(
               this.logger,
@@ -1591,12 +1591,12 @@ class ConnectionManager extends EventEmitter {
       /* before trying any fallback (or any remaining fallback) we decide if
        * there is a problem with the ably host, or there is a general connectivity
        * problem */
-      if (!this.realtime.http.checkConnectivity) {
-        giveUp(new PartialErrorInfo('Internal error: Http.checkConnectivity not set', null, 500));
+      if (!this.realtime.httpRequester.checkConnectivity) {
+        giveUp(new PartialErrorInfo('Internal error: HttpRequester.checkConnectivity not set', null, 500));
         return;
       }
       Utils.whenPromiseSettles(
-        this.realtime.http.checkConnectivity(),
+        this.realtime.httpRequester.checkConnectivity(),
         (err?: ErrorInfo | null, connectivity?: boolean) => {
           if (connectCount !== this.connectCounter) {
             return;

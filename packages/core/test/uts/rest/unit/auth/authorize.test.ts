@@ -41,7 +41,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     const captured: any[] = [];
     installMockHttp(tokenRoutingMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     const tokenDetails = await client.auth.authorize();
 
     expect(tokenDetails).to.be.an('object');
@@ -71,7 +71,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackParams = params;
         callback(null, 'callback-token');
@@ -112,7 +112,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     // Before authorize
     expect(client.auth.tokenDetails).to.satisfy((v: any) => v === null || v === undefined);
@@ -138,7 +138,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         originalCalled = true;
         callback(null, 'original-token');
@@ -169,7 +169,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         tokenCount++;
         callback(null, {
@@ -215,7 +215,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     // Must include key in authOptions since authorize() replaces stored options
     await client.auth.authorize(null, { key: 'appId.keyId:keySecret', queryTime: true });
 
@@ -243,7 +243,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'invalid.key:secret' });
+    const client = new Ably.Http({ key: 'invalid.key:secret' });
 
     try {
       await client.auth.authorize();
@@ -270,7 +270,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callbackInvocations.push({ ...params });
         callback(null, {
@@ -324,7 +324,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     // Authorize with queryTime option (but same key)
     await client.auth.authorize(null, { key: 'appId.keyId:keySecret', queryTime: false });
@@ -346,7 +346,7 @@ describe('uts/rest/unit/auth/authorize', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     try {
       await client.auth.authorize(null, { key: 'different.key:secret' });

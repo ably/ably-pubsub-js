@@ -60,10 +60,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -76,7 +76,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       httpRequestTimeout: 3000,
     } as any);
 
-    const result = await restClient.time();
+    const result = await httpClient.time();
 
     expect(result).to.be.a('number');
     expect(result).to.be.greaterThan(0);
@@ -114,10 +114,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -129,7 +129,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       useBinaryProtocol: false,
     } as any);
 
-    const result = await restClient.time();
+    const result = await httpClient.time();
 
     expect(result).to.be.a('number');
     expect(result).to.be.greaterThan(0);
@@ -147,15 +147,15 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
   /**
    * Unreachable endpoint surfaces error correctly
    *
-   * A Rest client pointed at a port with nothing listening should fail
+   * A Http client pointed at a port with nothing listening should fail
    * with a usable error object (not an unhandled crash).
    */
   // UTS: rest/proxy/RSC15l/unreachable-endpoint-error-0
   it('Unreachable endpoint surfaces error correctly', async function () {
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -168,7 +168,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
 
     let error: any;
     try {
-      await restClient.time();
+      await httpClient.time();
       expect.fail('Expected time() to throw');
     } catch (err: any) {
       error = err;
@@ -200,10 +200,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -215,7 +215,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       useBinaryProtocol: false,
     } as any);
 
-    const result = await restClient.time();
+    const result = await httpClient.time();
 
     expect(result).to.be.a('number');
     expect(result).to.be.greaterThan(0);
@@ -250,10 +250,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -266,7 +266,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
 
     let error: any;
     try {
-      await restClient.time();
+      await httpClient.time();
       expect.fail('Expected time() to throw');
     } catch (err: any) {
       error = err;
@@ -300,10 +300,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -316,7 +316,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
 
     let error: any;
     try {
-      await restClient.time();
+      await httpClient.time();
       expect.fail('Expected time() to throw');
     } catch (err: any) {
       error = err;
@@ -350,10 +350,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -367,7 +367,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
 
     let error: any;
     try {
-      await restClient.time();
+      await httpClient.time();
       expect.fail('Expected time() to throw');
     } catch (err: any) {
       error = err;
@@ -413,10 +413,10 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -430,7 +430,7 @@ describe('uts/rest/integration/proxy/rest_fallback', function () {
     } as any);
 
     const channelName = uniqueChannelName('test-RSL1k4-idempotent');
-    const channel = restClient.channels.get(channelName);
+    const channel = httpClient.channels.get(channelName);
 
     // Publish — first attempt gets 503, SDK retries on fallback and succeeds
     await channel.publish('test-msg', 'hello');

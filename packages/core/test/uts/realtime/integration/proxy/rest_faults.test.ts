@@ -69,11 +69,11 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
 
     let authCallbackCount = 0;
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
         authCallbackCount++;
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -85,7 +85,7 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
     } as any);
 
     const channelName = uniqueChannelName('test-RSC10-token-renewal');
-    const channel = restClient.channels.get(channelName);
+    const channel = httpClient.channels.get(channelName);
 
     // Publish a message — first request gets 401, SDK renews token, retries
     await channel.publish('test-event', 'hello');
@@ -128,10 +128,10 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
       ],
     });
 
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
-        const innerRest = new Ably.Rest({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
-        innerRest.auth.requestToken().then(
+        const innerHttp = new Ably.Http({ key: getApiKey(), endpoint: SANDBOX_ENDPOINT } as any);
+        innerHttp.auth.requestToken().then(
           (token: any) => cb(null, token),
           (err: any) => cb(err, null),
         );
@@ -143,7 +143,7 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
     } as any);
 
     const channelName = uniqueChannelName('test-RSC15m-503-error');
-    const channel = restClient.channels.get(channelName);
+    const channel = httpClient.channels.get(channelName);
 
     // Publish should fail with 503 error
     let error: any;
@@ -193,7 +193,7 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
     trackClient(realtimeClient);
 
     // Create REST client through proxy for history retrieval
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       authCallback: (_params: any, cb: any) => {
         cb(null, generateJWT({ keyName, keySecret }));
       },
@@ -205,7 +205,7 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
 
     const channelName = uniqueChannelName('test-RTL6-publish-history');
     const realtimeChannel = realtimeClient.channels.get(channelName);
-    const restChannel = restClient.channels.get(channelName);
+    const httpChannel = httpClient.channels.get(channelName);
 
     // Connect Realtime client through proxy
     await connectAndWait(realtimeClient, 15000);
@@ -219,14 +219,14 @@ describe('uts/realtime/integration/proxy/rest_faults', function () {
     // Poll until the message appears in history (eventual consistency)
     await pollUntil(
       async () => {
-        const history = await restChannel.history();
+        const history = await httpChannel.history();
         return history.items.length > 0;
       },
       { interval: 500, timeout: 10000 },
     );
 
     // Retrieve channel history via REST
-    const history = await restChannel.history();
+    const history = await httpChannel.history();
 
     // History contains the published message
     expect(history.items.length).to.be.at.least(1);

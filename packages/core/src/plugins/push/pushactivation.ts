@@ -73,30 +73,30 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
     declare id: string;
     declare deviceSecret: string;
 
-    rest: BaseClient;
+    http: BaseClient;
     push: DevicePushDetails;
 
-    private constructor(rest: BaseClient) {
+    private constructor(http: BaseClient) {
       super();
       this.push = {};
-      this.rest = rest;
+      this.http = http;
     }
 
-    static load(rest: BaseClient) {
-      const device = new LocalDevice(rest);
+    static load(http: BaseClient) {
+      const device = new LocalDevice(http);
       device.loadPersisted();
       return device;
     }
 
-    static async loadAsync(rest: BaseClient) {
-      const device = new LocalDevice(rest);
+    static async loadAsync(http: BaseClient) {
+      const device = new LocalDevice(http);
       await device.loadPersistedAsync();
       return device;
     }
 
     async listSubscriptions(): Promise<PaginatedResult<PushChannelSubscription>> {
-      if (!this.rest.pushConfig) {
-        throw new this.rest.ErrorInfo({
+      if (!this.http.pushConfig) {
+        throw new this.http.ErrorInfo({
           message:
             'Push activation is not available on this platform: it requires a browser environment with service worker support, or a React Native environment with the ably/react-native-push plugin',
           code: 40000,
@@ -106,7 +106,7 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
       }
 
       if (!this.id) {
-        throw new this.rest.ErrorInfo({
+        throw new this.http.ErrorInfo({
           message: 'Device not activated',
           code: 40000,
           statusCode: 400,
@@ -115,22 +115,22 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
       }
 
       if (!this.deviceIdentityToken) {
-        throw new this.rest.ErrorInfo('Cannot list device subscriptions without deviceIdentityToken', 50000, 500);
+        throw new this.http.ErrorInfo('Cannot list device subscriptions without deviceIdentityToken', 50000, 500);
       }
 
-      const client = this.rest,
+      const client = this.http,
         format = client.options.useBinaryProtocol ? client.Utils.Format.msgpack : client.Utils.Format.json,
-        envelope = client.http.supportsLinkHeaders ? undefined : format,
+        envelope = client.httpRequester.supportsLinkHeaders ? undefined : format,
         headers = client.Defaults.defaultGetHeaders(client.options);
 
       client.Utils.mixin(headers, client.options.headers, { 'X-Ably-DeviceToken': this.deviceIdentityToken });
 
-      return new client.rest.PaginatedResource(client, '/push/channelSubscriptions', headers, envelope, async function (
+      return new client.http.PaginatedResource(client, '/push/channelSubscriptions', headers, envelope, async function (
         body,
         headers,
         unpacked,
       ) {
-        return client.rest.PushChannelSubscription.fromResponseBody(
+        return client.http.PushChannelSubscription.fromResponseBody(
           body as Record<string, unknown>[],
           client._MsgPack,
           unpacked ? undefined : format,
@@ -140,9 +140,9 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
 
     // keep in sync with loadPersistedAsync()
     loadPersisted() {
-      const pushConfig = this.rest.pushConfig;
+      const pushConfig = this.http.pushConfig;
       if (!pushConfig) {
-        throw new this.rest.ErrorInfo({
+        throw new this.http.ErrorInfo({
           message:
             'Push activation is not available on this platform: it requires a browser environment with service worker support, or a React Native environment with the ably/react-native-push plugin',
           code: 40000,
@@ -151,7 +151,7 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
         });
       }
       if (pushConfig.storageIsAsync) {
-        throw new this.rest.ErrorInfo({
+        throw new this.http.ErrorInfo({
           message: 'The local device cannot be loaded synchronously: push storage on this platform is asynchronous',
           code: 40000,
           statusCode: 400,
@@ -160,7 +160,7 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
         });
       }
       this.platform = pushConfig.platform;
-      this.clientId = this.rest.auth.clientId ?? undefined;
+      this.clientId = this.http.auth.clientId ?? undefined;
       this.formFactor = pushConfig.formFactor;
       // this path is only reachable with synchronous storage (async storage implies storageIsAsync,
       // which routes callers to getDevice() and the async load path), so the reads are cast to string
@@ -180,9 +180,9 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
     // keep in sync with loadPersisted(); awaiting a non-promise is a no-op, so this single
     // implementation serves both synchronous (web) and asynchronous (React Native) storage
     async loadPersistedAsync() {
-      const pushConfig = this.rest.pushConfig;
+      const pushConfig = this.http.pushConfig;
       if (!pushConfig) {
-        throw new this.rest.ErrorInfo({
+        throw new this.http.ErrorInfo({
           message:
             'Push activation is not available on this platform: it requires a browser environment with service worker support, or a React Native environment with the ably/react-native-push plugin',
           code: 40000,
@@ -191,7 +191,7 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
         });
       }
       this.platform = pushConfig.platform;
-      this.clientId = this.rest.auth.clientId ?? undefined;
+      this.clientId = this.http.auth.clientId ?? undefined;
       this.formFactor = pushConfig.formFactor;
       this.id = ((await pushConfig.storage.get(persistKeys.deviceId)) ?? undefined) as string;
 
@@ -207,9 +207,9 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
     }
 
     persist(): void | Promise<void> {
-      const pushConfig = this.rest.pushConfig;
+      const pushConfig = this.http.pushConfig;
       if (!pushConfig) {
-        throw new this.rest.ErrorInfo({
+        throw new this.http.ErrorInfo({
           message:
             'Push activation is not available on this platform: it requires a browser environment with service worker support, or a React Native environment with the ably/react-native-push plugin',
           code: 40000,
@@ -230,7 +230,7 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
       if (this.push.recipient) {
         writes.push(pushConfig.storage.set(persistKeys.pushRecipient, JSON.stringify(this.push.recipient)));
       }
-      return loggedStorageWrites(this.rest, 'LocalDevice.persist()', writes);
+      return loggedStorageWrites(this.http, 'LocalDevice.persist()', writes);
     }
 
     resetId(): void | Promise<void> {
@@ -240,23 +240,23 @@ export function localDeviceFactory(deviceDetails: typeof DeviceDetails) {
     }
 
     getAuthDetails(
-      rest: BaseClient,
+      http: BaseClient,
       headers: Record<string, string>,
       params: Record<string, unknown>,
     ): LocalDeviceAuthDetails {
       if (!this.deviceIdentityToken) {
-        throw new this.rest.ErrorInfo('Unable to update device registration; no deviceIdentityToken', 50000, 500);
+        throw new this.http.ErrorInfo('Unable to update device registration; no deviceIdentityToken', 50000, 500);
       }
-      if (this.rest.http.supportsAuthHeaders) {
+      if (this.http.httpRequester.supportsAuthHeaders) {
         return {
-          headers: rest.Utils.mixin(
-            { authorization: 'Bearer ' + rest.Utils.toBase64(this.deviceIdentityToken) },
+          headers: http.Utils.mixin(
+            { authorization: 'Bearer ' + http.Utils.toBase64(this.deviceIdentityToken) },
             headers,
           ) as Record<string, string>,
           params,
         };
       } else {
-        return { headers, params: rest.Utils.mixin({ access_token: this.deviceIdentityToken }, params) };
+        return { headers, params: http.Utils.mixin({ access_token: this.deviceIdentityToken }, params) };
       }
     }
   };
@@ -285,9 +285,9 @@ export class ActivationStateMachine {
   GettingPushDeviceDetailsFailed = GettingPushDeviceDetailsFailed;
   GotPushDeviceDetails = GotPushDeviceDetails;
 
-  constructor(rest: BaseClient) {
-    this.client = rest;
-    this._pushConfig = rest.pushConfig;
+  constructor(http: BaseClient) {
+    this.client = http;
+    this._pushConfig = http.pushConfig;
     if (!this._pushConfig?.storageIsAsync) {
       // synchronous storage: resolve the persisted activation state immediately. With
       // asynchronous storage the state is resolved by ensureInitialized() instead.
@@ -434,7 +434,7 @@ export class ActivationStateMachine {
       const requestBody = this.client.Utils.encodeBody(body, client._MsgPack, format);
       const authDetails = localDevice.getAuthDetails(client, headers, params);
       try {
-        await this.client.rest.Resource.patch(
+        await this.client.http.Resource.patch(
           client,
           '/push/deviceRegistrations/' + encodeURIComponent(localDevice.id),
           requestBody,
@@ -455,20 +455,20 @@ export class ActivationStateMachine {
     if (this.deregisterCallback) {
       this.callCustomDeregisterer(device);
     } else {
-      const rest = this.client;
-      const format = rest.options.useBinaryProtocol ? this.client.Utils.Format.msgpack : this.client.Utils.Format.json,
-        headers = this.client.Defaults.defaultPostHeaders(rest.options),
+      const http = this.client;
+      const format = http.options.useBinaryProtocol ? this.client.Utils.Format.msgpack : this.client.Utils.Format.json,
+        headers = this.client.Defaults.defaultPostHeaders(http.options),
         params = { deviceId: device.id };
 
-      if (rest.options.headers) this.client.Utils.mixin(headers, rest.options.headers);
+      if (http.options.headers) this.client.Utils.mixin(headers, http.options.headers);
 
       const authDetails = device.getAuthDetails(this.client, headers, params);
 
-      if (rest.options.pushFullWait) this.client.Utils.mixin(params, { fullWait: 'true' });
+      if (http.options.pushFullWait) this.client.Utils.mixin(params, { fullWait: 'true' });
 
       try {
-        await this.client.rest.Resource.delete(
-          rest,
+        await this.client.http.Resource.delete(
+          http,
           '/push/deviceRegistrations',
           authDetails.headers,
           authDetails.params,
@@ -732,7 +732,7 @@ class WaitingForPushDeviceDetails extends ActivationState {
         const format = client.options.useBinaryProtocol
             ? machine.client.Utils.Format.msgpack
             : machine.client.Utils.Format.json,
-          body = client.rest.DeviceDetails.fromLocalDevice(device),
+          body = client.http.DeviceDetails.fromLocalDevice(device),
           headers = machine.client.Defaults.defaultPostHeaders(client.options, { format }),
           params = {};
 
@@ -742,11 +742,11 @@ class WaitingForPushDeviceDetails extends ActivationState {
 
         const requestBody = machine.client.Utils.encodeBody(body, client._MsgPack, format);
 
-        machine.client.rest.Resource.post(client, '/push/deviceRegistrations', requestBody, headers, params, null, true)
+        machine.client.http.Resource.post(client, '/push/deviceRegistrations', requestBody, headers, params, null, true)
           .then((response) => {
             const deviceDetails = response.unpacked
               ? response.body
-              : client.rest.DeviceDetails.fromResponseBody(response.body as any, client._MsgPack, format);
+              : client.http.DeviceDetails.fromResponseBody(response.body as any, client._MsgPack, format);
             machine.handleEvent(new GotDeviceRegistration(deviceDetails as DeviceRegistration));
           })
           .catch((err) => {

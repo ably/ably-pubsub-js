@@ -69,7 +69,7 @@ export async function getW3CPushDeviceDetails(machine: ActivationStateMachine) {
 
     const headers = Defaults.defaultGetHeaders(machine.client.options, { format: 'text' });
     const appServerKey = (
-      await machine.client.rest.Resource.get(machine.client, '/push/publicVapidKey', headers, {}, null, true)
+      await machine.client.http.Resource.get(machine.client, '/push/publicVapidKey', headers, {}, null, true)
     ).body as string;
 
     if (!worker.active) {

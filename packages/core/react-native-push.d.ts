@@ -1,10 +1,10 @@
 // The ESLint warning is triggered because we only use these types in a documentation comment.
 /* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars */
-import { RealtimeClient, RestClient } from './ably';
+import { RealtimeClient, HttpClient } from './ably';
 /* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 /**
- * Provides a {@link RestClient} or {@link RealtimeClient} instance with the ability to be activated as a target for push notifications in a React Native application.
+ * Provides a {@link HttpClient} or {@link RealtimeClient} instance with the ability to be activated as a target for push notifications in a React Native application.
  *
  * Unlike the web `@ably/pubsub-core/push` plugin, the push environment is supplied by your application: pass an
  * async storage implementation and a token callback to `create()`, then register the returned

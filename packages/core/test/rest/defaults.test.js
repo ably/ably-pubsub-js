@@ -4,7 +4,7 @@ define(['ably', 'chai'], function (Ably, chai) {
   var expect = chai.expect;
   var Defaults = Ably.Realtime.Platform.Defaults;
 
-  describe('rest/defaults', function () {
+  describe('http/defaults', function () {
     /**
      * @spec TO3k2
      * @spec TO3k3

@@ -38,7 +38,7 @@ describe('uts/rest/integration/pagination', function () {
   it('TG1, TG2 - PaginatedResult items and navigation', async function () {
     const channelName = uniqueChannelName('pagination-basic');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -82,7 +82,7 @@ describe('uts/rest/integration/pagination', function () {
   it('TG3 - next() retrieves subsequent pages', async function () {
     const channelName = uniqueChannelName('pagination-next');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -133,7 +133,7 @@ describe('uts/rest/integration/pagination', function () {
   it('TG4 - first() retrieves first page', async function () {
     const channelName = uniqueChannelName('pagination-first');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -176,7 +176,7 @@ describe('uts/rest/integration/pagination', function () {
   it('TG5 - iterate through all pages', async function () {
     const channelName = uniqueChannelName('pagination-iterate');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -233,7 +233,7 @@ describe('uts/rest/integration/pagination', function () {
   it('TG - next() on last page returns null', async function () {
     const channelName = uniqueChannelName('pagination-lastnext');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });

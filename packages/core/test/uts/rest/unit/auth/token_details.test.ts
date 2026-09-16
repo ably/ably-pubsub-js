@@ -31,7 +31,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('RSA16a - tokenDetails from authCallback', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, {
           token: 'callback-token-abc',
@@ -79,7 +79,7 @@ describe('uts/rest/unit/auth/token_details', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     await client.auth.authorize();
 
     expect(client.auth.tokenDetails).to.not.be.null;
@@ -94,7 +94,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('RSA16b - tokenDetails from token string option', function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({ token: 'standalone-token-string' } as any);
+    const client = new Ably.Http({ token: 'standalone-token-string' } as any);
 
     expect(client.auth.tokenDetails).to.not.be.null;
     expect(client.auth.tokenDetails!.token).to.equal('standalone-token-string');
@@ -112,7 +112,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('RSA16b - tokenDetails from token string authCallback', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, 'just-a-token-string');
       },
@@ -139,7 +139,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('RSA16c - tokenDetails set on instantiation', function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       tokenDetails: {
         token: 'initial-token',
         expires: Date.now() + 3600000,
@@ -162,7 +162,7 @@ describe('uts/rest/unit/auth/token_details', function () {
 
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         tokenCount++;
         callback(null, {
@@ -201,7 +201,7 @@ describe('uts/rest/unit/auth/token_details', function () {
 
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         tokenCount++;
         callback(null, {
@@ -265,7 +265,7 @@ describe('uts/rest/unit/auth/token_details', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         tokenCount++;
         callback(null, {
@@ -316,7 +316,7 @@ describe('uts/rest/unit/auth/token_details', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callbackCount++;
         if (callbackCount === 1) {
@@ -356,7 +356,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('RSA16d - tokenDetails null with basic auth', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     try {
       await client.stats({} as any);
     } catch (e) {
@@ -373,7 +373,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('RSA16d - tokenDetails null before first token', function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, 'my-token');
       },
@@ -405,7 +405,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('tokenDetails preserved across requests', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, {
           token: 'stable-token',
@@ -450,7 +450,7 @@ describe('uts/rest/unit/auth/token_details', function () {
   it('tokenDetails reflects capability', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, {
           token: 'capable-token',

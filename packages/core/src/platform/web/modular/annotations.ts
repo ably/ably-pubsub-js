@@ -2,14 +2,14 @@ import * as API from '../../../../ably';
 import Logger from '../../../common/lib/util/logger';
 import { AnnotationsPlugin } from 'common/lib/client/modularplugins';
 import RealtimeAnnotations from '../../../common/lib/client/realtimeannotations';
-import RestAnnotations from '../../../common/lib/client/restannotations';
+import HttpAnnotations from '../../../common/lib/client/httpannotations';
 import Annotation, { WireAnnotation, fromEncoded, fromEncodedArray } from '../../../common/lib/types/annotation';
 
 export const Annotations: AnnotationsPlugin = {
   Annotation,
   WireAnnotation,
   RealtimeAnnotations,
-  RestAnnotations,
+  HttpAnnotations,
 };
 
 export const decodeAnnotation = ((obj, options) => {

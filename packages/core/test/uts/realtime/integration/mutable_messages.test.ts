@@ -342,8 +342,8 @@ describeEachProtocol('uts/realtime/integration/mutable_messages', function (prot
   /**
    * RTL28, RTL31 — getMessage and getMessageVersions from realtime channel
    *
-   * RTL28: RealtimeChannel#getMessage same as RestChannel#getMessage.
-   * RTL31: RealtimeChannel#getMessageVersions same as RestChannel#getMessageVersions.
+   * RTL28: RealtimeChannel#getMessage same as HttpChannel#getMessage.
+   * RTL31: RealtimeChannel#getMessageVersions same as HttpChannel#getMessageVersions.
    */
   // UTS: realtime/integration/RTL28/get-message-and-versions-0
   it('RTL28/RTL31 - getMessage and getMessageVersions', async function () {

@@ -32,7 +32,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       clientId: 'my-client-id',
     });
@@ -53,7 +53,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       tokenDetails: {
         token: 'token-with-clientId',
         expires: Date.now() + 3600000,
@@ -77,7 +77,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         callback(null, {
           token: 'callback-token',
@@ -106,7 +106,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     expect(client.auth.clientId).to.satisfy((v: any) => v === null || v === undefined);
   });
@@ -119,7 +119,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       tokenDetails: {
         token: 'token-without-clientId',
         expires: Date.now() + 3600000,
@@ -142,7 +142,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         receivedParams = params;
         callback(null, 'test-token');
@@ -180,7 +180,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
       clientId: 'url-client-id',
     } as any);
@@ -215,7 +215,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params: any, callback: any) {
         tokenCount++;
         callback(null, {
@@ -253,7 +253,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       tokenDetails: {
         token: 'wildcard-token',
         expires: Date.now() + 3600000,
@@ -275,7 +275,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       clientId: 'explicit-client',
       authCallback: function (params: any, callback: any) {
         callback(null, {
@@ -314,7 +314,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       // no clientId in options
       authCallback: function (params: any, callback: any) {
         callback(null, {
@@ -345,7 +345,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       clientId: 'my-client',
       tokenDetails: {
         token: 'matching-token',
@@ -375,7 +375,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       clientId: 'client-a',
       tokenDetails: {
         token: 'mismatched-token',
@@ -400,7 +400,7 @@ describe('uts/rest/unit/auth/client_id', function () {
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       clientId: 'any-client',
       tokenDetails: {
         token: 'wildcard-token',

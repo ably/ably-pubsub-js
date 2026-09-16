@@ -46,7 +46,7 @@ describe('uts/rest/unit/logging', function () {
     setupMock();
 
     const capturedLogs: any[] = [];
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       logHandler: function (msg, level) {
         capturedLogs.push({ msg, level });
@@ -74,7 +74,7 @@ describe('uts/rest/unit/logging', function () {
     setupMock();
 
     const capturedLogs: any[] = [];
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       logLevel: 4, // MICRO
       logHandler: function (msg, level) {
@@ -107,7 +107,7 @@ describe('uts/rest/unit/logging', function () {
     setupMock();
 
     const capturedLogs: any[] = [];
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       logLevel: 4, // MICRO — capture everything
       logHandler: function (msg, level) {
@@ -142,7 +142,7 @@ describe('uts/rest/unit/logging', function () {
     setupMock();
 
     const capturedLogs: any[] = [];
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       logLevel: 0, // NONE
       logHandler: function (msg, level) {
@@ -167,7 +167,7 @@ describe('uts/rest/unit/logging', function () {
     setupMock();
 
     const capturedLogs: any[] = [];
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       logLevel: 3, // MINOR
       logHandler: function (msg, level) {
@@ -201,7 +201,7 @@ describe('uts/rest/unit/logging', function () {
     setupMock();
 
     const capturedLogs: any[] = [];
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'app.key:secret',
       logLevel: 4, // MICRO
       logHandler: function (msg, level) {

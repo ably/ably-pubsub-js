@@ -10,7 +10,7 @@
 // side-effect import wires up Platform with the Node-specific Http, Config,
 // Crypto, etc. — equivalent to loading build/ably-node.js.
 import '../../src/platform/nodejs';
-import { DefaultRest } from '../../src/common/lib/client/defaultrest';
+import { DefaultHttp } from '../../src/common/lib/client/defaulthttp';
 import { DefaultRealtime } from '../../src/common/lib/client/defaultrealtime';
 import ErrorInfo from '../../src/common/lib/types/errorinfo';
 import { makeFromDeserializedWithDependencies as makeProtocolMessageFromDeserialized } from '../../src/common/lib/types/protocolmessage';
@@ -25,7 +25,7 @@ import { createClient as createDeviceClient } from '../../../device/src/index';
 import { createHttpClient, createRealtimeClient } from '../../../server/src/index';
 
 /**
- * Wraps a per-side factory in a constructor-shaped function, so the UTS's `new Ably.Rest(...)` /
+ * Wraps a per-side factory in a constructor-shaped function, so the UTS's `new Ably.Http(...)` /
  * `new Ably.Realtime(...)` call sites work unchanged in every mode:
  *
  * - `new` on a function that returns an object yields that object, so construction goes through
@@ -50,7 +50,7 @@ function sideConstructor<T extends { prototype: unknown }>(factory: (options: an
  *
  * - `core` (default): the core constructors, the entry shape of today's `ably` package.
  * - `device`: `@ably/pubsub-device` — realtime via its side-stamping `createClient`; REST via the
- *   package's `Rest` re-export, which is the unstamped core constructor (the device package
+ *   package's `Http` re-export, which is the unstamped core constructor (the device package
  *   deliberately ships no HTTP factory).
  * - `server`: `@ably/pubsub-server` — both client kinds via its side-stamping factories.
  *
@@ -59,19 +59,19 @@ function sideConstructor<T extends { prototype: unknown }>(factory: (options: an
  */
 const utsSide = process.env.UTS_SIDE || 'core';
 
-let Rest: typeof DefaultRest;
+let Http: typeof DefaultHttp;
 let Realtime: typeof DefaultRealtime;
 switch (utsSide) {
   case 'core':
-    Rest = DefaultRest;
+    Http = DefaultHttp;
     Realtime = DefaultRealtime;
     break;
   case 'device':
-    Rest = DefaultRest;
+    Http = DefaultHttp;
     Realtime = sideConstructor(createDeviceClient, DefaultRealtime);
     break;
   case 'server':
-    Rest = sideConstructor(createHttpClient, DefaultRest);
+    Http = sideConstructor(createHttpClient, DefaultHttp);
     Realtime = sideConstructor(createRealtimeClient, DefaultRealtime);
     break;
   default:
@@ -79,13 +79,13 @@ switch (utsSide) {
 }
 
 const Ably = {
-  Rest,
+  Http,
   Realtime,
   ErrorInfo,
   makeProtocolMessageFromDeserialized,
 };
 
-const Platform = DefaultRest.Platform;
+const Platform = DefaultHttp.Platform;
 
 // Saved originals for teardown
 let _savedHttp: any = null;
@@ -277,7 +277,7 @@ function enableFakeTimers(): FakeClock {
 
 /**
  * Register a client for automatic cleanup in restoreAll().
- * Call this after creating any Ably.Rest or Ably.Realtime client in a test.
+ * Call this after creating any Ably.Http or Ably.Realtime client in a test.
  * restoreAll() will close all tracked clients, preventing timer leaks
  * even if the test throws before reaching its own cleanup code.
  */

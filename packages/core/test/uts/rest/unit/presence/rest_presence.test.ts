@@ -27,7 +27,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
    */
   // UTS: rest/unit/RSP1a/presence-channel-attribute-0
   it('RSP1a - presence accessible on channel', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     expect(channel.presence).to.be.an('object');
@@ -41,7 +41,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
    */
   // UTS: rest/unit/RSP1b/same-instance-returned-0
   it('RSP1b - channel.presence returns same instance', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     const presence1 = channel.presence;
@@ -70,7 +70,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test-channel');
     await channel.presence.get({});
 
@@ -110,7 +110,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -146,7 +146,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -172,7 +172,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({ limit: 50 });
 
@@ -197,7 +197,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({ clientId: 'specific' });
 
@@ -222,7 +222,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({ connectionId: 'conn123' });
 
@@ -251,7 +251,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test-channel');
     await channel.presence.history({});
 
@@ -280,7 +280,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.history({});
 
@@ -310,7 +310,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ start: 1609459200000 });
 
@@ -335,7 +335,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ end: 1609545600000 });
 
@@ -360,7 +360,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ direction: 'forwards' });
 
@@ -386,7 +386,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({});
 
@@ -413,7 +413,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ direction: 'backwards' });
 
@@ -438,7 +438,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ limit: 50 });
 
@@ -465,7 +465,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -496,7 +496,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -533,7 +533,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -566,7 +566,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -600,7 +600,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -633,7 +633,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.history({});
 
@@ -694,7 +694,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({ limit: 1 });
 
@@ -726,7 +726,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     // First page
@@ -768,7 +768,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     const page1 = await channel.presence.history({});
@@ -808,7 +808,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     try {
@@ -842,7 +842,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     try {
@@ -878,7 +878,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const result = await channel.presence.get({});
 
@@ -921,7 +921,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({});
 
@@ -949,7 +949,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({ limit: 1000 });
 
@@ -979,7 +979,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({ limit: 25, clientId: 'user1', connectionId: 'conn1' });
 
@@ -1011,7 +1011,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ start: 1609459200000, end: 1609545600000 });
 
@@ -1044,7 +1044,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     const startDate = new Date(1609459200000);
     await channel.presence.history({ start: startDate.getTime() });
@@ -1075,7 +1075,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({});
 
@@ -1103,7 +1103,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ limit: 1000 });
 
@@ -1133,7 +1133,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({ start: 1609459200000, end: 1609545600000, direction: 'forwards', limit: 50 });
 
@@ -1173,7 +1173,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
 
     try {
@@ -1207,7 +1207,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.history({});
 
@@ -1238,7 +1238,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const channel = client.channels.get('test');
     await channel.presence.get({});
 
@@ -1280,7 +1280,7 @@ describe('uts/rest/unit/presence/rest_presence', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       addRequestIds: true,
       useBinaryProtocol: false,

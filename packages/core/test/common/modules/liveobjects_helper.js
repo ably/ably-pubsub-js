@@ -68,7 +68,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
   class LiveObjectsHelper {
     constructor(helper) {
       this._helper = helper;
-      this._rest = helper.AblyRest({ useBinaryProtocol: false });
+      this._http = helper.AblyHttp({ useBinaryProtocol: false });
     }
 
     static ACTIONS = ACTIONS;
@@ -190,28 +190,28 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       const emptyCounter = await this.createAndSetOnMap(channelName, {
         mapObjectId: 'root',
         key: 'emptyCounter',
-        createOp: this.counterCreateRestOp(),
+        createOp: this.counterCreateHttpOp(),
       });
       const initialValueCounter = await this.createAndSetOnMap(channelName, {
         mapObjectId: 'root',
         key: 'initialValueCounter',
-        createOp: this.counterCreateRestOp({ number: 10 }),
+        createOp: this.counterCreateHttpOp({ number: 10 }),
       });
       const referencedCounter = await this.createAndSetOnMap(channelName, {
         mapObjectId: 'root',
         key: 'referencedCounter',
-        createOp: this.counterCreateRestOp({ number: 20 }),
+        createOp: this.counterCreateHttpOp({ number: 20 }),
       });
 
       const emptyMap = await this.createAndSetOnMap(channelName, {
         mapObjectId: 'root',
         key: 'emptyMap',
-        createOp: this.mapCreateRestOp(),
+        createOp: this.mapCreateHttpOp(),
       });
       const referencedMap = await this.createAndSetOnMap(channelName, {
         mapObjectId: 'root',
         key: 'referencedMap',
-        createOp: this.mapCreateRestOp({ data: { counterKey: { objectId: referencedCounter.objectId } } }),
+        createOp: this.mapCreateHttpOp({ data: { counterKey: { objectId: referencedCounter.objectId } } }),
       });
 
       const valuesMapData = primitiveKeyData.reduce((acc, v) => {
@@ -223,7 +223,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       const valuesMap = await this.createAndSetOnMap(channelName, {
         mapObjectId: 'root',
         key: 'valuesMap',
-        createOp: this.mapCreateRestOp({ data: valuesMapData }),
+        createOp: this.mapCreateHttpOp({ data: valuesMapData }),
       });
     }
 
@@ -466,12 +466,12 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
 
       const createResult = await this.operationRequest(channelName, createOp);
       const objectId = createResult.objectId;
-      await this.operationRequest(channelName, this.mapSetRestOp({ objectId: mapObjectId, key, value: { objectId } }));
+      await this.operationRequest(channelName, this.mapSetHttpOp({ objectId: mapObjectId, key, value: { objectId } }));
 
       return createResult;
     }
 
-    mapCreateRestOp(opts) {
+    mapCreateHttpOp(opts) {
       const { objectId, nonce, data } = opts ?? {};
       const opBody = {
         mapCreate: {
@@ -496,7 +496,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       return opBody;
     }
 
-    mapSetRestOp(opts) {
+    mapSetHttpOp(opts) {
       const { objectId, key, value } = opts ?? {};
       const opBody = {
         objectId,
@@ -509,7 +509,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       return opBody;
     }
 
-    mapRemoveRestOp(opts) {
+    mapRemoveHttpOp(opts) {
       const { objectId, key } = opts ?? {};
       const opBody = {
         objectId,
@@ -521,7 +521,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       return opBody;
     }
 
-    counterCreateRestOp(opts) {
+    counterCreateHttpOp(opts) {
       const { objectId, nonce, number } = opts ?? {};
       const opBody = {
         counterCreate: {},
@@ -539,7 +539,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       return opBody;
     }
 
-    counterIncRestOp(opts) {
+    counterIncHttpOp(opts) {
       const { objectId, number } = opts ?? {};
       const opBody = {
         objectId,
@@ -559,7 +559,7 @@ define(['ably', 'shared_helper', 'liveobjects'], function (Ably, Helper, LiveObj
       const method = 'post';
       const path = `/channels/${channelName}/objects`;
 
-      const response = await this._rest.request(method, path, 3, null, opBody, null);
+      const response = await this._http.request(method, path, 3, null, opBody, null);
 
       if (response.success) {
         // only one operation in the request, so need only the first item.

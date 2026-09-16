@@ -28,7 +28,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
     ];
 
     actionStrings.forEach(function (actionStr: any) {
-      const msg = Ably.Rest.Message.fromValues({ action: actionStr });
+      const msg = Ably.Http.Message.fromValues({ action: actionStr });
       expect(msg.action).to.equal(actionStr);
     });
   });
@@ -51,7 +51,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
     ];
 
     for (const [wireValue, expectedString] of wireToString) {
-      const msg = await Ably.Rest.Message.fromEncoded({
+      const msg = await Ably.Http.Message.fromEncoded({
         action: wireValue,
         serial: 'test-serial',
         name: 'test',
@@ -67,7 +67,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TM2j/action-and-serial-fields-0
   it('TM2j - action attribute', function () {
-    const msg = Ably.Rest.Message.fromValues({ action: 'message.update' });
+    const msg = Ably.Http.Message.fromValues({ action: 'message.update' });
     expect(msg.action).to.equal('message.update');
   });
 
@@ -78,7 +78,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TM2j/action-and-serial-fields-0.1
   it('TM2r - serial attribute', function () {
-    const msg = Ably.Rest.Message.fromValues({ serial: 'abc:0' });
+    const msg = Ably.Http.Message.fromValues({ serial: 'abc:0' });
     expect(msg.serial).to.equal('abc:0');
   });
 
@@ -90,7 +90,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TM2s/version-populated-from-wire-0
   it('TM2s - version object fields via fromEncoded', async function () {
-    const msg = await Ably.Rest.Message.fromEncoded({
+    const msg = await Ably.Http.Message.fromEncoded({
       serial: 'msg-serial-1',
       name: 'test',
       data: 'hello',
@@ -118,7 +118,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TM2s1/version-defaults-from-message-0
   it('TM2s1, TM2s2 - version defaults from serial and timestamp', async function () {
-    const msg = await Ably.Rest.Message.fromEncoded({
+    const msg = await Ably.Http.Message.fromEncoded({
       serial: 'msg-serial-1',
       timestamp: 1700000000000,
       name: 'test',
@@ -139,7 +139,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TM2u/annotations-defaults-empty-0
   it('TM2u, TM8a - annotations defaults to empty', async function () {
-    const msg = await Ably.Rest.Message.fromEncoded({
+    const msg = await Ably.Http.Message.fromEncoded({
       serial: 'msg-serial-1',
       name: 'test',
     });
@@ -205,7 +205,7 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TAN2/annotation-attributes-and-action-0
   it('TAN1, TAN2 - Annotation attributes via fromEncoded', async function () {
-    const ann = await Ably.Rest.Annotation.fromEncoded({
+    const ann = await Ably.Http.Annotation.fromEncoded({
       id: 'ann-id-1',
       action: 0,
       clientId: 'user-1',
@@ -239,10 +239,10 @@ describe('uts/rest/unit/types/mutable_message_types', function () {
    */
   // UTS: rest/unit/TAN2/annotation-attributes-and-action-0.1
   it('TAN2b - AnnotationAction wire values', async function () {
-    const create = await Ably.Rest.Annotation.fromEncoded({ action: 0, data: 'a' });
+    const create = await Ably.Http.Annotation.fromEncoded({ action: 0, data: 'a' });
     expect(create.action).to.equal('annotation.create');
 
-    const del = await Ably.Rest.Annotation.fromEncoded({ action: 1, data: 'b' });
+    const del = await Ably.Http.Annotation.fromEncoded({ action: 1, data: 'b' });
     expect(del.action).to.equal('annotation.delete');
   });
 });

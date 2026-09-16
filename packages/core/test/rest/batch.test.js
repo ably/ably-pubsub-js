@@ -3,7 +3,7 @@
 define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
   var expect = chai.expect;
 
-  describe('rest/batchPublish', function () {
+  describe('http/batchPublish', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -34,7 +34,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       it('performs a batch publish and returns an array of results', async function () {
         const helper = this.test.helper;
         const testApp = helper.getTestApp();
-        const rest = helper.AblyRest({
+        const http = helper.AblyHttp({
           promises: true,
           key: testApp.keys[2].keyStr /* we use this key so that some publishes fail due to capabilities */,
         });
@@ -57,7 +57,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         ];
 
         // First, we perform the batch publish request...
-        const batchResults = await rest.batchPublish(specs);
+        const batchResults = await http.batchPublish(specs);
 
         expect(batchResults).to.have.lengthOf(specs.length);
 
@@ -89,12 +89,12 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         expect(batchResults[1].results[1].error.statusCode).to.equal(401);
 
         // ...and now we use channel history to check that the expected messages have been published.
-        const verificationRest = helper.AblyRest({ promises: true });
+        const verificationHttp = helper.AblyHttp({ promises: true });
 
-        const channel0 = verificationRest.channels.get('channel0');
+        const channel0 = verificationHttp.channels.get('channel0');
         const channel0HistoryPromise = channel0.history({ limit: 2 });
 
-        const channel4 = verificationRest.channels.get('channel4');
+        const channel4 = verificationHttp.channels.get('channel4');
         const channel4HistoryPromise = channel4.history({ limit: 2 });
 
         const [channel0History, channel4History] = await Promise.all([channel0HistoryPromise, channel4HistoryPromise]);
@@ -125,7 +125,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       it('performs a batch publish and returns a single result', async function () {
         const helper = this.test.helper;
         const testApp = helper.getTestApp();
-        const rest = helper.AblyRest({
+        const http = helper.AblyHttp({
           promises: true,
           key: testApp.keys[2].keyStr /* we use this key so that some publishes fail due to capabilities */,
         });
@@ -139,7 +139,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         };
 
         // First, we perform the batch publish request...
-        const batchResult = await rest.batchPublish(spec);
+        const batchResult = await http.batchPublish(spec);
 
         expect(batchResult.successCount).to.equal(1);
         expect(batchResult.failureCount).to.equal(1);
@@ -155,8 +155,8 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         expect(batchResult.results[1].error.statusCode).to.equal(401);
 
         // ...and now we use channel history to check that the expected messages have been published.
-        const verificationRest = helper.AblyRest({ promises: true });
-        const channel0 = verificationRest.channels.get('channel0');
+        const verificationHttp = helper.AblyHttp({ promises: true });
+        const channel0 = verificationHttp.channels.get('channel0');
         const channel0History = await channel0.history({ limit: 2 });
 
         const channel0HistoryData = new Set([channel0History.items[0].data, channel0History.items[1].data]);
@@ -165,7 +165,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     });
   });
 
-  describe('rest/batchPresence', function () {
+  describe('http/batchPresence', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -191,7 +191,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it('performs a batch presence fetch and returns a result', async function () {
       const helper = this.test.helper;
       const testApp = helper.getTestApp();
-      const rest = helper.AblyRest({
+      const http = helper.AblyHttp({
         promises: true,
         key: testApp.keys[2].keyStr /* we use this key so that some presence fetches fail due to capabilities */,
       });
@@ -212,7 +212,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       await presenceEnterRealtime.channels.get('channel4').presence.enter();
 
       // ...and now we perform the batch presence request.
-      const batchResult = await rest.batchPresence(channelNames);
+      const batchResult = await http.batchPresence(channelNames);
 
       expect(batchResult.successCount).to.equal(1);
       expect(batchResult.failureCount).to.equal(1);
@@ -238,7 +238,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     });
   });
 
-  describe('rest/revokeTokens', function () {
+  describe('http/revokeTokens', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -269,7 +269,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it('revokes tokens matching the given specifiers', async function () {
       const helper = this.test.helper;
       const testApp = helper.getTestApp();
-      const rest = helper.AblyRest({
+      const http = helper.AblyHttp({
         promises: true,
         key: testApp.keys[4].keyStr /* this key has revocableTokens enabled */,
       });
@@ -279,8 +279,8 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
 
       // First, we fetch tokens for a couple of different clientIds...
       const [clientId1TokenDetails, clientId2TokenDetails] = await Promise.all([
-        rest.auth.requestToken({ clientId: clientId1 }),
-        rest.auth.requestToken({ clientId: clientId2 }),
+        http.auth.requestToken({ clientId: clientId1 }),
+        http.auth.requestToken({ clientId: clientId2 }),
       ]);
 
       // ...then, we set up Realtime instances that use these tokens and wait for them to become CONNECTED...
@@ -314,7 +314,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         { type: 'invalidType', value: 'abc' }, // we include an invalid specifier type to provoke a non-zero failureCount
       ];
 
-      const result = await rest.auth.revokeTokens(specifiers);
+      const result = await http.auth.revokeTokens(specifiers);
 
       // ...and check the response from the revocation request...
       expect(result.successCount).to.equal(2);
@@ -366,17 +366,17 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it('accepts optional issuedBefore and allowReauthMargin parameters', async function () {
       const helper = this.test.helper;
       const testApp = helper.getTestApp();
-      const rest = helper.AblyRest({
+      const http = helper.AblyHttp({
         promises: true,
         key: testApp.keys[4].keyStr /* this key has revocableTokens enabled */,
       });
 
       const clientId = `clientId-${Helper.randomString()}`;
 
-      const serverTimeAtStartOfTest = await rest.time();
+      const serverTimeAtStartOfTest = await http.time();
       const issuedBefore = serverTimeAtStartOfTest - 20 * 60 * 1000; // i.e. ~20 minutes ago (arbitrarily chosen)
 
-      const result = await rest.auth.revokeTokens([{ type: 'clientId', value: clientId }], {
+      const result = await http.auth.revokeTokens([{ type: 'clientId', value: clientId }], {
         issuedBefore,
         allowReauthMargin: true,
       });
@@ -394,13 +394,13 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      */
     it('throws an error when using token auth', async function () {
       const helper = this.test.helper;
-      const rest = helper.AblyRest({
+      const http = helper.AblyHttp({
         useTokenAuth: true,
       });
 
       let verifiedError = false;
       try {
-        await rest.auth.revokeTokens([{ type: 'clientId', value: 'clientId1' }], function () {});
+        await http.auth.revokeTokens([{ type: 'clientId', value: 'clientId1' }], function () {});
       } catch (err) {
         expect(err.statusCode).to.equal(401);
         expect(err.code).to.equal(40162);

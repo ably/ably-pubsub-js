@@ -47,7 +47,7 @@ class BaseRealtime extends BaseClient {
       throw new ErrorInfo(
         `Ably.Realtime instance cannot be used in Vercel Edge runtime.` +
           ` If you are running Vercel Edge functions, please replace your` +
-          ` "new Ably.Realtime()" with "new Ably.Rest()" and use Ably Rest API` +
+          ` "new Ably.Realtime()" with "new Ably.Http()" and use Ably Http API` +
           ` instead of the Realtime API. If you are server-rendering your application` +
           ` in the Vercel Edge runtime, please use the condition "if (typeof EdgeRuntime === 'string')"` +
           ` to prevent instantiating Ably.Realtime instance during SSR in the Vercel Edge runtime.`,

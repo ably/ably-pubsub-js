@@ -1,7 +1,7 @@
 'use strict';
 
 define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
   var exports = {};
   var testMessages = [
@@ -15,13 +15,13 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
   ];
   var reversedMessages = testMessages.map((_, i) => testMessages[testMessages.length - 1 - i]);
 
-  describe('rest/history', function () {
+  describe('http/history', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
       const helper = Helper.forHook(this);
       helper.setupApp(function () {
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         done();
       });
     });
@@ -32,8 +32,8 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      * @spec RSL2a
      */
     Helper.testOnJsonMsgpack('history_simple', async function (options, channelName, helper) {
-      const rest = helper.AblyRest(options);
-      var testchannel = rest.channels.get('persisted:' + channelName);
+      const http = helper.AblyHttp(options);
+      var testchannel = http.channels.get('persisted:' + channelName);
 
       /* first, send a number of events to this channel */
       await Promise.all([
@@ -65,8 +65,8 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      * @spec RSL2a
      */
     Helper.testOnJsonMsgpack('history_multiple', async function (options, channelName, helper) {
-      const rest = helper.AblyRest(options);
-      var testchannel = rest.channels.get('persisted:' + channelName);
+      const http = helper.AblyHttp(options);
+      var testchannel = http.channels.get('persisted:' + channelName);
 
       /* first, send a number of events to this channel */
       await Promise.all([new Promise((resolve) => setTimeout(resolve, 1000)), testchannel.publish(testMessages)]);
@@ -95,8 +95,8 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      * @specpartial RSL2b3 - should also test maximum supported limit of 1000
      */
     Helper.testOnJsonMsgpack('history_simple_paginated_b', async function (options, channelName, helper) {
-      const rest = helper.AblyRest(options);
-      var testchannel = rest.channels.get('persisted:' + channelName);
+      const http = helper.AblyHttp(options);
+      var testchannel = http.channels.get('persisted:' + channelName);
 
       /* first, send a number of events to this channel */
       for (var message of testMessages) {
@@ -140,7 +140,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      */
     it('history_simple_paginated_f', async function () {
       const helper = this.test.helper;
-      var testchannel = rest.channels.get('persisted:history_simple_paginated_f');
+      var testchannel = http.channels.get('persisted:history_simple_paginated_f');
 
       /* first, send a number of events to this channel */
       for (var message of testMessages) {
@@ -184,7 +184,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      * @specpartial RSL2b3 - should also test maximum supported limit of 1000
      */
     it('history_multiple_paginated_b', async function () {
-      var testchannel = rest.channels.get('persisted:history_multiple_paginated_b');
+      var testchannel = http.channels.get('persisted:history_multiple_paginated_b');
 
       /* first, send a number of events to this channel */
       for (var message of testMessages) {
@@ -223,7 +223,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
      */
     it('history_multiple_paginated_f', async function () {
       const helper = this.test.helper;
-      var testchannel = rest.channels.get('persisted:history_multiple_paginated_f');
+      var testchannel = http.channels.get('persisted:history_multiple_paginated_f');
 
       /* first, send a number of events to this channel */
       await testchannel.publish(testMessages);
@@ -263,8 +263,8 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
 
     /** @nospec */
     Helper.testOnJsonMsgpack('history_encoding_errors', async function (options, channelName, helper) {
-      const rest = helper.AblyRest(options);
-      var testchannel = rest.channels.get('persisted:' + channelName);
+      const http = helper.AblyHttp(options);
+      var testchannel = http.channels.get('persisted:' + channelName);
       var badMessage = { name: 'jsonUtf8string', encoding: 'json/utf-8', data: '{"foo":"bar"}' };
       testchannel.publish(badMessage);
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -275,10 +275,10 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
       expect(message.encoding).to.equal(badMessage.encoding, 'Verify encoding preserved');
     });
 
-    /** @specpartial TG4 - in the context of RestChannel#history */
+    /** @specpartial TG4 - in the context of HttpChannel#history */
     Helper.testOnJsonMsgpack('history_no_next_page', async function (options, channelName, helper) {
-      const rest = helper.AblyRest(options);
-      const channel = rest.channels.get(channelName);
+      const http = helper.AblyHttp(options);
+      const channel = http.channels.get(channelName);
 
       const firstPage = await channel.history();
       const secondPage = await firstPage.next();

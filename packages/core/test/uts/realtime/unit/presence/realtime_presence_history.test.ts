@@ -5,7 +5,7 @@
  * Source: specification/uts/realtime/unit/presence/realtime_presence_history.md
  *
  * Tests the RealtimePresence#history function which delegates to
- * RestPresence#history. It supports the same parameters as RestPresence#history
+ * HttpPresence#history. It supports the same parameters as HttpPresence#history
  * and returns a PaginatedResult.
  */
 
@@ -20,13 +20,13 @@ describe('uts/realtime/unit/presence/realtime_presence_history', function () {
   });
 
   /**
-   * RTP12a - history supports same params as RestPresence#history
+   * RTP12a - history supports same params as HttpPresence#history
    *
    * Supports all the same params: start, end, direction, limit.
    * Verifies the correct REST endpoint is called with the right params.
    */
   // UTS: realtime/unit/RTP12a/history-supports-rest-params-0
-  it('RTP12a - history supports same params as RestPresence#history', async function () {
+  it('RTP12a - history supports same params as HttpPresence#history', async function () {
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {
         mock.active_connection = conn;

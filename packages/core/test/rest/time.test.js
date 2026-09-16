@@ -1,10 +1,10 @@
 'use strict';
 
 define(['shared_helper', 'chai'], function (Helper, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
 
-  describe('rest/time', function () {
+  describe('http/time', function () {
     before(function (done) {
       const helper = Helper.forHook(this);
       helper.setupApp(function (err) {
@@ -12,14 +12,14 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
           done(err);
           return;
         }
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         done();
       });
     });
 
     /** @spec RSC16 */
     it('time0', async function () {
-      var serverTime = await rest.time();
+      var serverTime = await http.time();
       var localFiveMinutesAgo = Date.now() - 5 * 60 * 1000;
       expect(
         serverTime > localFiveMinutesAgo,

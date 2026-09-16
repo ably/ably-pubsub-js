@@ -1,24 +1,24 @@
 'use strict';
 
 define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
 
-  describe('rest/http/fetch', function () {
+  describe('http/http/fetch', function () {
     this.timeout(60 * 1000);
     let initialXhrSupported;
     before(function (done) {
       const helper = Helper.forHook(this);
-      initialXhrSupported = Ably.Rest.Platform.Config.xhrSupported;
-      Ably.Rest.Platform.Config.xhrSupported = false;
+      initialXhrSupported = Ably.Http.Platform.Config.xhrSupported;
+      Ably.Http.Platform.Config.xhrSupported = false;
       helper.setupApp(function () {
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         done();
       });
     });
 
     after((done) => {
-      Ably.Rest.Platform.Config.xhrSupported = initialXhrSupported;
+      Ably.Http.Platform.Config.xhrSupported = initialXhrSupported;
       done();
     });
 
@@ -29,13 +29,13 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         done();
         window.fetch = oldFetch;
       };
-      const channel = rest.channels.get('http_test_channel');
+      const channel = http.channels.get('http_test_channel');
       channel.publish('test', 'Testing fetch support');
     });
 
     /** @nospec */
     it('Should succeed in using fetch to publish a message', function (done) {
-      const channel = rest.channels.get('http_test_channel');
+      const channel = http.channels.get('http_test_channel');
       Helper.whenPromiseSettles(channel.publish('test', 'Testing fetch support'), (err) => {
         expect(err).to.not.exist;
         done();
@@ -49,7 +49,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      * @nospec
      */
     it('Should pass errors correctly', function (done) {
-      const channel = rest.channels.get('');
+      const channel = http.channels.get('');
       Helper.whenPromiseSettles(channel.publish('test', 'Invalid message'), (err) => {
         expect(err).to.exist;
         done();

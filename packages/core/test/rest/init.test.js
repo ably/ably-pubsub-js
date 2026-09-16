@@ -3,7 +3,7 @@
 define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
   var expect = chai.expect;
 
-  describe('rest/init', function () {
+  describe('http/init', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -24,10 +24,10 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it('Init with key string', function () {
       const helper = this.test.helper;
       var keyStr = helper.getTestApp().keys[0].keyStr;
-      var rest = new helper.Ably.Rest(keyStr);
+      var http = new helper.Ably.Http(keyStr);
 
-      helper.recordPrivateApi('read.rest.options.key');
-      expect(rest.options.key).to.equal(keyStr);
+      helper.recordPrivateApi('read.http.options.key');
+      expect(http.options.key).to.equal(keyStr);
     });
 
     /**
@@ -37,15 +37,15 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it('Init with token string', async function () {
       const helper = this.test.helper;
       /* first generate a token ... */
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
       var testKeyOpts = { key: helper.getTestApp().keys[1].keyStr };
 
-      var tokenDetails = await rest.auth.requestToken(null, testKeyOpts);
+      var tokenDetails = await http.auth.requestToken(null, testKeyOpts);
       var tokenStr = tokenDetails.token,
-        rest = new helper.Ably.Rest(tokenStr);
+        http = new helper.Ably.Http(tokenStr);
 
-      helper.recordPrivateApi('read.rest.options.token');
-      expect(rest.options.token).to.equal(tokenStr);
+      helper.recordPrivateApi('read.http.options.token');
+      expect(http.options.token).to.equal(tokenStr);
     });
 
     /**
@@ -56,9 +56,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      */
     it('Init with tls: false', function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest({ tls: false, port: 123, tlsPort: 456 });
-      helper.recordPrivateApi('call.rest.baseUri');
-      expect(rest.baseUri('example.com')).to.equal('http://example.com:123');
+      var http = helper.AblyHttp({ tls: false, port: 123, tlsPort: 456 });
+      helper.recordPrivateApi('call.http.baseUri');
+      expect(http.baseUri('example.com')).to.equal('http://example.com:123');
     });
 
     /**
@@ -68,9 +68,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      */
     it('Init with tls: true', function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest({ tls: true, port: 123, tlsPort: 456 });
-      helper.recordPrivateApi('call.rest.baseUri');
-      expect(rest.baseUri('example.com')).to.equal('https://example.com:456');
+      var http = helper.AblyHttp({ tls: true, port: 123, tlsPort: 456 });
+      helper.recordPrivateApi('call.http.baseUri');
+      expect(http.baseUri('example.com')).to.equal('https://example.com:456');
     });
 
     /**
@@ -83,9 +83,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
 
     it('Init without any tls key should enable tls', function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest({ port: 123, tlsPort: 456 });
-      helper.recordPrivateApi('call.rest.baseUri');
-      expect(rest.baseUri('example.com')).to.equal('https://example.com:456');
+      var http = helper.AblyHttp({ port: 123, tlsPort: 456 });
+      helper.recordPrivateApi('call.http.baseUri');
+      expect(http.baseUri('example.com')).to.equal('https://example.com:456');
     });
 
     /**
@@ -96,13 +96,13 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it("Init with clientId set to '*' or anything other than a string or null should error", function () {
       const helper = this.test.helper;
       expect(function () {
-        var rest = helper.AblyRest({ clientId: '*' });
+        var http = helper.AblyHttp({ clientId: '*' });
       }, 'Check can’t init library with a wildcard clientId').to.throw;
       expect(function () {
-        var rest = helper.AblyRest({ clientId: 123 });
+        var http = helper.AblyHttp({ clientId: 123 });
       }, 'Check can’t init library with a numerical clientId').to.throw;
       expect(function () {
-        var rest = helper.AblyRest({ clientId: false });
+        var http = helper.AblyHttp({ clientId: false });
       }, 'Check can’t init library with a boolean clientId').to.throw;
     });
   });

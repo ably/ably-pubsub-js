@@ -1,4 +1,4 @@
-// Type definitions for Ably Realtime and Rest client library 1.2
+// Type definitions for Ably Realtime and Http client library 1.2
 // Project: https://www.ably.com/
 // Definitions by: Ably <https://github.com/ably/>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
@@ -1021,12 +1021,12 @@ export interface DeriveOptions {
 }
 
 /**
- * The `RestHistoryParams` interface describes the parameters accepted by the following methods:
+ * The `HttpHistoryParams` interface describes the parameters accepted by the following methods:
  *
  * - {@link Presence.history}
  * - {@link Channel.history}
  */
-export interface RestHistoryParams {
+export interface HttpHistoryParams {
   /**
    * The time from which messages are retrieved, specified as milliseconds since the Unix epoch.
    */
@@ -1052,7 +1052,7 @@ export interface RestHistoryParams {
 }
 
 /**
- * Describes the parameters accepted by {@link RestAnnotations.get}.
+ * Describes the parameters accepted by {@link HttpAnnotations.get}.
  */
 export interface GetAnnotationsParams {
   /**
@@ -1064,9 +1064,9 @@ export interface GetAnnotationsParams {
 }
 
 /**
- * The `RestPresenceParams` interface describes the parameters accepted by {@link Presence.get}.
+ * The `HttpPresenceParams` interface describes the parameters accepted by {@link Presence.get}.
  */
-export interface RestPresenceParams {
+export interface HttpPresenceParams {
   /**
    * An upper limit on the number of messages returned. The default is 100, and the maximum is 1000.
    *
@@ -1398,7 +1398,7 @@ export interface PushChannelsParams {
 /**
  * The `StatsParams` interface describes the parameters accepted by the following methods:
  *
- * - {@link RestClient.stats}
+ * - {@link HttpClient.stats}
  * - {@link RealtimeClient.stats}
  */
 export interface StatsParams {
@@ -1807,7 +1807,7 @@ export declare interface EventEmitter<CallbackType, ResultType, EventType> {
 /**
  * A client that offers a simple stateless API to interact directly with Ably's REST API.
  */
-export declare interface RestClient {
+export declare interface HttpClient {
   /**
    * An {@link Auth} object.
    */
@@ -1892,7 +1892,7 @@ export declare interface RestClient {
 }
 
 /**
- * A client that extends the functionality of {@link RestClient} and provides additional realtime-specific features.
+ * A client that extends the functionality of {@link HttpClient} and provides additional realtime-specific features.
  */
 export declare interface RealtimeClient {
   /**
@@ -2133,7 +2133,7 @@ export declare interface Auth {
    * @returns A promise which, upon success, will be fulfilled with a {@link BatchResult} containing information about the result of the token revocation request for each provided [`TokenRevocationTargetSpecifier`]{@link TokenRevocationTargetSpecifier}. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    * @example
    * ```ts
-   * const result = await rest.auth.revokeTokens([{ type: 'clientId', value: 'bob' }]);
+   * const result = await http.auth.revokeTokens([{ type: 'clientId', value: 'bob' }]);
    * ```
    * @see https://ably.com/docs/pub-sub/api/javascript/realtime/auth#revoke-tokens
    */
@@ -2154,7 +2154,7 @@ export declare interface Presence {
    * @returns A promise which, upon success, will be fulfilled with a {@link PaginatedResult} object containing an array of {@link PresenceMessage} objects. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    * @see https://ably.com/docs/pub-sub/api/javascript/rest/presence#get
    */
-  get(params?: RestPresenceParams): Promise<PaginatedResult<PresenceMessage>>;
+  get(params?: HttpPresenceParams): Promise<PaginatedResult<PresenceMessage>>;
   /**
    * Retrieves a {@link PaginatedResult} object, containing an array of historical {@link PresenceMessage} objects for the channel. If the channel is configured to persist messages, then presence messages can be retrieved from history for up to 72 hours in the past. If not, presence messages can only be retrieved from history for up to two minutes in the past.
    *
@@ -2162,7 +2162,7 @@ export declare interface Presence {
    * @returns A promise which, upon success, will be fulfilled with a {@link PaginatedResult} object containing an array of {@link PresenceMessage} objects. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    * @see https://ably.com/docs/pub-sub/api/javascript/rest/presence#history
    */
-  history(params?: RestHistoryParams): Promise<PaginatedResult<PresenceMessage>>;
+  history(params?: HttpHistoryParams): Promise<PaginatedResult<PresenceMessage>>;
 }
 
 /**
@@ -2708,9 +2708,9 @@ export declare interface Channel {
    */
   presence: Presence;
   /**
-   * {@link RestAnnotations}
+   * {@link HttpAnnotations}
    */
-  annotations: RestAnnotations;
+  annotations: HttpAnnotations;
   /**
    * A {@link PushChannel} object.
    */
@@ -2722,7 +2722,7 @@ export declare interface Channel {
    * @returns A promise which, upon success, will be fulfilled with a {@link PaginatedResult} object containing an array of {@link InboundMessage} objects. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    * @see https://ably.com/docs/pub-sub/api/javascript/rest/channel#history
    */
-  history(params?: RestHistoryParams): Promise<PaginatedResult<InboundMessage>>;
+  history(params?: HttpHistoryParams): Promise<PaginatedResult<InboundMessage>>;
   /**
    * Publishes an array of messages to the channel.
    *
@@ -2856,7 +2856,7 @@ export declare interface Channel {
  * Functionality for annotating messages with small pieces of data, such as emoji
  * reactions, that the server will roll up into the message as a summary.
  */
-export declare interface RestAnnotations {
+export declare interface HttpAnnotations {
   /**
    * Publish a new annotation for a message. If the annotation specifies no `action`, it defaults to `annotation.create`.
    *
@@ -3585,7 +3585,7 @@ export interface Message {
    */
   version?: MessageVersion;
   /**
-   * Allows a REST client to publish a message on behalf of a Realtime client. If you set this to the {@link Connection.key | private connection key} of a Realtime connection when publishing a message using a {@link RestClient}, the message will be published on behalf of that Realtime client. This property is only populated by a client performing a publish, and will never be populated on an inbound message.
+   * Allows a REST client to publish a message on behalf of a Realtime client. If you set this to the {@link Connection.key | private connection key} of a Realtime connection when publishing a message using a {@link HttpClient}, the message will be published on behalf of that Realtime client. This property is only populated by a client performing a publish, and will never be populated on an inbound message.
    */
   connectionKey?: string;
   /**
@@ -4482,7 +4482,7 @@ export declare interface PushChannelSubscriptions {
 /**
  * A client that offers a simple stateless API to interact directly with Ably's REST API.
  */
-export declare class Rest implements RestClient {
+export declare class Http implements HttpClient {
   /**
    * Construct a client object using an Ably {@link ClientOptions} object.
    *
@@ -4514,7 +4514,7 @@ export declare class Rest implements RestClient {
    */
   static Annotation: AnnotationStatic;
 
-  // Requirements of RestClient
+  // Requirements of HttpClient
 
   auth: Auth;
   channels: Channels<Channel>;
@@ -4539,7 +4539,7 @@ export declare class Rest implements RestClient {
 }
 
 /**
- * A client that extends the functionality of {@link Rest} and provides additional realtime-specific features.
+ * A client that extends the functionality of {@link Http} and provides additional realtime-specific features.
  */
 export declare class Realtime implements RealtimeClient {
   /**

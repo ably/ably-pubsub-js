@@ -30,8 +30,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
     return helper.AblyRealtime({ ...options, plugins: { LiveObjects: LiveObjectsPlugin } });
   }
 
-  function RestWithLiveObjects(helper, options) {
-    return helper.AblyRest({ ...options, plugins: { LiveObjects: LiveObjectsPlugin } });
+  function HttpWithLiveObjects(helper, options) {
+    return helper.AblyHttp({ ...options, plugins: { LiveObjects: LiveObjectsPlugin } });
   }
 
   function channelOptionsWithObjectModes(options) {
@@ -901,7 +901,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
           allTransportsAndProtocols: true,
           description: 'partial OBJECT_SYNC merges map entries across multiple messages for the same objectId',
           action: async (ctx) => {
-            const { helper, client, clientOptions, channelName, entryInstance, restChannel } = ctx;
+            const { helper, client, clientOptions, channelName, entryInstance, httpChannel } = ctx;
 
             helper.recordPrivateApi('read.realtime.options.maxMessageSize');
             const maxMessageSize = client.options.maxMessageSize;
@@ -917,7 +917,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // wait for each key update on the realtime client to confirm the server has processed the operation.
             const keysUpdatedPromise = Promise.all(keyNames.map((key) => waitForMapKeyUpdate(entryInstance, key)));
             for (const key of keyNames) {
-              await restChannel.object.publish({
+              await httpChannel.object.publish({
                 objectId: 'root',
                 mapSet: { key, value: { string: largeValue } },
               });
@@ -1137,7 +1137,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: counterId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp({ number: 1 }),
+              createOp: objectsHelper.counterCreateHttpOp({ number: 1 }),
             });
             await counterCreatedPromise;
 
@@ -1190,7 +1190,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: counterId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp({ number: 1 }),
+              createOp: objectsHelper.counterCreateHttpOp({ number: 1 }),
             });
             await counterCreatedPromise;
 
@@ -1581,7 +1581,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
                 objectsHelper.createAndSetOnMap(channelName, {
                   mapObjectId: 'root',
                   key: fixture.name,
-                  createOp: objectsHelper.mapCreateRestOp({
+                  createOp: objectsHelper.mapCreateHttpOp({
                     data: Object.fromEntries(fixture.entries.map((v) => [v.key, v.jsonData])),
                   }),
                 }),
@@ -1636,16 +1636,16 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // create map with references. need to create referenced objects first to obtain their object ids
             const { objectId: referencedMapObjectId } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { stringKey: { string: 'stringValue' } } }),
+              objectsHelper.mapCreateHttpOp({ data: { stringKey: { string: 'stringValue' } } }),
             );
             const { objectId: referencedCounterObjectId } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.counterCreateRestOp({ number: 1 }),
+              objectsHelper.counterCreateHttpOp({ number: 1 }),
             );
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: withReferencesMapKey,
-              createOp: objectsHelper.mapCreateRestOp({
+              createOp: objectsHelper.mapCreateHttpOp({
                 data: {
                   mapReference: { objectId: referencedMapObjectId },
                   counterReference: { objectId: referencedCounterObjectId },
@@ -1867,7 +1867,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               primitiveKeyData.map((keyData) =>
                 objectsHelper.operationRequest(
                   channelName,
-                  objectsHelper.mapSetRestOp({
+                  objectsHelper.mapSetHttpOp({
                     objectId: 'root',
                     key: keyData.key,
                     value: keyData.jsonData,
@@ -1914,13 +1914,13 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'keyToCounter',
-              createOp: objectsHelper.counterCreateRestOp({ number: 1 }),
+              createOp: objectsHelper.counterCreateHttpOp({ number: 1 }),
             });
 
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'keyToMap',
-              createOp: objectsHelper.mapCreateRestOp({
+              createOp: objectsHelper.mapCreateHttpOp({
                 data: {
                   stringKey: { string: 'stringValue' },
                 },
@@ -2033,7 +2033,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: mapObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: mapKey,
-              createOp: objectsHelper.mapCreateRestOp({
+              createOp: objectsHelper.mapCreateHttpOp({
                 data: {
                   shouldStay: { string: 'foo' },
                   shouldDelete: { string: 'bar' },
@@ -2061,7 +2061,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // send MAP_REMOVE op
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapRemoveRestOp({
+              objectsHelper.mapRemoveHttpOp({
                 objectId: mapObjectId,
                 key: 'shouldDelete',
               }),
@@ -2239,7 +2239,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
                 objectsHelper.createAndSetOnMap(channelName, {
                   mapObjectId: 'root',
                   key: fixture.name,
-                  createOp: objectsHelper.counterCreateRestOp({ number: fixture.count }),
+                  createOp: objectsHelper.counterCreateHttpOp({ number: fixture.count }),
                 }),
               ),
             );
@@ -2396,7 +2396,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: counterObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: counterKey,
-              createOp: objectsHelper.counterCreateRestOp({ number: expectedCounterValue }),
+              createOp: objectsHelper.counterCreateHttpOp({ number: expectedCounterValue }),
             });
             await counterCreated;
 
@@ -2432,7 +2432,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               const counterUpdatedPromise = waitForCounterUpdate(counter);
               await objectsHelper.operationRequest(
                 channelName,
-                objectsHelper.counterIncRestOp({
+                objectsHelper.counterIncHttpOp({
                   objectId: counterObjectId,
                   number: increment,
                 }),
@@ -2506,12 +2506,12 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: mapObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map',
-              createOp: objectsHelper.mapCreateRestOp(),
+              createOp: objectsHelper.mapCreateHttpOp(),
             });
             const { objectId: counterObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await objectsCreatedPromise;
 
@@ -2658,7 +2658,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: mapObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map',
-              createOp: objectsHelper.mapCreateRestOp({
+              createOp: objectsHelper.mapCreateHttpOp({
                 data: {
                   foo: { string: 'bar' },
                   baz: { number: 1 },
@@ -2668,7 +2668,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: counterObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp({ number: 1 }),
+              createOp: objectsHelper.counterCreateHttpOp({ number: 1 }),
             });
             await objectsCreatedPromise;
 
@@ -2729,7 +2729,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'object',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await objectCreatedPromise;
 
@@ -2766,7 +2766,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'object',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await objectCreatedPromise;
 
@@ -2805,7 +2805,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: counterObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'foo',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await objectCreatedPromise;
 
@@ -2846,17 +2846,17 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: mapId1 } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map1',
-              createOp: objectsHelper.mapCreateRestOp(),
+              createOp: objectsHelper.mapCreateHttpOp(),
             });
             const { objectId: mapId2 } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map2',
-              createOp: objectsHelper.mapCreateRestOp({ data: { foo: { string: 'bar' } } }),
+              createOp: objectsHelper.mapCreateHttpOp({ data: { foo: { string: 'bar' } } }),
             });
             const { objectId: counterId1 } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter1',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await objectsCreatedPromise;
 
@@ -3280,7 +3280,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: counterId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await counterCreatedPromise;
 
@@ -3774,7 +3774,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // send some more operations
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: 'root',
                 key: 'foo',
                 value: { string: 'bar' },
@@ -3811,7 +3811,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await counterCreatedPromise;
 
@@ -3852,7 +3852,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await counterCreatedPromise;
 
@@ -3911,7 +3911,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await counterCreatedPromise;
 
@@ -3952,7 +3952,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await counterCreatedPromise;
 
@@ -4066,7 +4066,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map',
-              createOp: objectsHelper.mapCreateRestOp(),
+              createOp: objectsHelper.mapCreateHttpOp(),
             });
             await mapCreatedPromise;
 
@@ -4099,7 +4099,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map',
-              createOp: objectsHelper.mapCreateRestOp({
+              createOp: objectsHelper.mapCreateHttpOp({
                 data: {
                   foo: { number: 1 },
                   bar: { number: 1 },
@@ -4132,7 +4132,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map',
-              createOp: objectsHelper.mapCreateRestOp(),
+              createOp: objectsHelper.mapCreateHttpOp(),
             });
             await mapCreatedPromise;
 
@@ -6211,18 +6211,18 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             const { objectId: map1Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { foo: { string: 'bar' } } }),
+              objectsHelper.mapCreateHttpOp({ data: { foo: { string: 'bar' } } }),
             );
             const { objectId: map2Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { baz: { number: 42 } } }),
+              objectsHelper.mapCreateHttpOp({ data: { baz: { number: 42 } } }),
             );
 
             // Set up the cyclic references
             let keyUpdatedPromise = waitForMapKeyUpdate(entryInstance, 'map1');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: 'root',
                 key: 'map1',
                 value: { objectId: map1Id },
@@ -6233,7 +6233,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1'), 'map2');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map1Id,
                 key: 'map2',
                 value: { objectId: map2Id },
@@ -6244,7 +6244,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1').get('map2'), 'map1BackRef');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map2Id,
                 key: 'map1BackRef',
                 value: { objectId: map1Id },
@@ -6413,18 +6413,18 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             const { objectId: map1Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { foo: { string: 'bar' } } }),
+              objectsHelper.mapCreateHttpOp({ data: { foo: { string: 'bar' } } }),
             );
             const { objectId: map2Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { baz: { number: 42 } } }),
+              objectsHelper.mapCreateHttpOp({ data: { baz: { number: 42 } } }),
             );
 
             // Set up the cyclic references
             let keyUpdatedPromise = waitForMapKeyUpdate(entryInstance, 'map1');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: 'root',
                 key: 'map1',
                 value: { objectId: map1Id },
@@ -6435,7 +6435,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1'), 'map2');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map1Id,
                 key: 'map2',
                 value: { objectId: map2Id },
@@ -6446,7 +6446,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1').get('map2'), 'map1BackRef');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map2Id,
                 key: 'map1BackRef',
                 value: { objectId: map1Id },
@@ -6501,12 +6501,12 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const { objectId: mapId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'map',
-              createOp: objectsHelper.mapCreateRestOp(),
+              createOp: objectsHelper.mapCreateHttpOp(),
             });
             const { objectId: counterId } = await objectsHelper.createAndSetOnMap(channelName, {
               mapObjectId: 'root',
               key: 'counter',
-              createOp: objectsHelper.counterCreateRestOp(),
+              createOp: objectsHelper.counterCreateHttpOp(),
             });
             await keysUpdatedPromise;
 
@@ -7470,18 +7470,18 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             const { objectId: map1Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { foo: { string: 'bar' } } }),
+              objectsHelper.mapCreateHttpOp({ data: { foo: { string: 'bar' } } }),
             );
             const { objectId: map2Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { baz: { number: 42 } } }),
+              objectsHelper.mapCreateHttpOp({ data: { baz: { number: 42 } } }),
             );
 
             // Set up the cyclic references
             let keyUpdatedPromise = waitForMapKeyUpdate(entryInstance, 'map1');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: 'root',
                 key: 'map1',
                 value: { objectId: map1Id },
@@ -7492,7 +7492,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1'), 'map2');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map1Id,
                 key: 'map2',
                 value: { objectId: map2Id },
@@ -7503,7 +7503,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1').get('map2'), 'map1BackRef');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map2Id,
                 key: 'map1BackRef',
                 value: { objectId: map1Id },
@@ -7703,18 +7703,18 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             const { objectId: map1Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { foo: { string: 'bar' } } }),
+              objectsHelper.mapCreateHttpOp({ data: { foo: { string: 'bar' } } }),
             );
             const { objectId: map2Id } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapCreateRestOp({ data: { baz: { number: 42 } } }),
+              objectsHelper.mapCreateHttpOp({ data: { baz: { number: 42 } } }),
             );
 
             // Set up the cyclic references
             let keyUpdatedPromise = waitForMapKeyUpdate(entryInstance, 'map1Instance');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: 'root',
                 key: 'map1Instance',
                 value: { objectId: map1Id },
@@ -7725,7 +7725,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             keyUpdatedPromise = waitForMapKeyUpdate(entryInstance.get('map1Instance'), 'map2Instance');
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map1Id,
                 key: 'map2Instance',
                 value: { objectId: map2Id },
@@ -7739,7 +7739,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             );
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: map2Id,
                 key: 'map1BackRefInstance',
                 value: { objectId: map1Id },
@@ -7798,11 +7798,11 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
         async function (helper, scenario, clientOptions, channelName) {
           const objectsHelper = new LiveObjectsHelper(helper);
           const client = RealtimeWithLiveObjects(helper, clientOptions);
-          const restClient = RestWithLiveObjects(helper, clientOptions);
+          const httpClient = HttpWithLiveObjects(helper, clientOptions);
 
           await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
             const channel = client.channels.get(channelName, channelOptionsWithObjectModes());
-            const restChannel = restClient.channels.get(channelName);
+            const httpChannel = httpClient.channels.get(channelName);
             const realtimeObject = channel.object;
 
             await channel.attach();
@@ -7816,7 +7816,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               objectsHelper,
               channelName,
               channel,
-              restChannel,
+              httpChannel,
               client,
               helper,
               clientOptions,
@@ -7853,7 +7853,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.counterIncRestOp({
+              objectsHelper.counterIncHttpOp({
                 objectId: sampleCounterObjectId,
                 number: 1,
               }),
@@ -7900,7 +7900,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             for (const increment of expectedCounterIncrements) {
               await objectsHelper.operationRequest(
                 channelName,
-                objectsHelper.counterIncRestOp({
+                objectsHelper.counterIncHttpOp({
                   objectId: sampleCounterObjectId,
                   number: increment,
                 }),
@@ -7939,7 +7939,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'stringKey',
                 value: { string: 'stringValue' },
@@ -7973,7 +7973,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapRemoveRestOp({
+              objectsHelper.mapRemoveHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'stringKey',
               }),
@@ -8046,7 +8046,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'foo',
                 value: { string: '1' },
@@ -8055,7 +8055,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'bar',
                 value: { string: '2' },
@@ -8064,7 +8064,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapRemoveRestOp({
+              objectsHelper.mapRemoveHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'foo',
               }),
@@ -8072,7 +8072,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({
+              objectsHelper.mapSetHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'baz',
                 value: { string: '3' },
@@ -8081,7 +8081,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapRemoveRestOp({
+              objectsHelper.mapRemoveHttpOp({
                 objectId: sampleMapObjectId,
                 key: 'bar',
               }),
@@ -8244,7 +8244,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               const counterUpdatedPromise = waitForCounterUpdate(counter);
               await objectsHelper.operationRequest(
                 channelName,
-                objectsHelper.counterIncRestOp({
+                objectsHelper.counterIncHttpOp({
                   objectId: sampleCounterObjectId,
                   number: 1,
                 }),
@@ -8283,7 +8283,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               const counterUpdatedPromise = waitForCounterUpdate(counter);
               await objectsHelper.operationRequest(
                 channelName,
-                objectsHelper.counterIncRestOp({
+                objectsHelper.counterIncHttpOp({
                   objectId: sampleCounterObjectId,
                   number: 1,
                 }),
@@ -8319,7 +8319,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               const mapUpdatedPromise = waitForMapKeyUpdate(map, `foo-${i}`);
               await objectsHelper.operationRequest(
                 channelName,
-                objectsHelper.mapSetRestOp({
+                objectsHelper.mapSetHttpOp({
                   objectId: sampleMapObjectId,
                   key: `foo-${i}`,
                   value: { string: 'exists' },
@@ -8364,7 +8364,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
               const mapUpdatedPromise = waitForMapKeyUpdate(map, `foo-${i}`);
               await objectsHelper.operationRequest(
                 channelName,
-                objectsHelper.mapSetRestOp({
+                objectsHelper.mapSetHttpOp({
                   objectId: sampleMapObjectId,
                   key: `foo-${i}`,
                   value: { string: 'exists' },
@@ -8409,12 +8409,12 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
           const { objectId: sampleMapObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
             mapObjectId: 'root',
             key: sampleMapKey,
-            createOp: objectsHelper.mapCreateRestOp(),
+            createOp: objectsHelper.mapCreateHttpOp(),
           });
           const { objectId: sampleCounterObjectId } = await objectsHelper.createAndSetOnMap(channelName, {
             mapObjectId: 'root',
             key: sampleCounterKey,
-            createOp: objectsHelper.counterCreateRestOp(),
+            createOp: objectsHelper.counterCreateHttpOp(),
           });
           await objectsCreatedPromise;
 
@@ -8542,7 +8542,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // send a CREATE op, this adds an object to the pool
             const { objectId } = await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.counterCreateRestOp({ number: 1 }),
+              objectsHelper.counterCreateHttpOp({ number: 1 }),
             );
             await counterCreatedPromise;
 
@@ -8592,7 +8592,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // set a key on a root
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapSetRestOp({ objectId: 'root', key: 'foo', value: { string: 'bar' } }),
+              objectsHelper.mapSetHttpOp({ objectId: 'root', key: 'foo', value: { string: 'bar' } }),
             );
             await keyUpdatedPromise;
 
@@ -8602,7 +8602,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             // remove the key from the root. this should tombstone the map entry and make it inaccessible to the end user, but still keep it in memory in the underlying map
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.mapRemoveRestOp({ objectId: 'root', key: 'foo' }),
+              objectsHelper.mapRemoveHttpOp({ objectId: 'root', key: 'foo' }),
             );
             await keyUpdatedPromise2;
 
@@ -10036,7 +10036,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             const realtimeEventPromise = waitForCounterUpdate(counter);
             await objectsHelper.operationRequest(
               channelName,
-              objectsHelper.counterIncRestOp({ objectId: counterId, number: 10 }),
+              objectsHelper.counterIncHttpOp({ objectId: counterId, number: 10 }),
             );
             await realtimeEventPromise;
 

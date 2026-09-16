@@ -35,7 +35,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL1n/publish-returns-serials-0.1
   it('RSL1n - single message publish returns result with serial', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -60,7 +60,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL1n/publish-returns-serials-0
   it('RSL1n - multiple message publish returns unique serials', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -95,7 +95,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL11/get-message-by-serial-0
   it('RSL11 - getMessage retrieves a published message by serial', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -127,7 +127,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL15/update-message-0
   it('RSL15 - updateMessage updates a published message', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -171,7 +171,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL15/delete-message-1
   it('RSL15 - deleteMessage deletes a published message', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -208,7 +208,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL14/get-message-versions-0
   it('RSL14 - getMessageVersions returns version history', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -248,7 +248,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSL15/append-message-2
   it('RSL15 - appendMessage appends to a published message', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -278,7 +278,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSAN1/annotation-lifecycle-0
   it('RSAN1/RSAN2/RSAN3 - annotation lifecycle: publish, get, delete', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -330,7 +330,7 @@ describeEachProtocol('uts/rest/integration/mutable_messages', function (protocol
    */
   // UTS: rest/integration/RSAN3/get-annotations-paginated-0
   it('RSAN3 - paginated annotations for multiple annotation types', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',

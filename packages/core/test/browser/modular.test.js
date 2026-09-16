@@ -1,7 +1,7 @@
 import {
-  BaseRest,
+  BaseHttp,
   BaseRealtime,
-  Rest,
+  Http,
   generateRandomKey,
   getDefaultCryptoParams,
   decodeMessage,
@@ -29,7 +29,7 @@ function registerAblyModularTests(Helper) {
   describe('browser/modular', function () {
     this.timeout(10 * 1000);
     const expect = chai.expect;
-    const BufferUtils = BaseRest.Platform.BufferUtils;
+    const BufferUtils = BaseHttp.Platform.BufferUtils;
     const loadTestData = async (helper, dataPath) => {
       return new Promise((resolve, reject) => {
         helper.loadTestData(dataPath, (err, testData) => (err ? reject(err) : resolve(testData)));
@@ -42,7 +42,7 @@ function registerAblyModularTests(Helper) {
     });
 
     describe('attempting to initialize with no client options', () => {
-      for (const clientClass of [BaseRest, BaseRealtime]) {
+      for (const clientClass of [BaseHttp, BaseRealtime]) {
         describe(clientClass.name, () => {
           /** @nospec */
           it('throws an error', () => {
@@ -53,7 +53,7 @@ function registerAblyModularTests(Helper) {
     });
 
     describe('attempting to initialize with just an API key', () => {
-      for (const clientClass of [BaseRest, BaseRealtime]) {
+      for (const clientClass of [BaseHttp, BaseRealtime]) {
         describe(clientClass.name, () => {
           /** @nospec */
           it('throws an error', () => {
@@ -66,7 +66,7 @@ function registerAblyModularTests(Helper) {
     });
 
     describe('attempting to initialize with just a token', () => {
-      for (const clientClass of [BaseRest, BaseRealtime]) {
+      for (const clientClass of [BaseHttp, BaseRealtime]) {
         describe(clientClass.name, () => {
           /** @nospec */
           it('throws an error', () => {
@@ -79,7 +79,7 @@ function registerAblyModularTests(Helper) {
     });
 
     describe('without any plugins', () => {
-      for (const clientClass of [BaseRest, BaseRealtime]) {
+      for (const clientClass of [BaseHttp, BaseRealtime]) {
         describe(clientClass.name, function () {
           /** @nospec */
           it('throws an error due to the absence of an HTTP plugin', function () {
@@ -91,8 +91,8 @@ function registerAblyModularTests(Helper) {
       }
     });
 
-    describe('Rest', () => {
-      const restScenarios = [
+    describe('Http', () => {
+      const httpScenarios = [
         {
           description: 'use push admin functionality',
           action: (client) => client.push.admin.publish({ clientId: 'foo' }, { data: { bar: 'baz' } }),
@@ -139,12 +139,12 @@ function registerAblyModularTests(Helper) {
         },
       ];
 
-      describe('BaseRest without explicit Rest', () => {
-        for (const scenario of restScenarios) {
+      describe('BaseHttp without explicit Http', () => {
+        for (const scenario of httpScenarios) {
           /** @nospec */
           it(`allows you to ${scenario.description}`, async function () {
             const helper = this.test.helper;
-            const client = new BaseRest(
+            const client = new BaseHttp(
               helper.ablyClientOptions({ ...scenario.getAdditionalClientOptions?.(helper), plugins: { FetchRequest } }),
             );
 
@@ -160,8 +160,8 @@ function registerAblyModularTests(Helper) {
         }
       });
 
-      describe('BaseRealtime with Rest', () => {
-        for (const scenario of restScenarios) {
+      describe('BaseRealtime with Http', () => {
+        for (const scenario of httpScenarios) {
           /** @nospec */
           it(`allows you to ${scenario.description}`, async function () {
             const helper = this.test.helper;
@@ -172,7 +172,7 @@ function registerAblyModularTests(Helper) {
                 plugins: {
                   WebSocketTransport,
                   FetchRequest,
-                  Rest,
+                  Http,
                   ...scenario.additionalRealtimePlugins,
                 },
               }),
@@ -190,7 +190,7 @@ function registerAblyModularTests(Helper) {
         }
       });
 
-      describe('BaseRealtime without Rest', () => {
+      describe('BaseRealtime without Http', () => {
         /** @nospec */
         it('still allows publishing and subscribing', async function () {
           const helper = this.test.helper;
@@ -225,7 +225,7 @@ function registerAblyModularTests(Helper) {
           expect(tokenRequest).to.be.an('object');
         });
 
-        for (const scenario of restScenarios) {
+        for (const scenario of httpScenarios) {
           /** @nospec */
           it(`throws an error when attempting to ${scenario.description}`, async function () {
             const helper = this.test.helper;
@@ -249,7 +249,7 @@ function registerAblyModularTests(Helper) {
             }
 
             expect(thrownError).not.to.be.null;
-            expect(thrownError.message).to.equal('Rest plugin not provided');
+            expect(thrownError.message).to.equal('Http plugin not provided');
           });
         }
       });
@@ -472,7 +472,7 @@ function registerAblyModularTests(Helper) {
         }
 
         for (const clientClassConfig of [
-          { clientClass: BaseRest },
+          { clientClass: BaseHttp },
           {
             clientClass: BaseRealtime,
             additionalClientOptions: { autoConnect: false },
@@ -576,7 +576,7 @@ function registerAblyModularTests(Helper) {
         }
 
         for (const clientClassConfig of [
-          { clientClass: BaseRest, isRealtime: false },
+          { clientClass: BaseHttp, isRealtime: false },
           {
             clientClass: BaseRealtime,
             additionalPlugins: { WebSocketTransport },
@@ -592,10 +592,10 @@ function registerAblyModularTests(Helper) {
         }
 
         for (const clientClassConfig of [
-          { clientClass: BaseRest, isRealtime: false },
+          { clientClass: BaseHttp, isRealtime: false },
           {
             clientClass: BaseRealtime,
-            additionalPlugins: { WebSocketTransport, Rest },
+            additionalPlugins: { WebSocketTransport, Http },
             isRealtime: true,
           },
         ]) {
@@ -610,16 +610,16 @@ function registerAblyModularTests(Helper) {
     });
 
     describe('MsgPack', () => {
-      async function testRestUsesContentType(rest, expectedContentType) {
+      async function testHttpUsesContentType(http, expectedContentType) {
         const channelName = 'channel';
-        const channel = rest.channels.get(channelName);
+        const channel = http.channels.get(channelName);
         const contentTypeUsedForPublishPromise = new Promise((resolve, reject) => {
-          const originalDo = rest.http.do;
-          rest.http.do = async (method, path, headers, body, params) => {
+          const originalDo = http.httpRequester.do;
+          http.httpRequester.do = async (method, path, headers, body, params) => {
             if (method == 'post' && path == `/channels/${channelName}/messages`) {
               resolve(headers['content-type']);
             }
-            return originalDo.call(rest.http, method, path, headers, body, params);
+            return originalDo.call(http.httpRequester, method, path, headers, body, params);
           };
         });
 
@@ -644,13 +644,13 @@ function registerAblyModularTests(Helper) {
       // TODO once https://github.com/ably/ably-js/issues/1424 is fixed, this should also test the case where the useBinaryProtocol option is not specified
       describe('with useBinaryProtocol client option', () => {
         describe('without MsgPack', () => {
-          describe('BaseRest', () => {
+          describe('BaseHttp', () => {
             /** @nospec */
             it('uses JSON', async function () {
-              const client = new BaseRest(
+              const client = new BaseHttp(
                 this.test.helper.ablyClientOptions({ useBinaryProtocol: true, plugins: { FetchRequest } }),
               );
-              await testRestUsesContentType(client, 'application/json');
+              await testHttpUsesContentType(client, 'application/json');
             });
           });
 
@@ -677,10 +677,10 @@ function registerAblyModularTests(Helper) {
         });
 
         describe('with MsgPack', () => {
-          describe('BaseRest', () => {
+          describe('BaseHttp', () => {
             /** @nospec */
             it('uses MessagePack', async function () {
-              const client = new BaseRest(
+              const client = new BaseHttp(
                 this.test.helper.ablyClientOptions({
                   useBinaryProtocol: true,
                   plugins: {
@@ -689,7 +689,7 @@ function registerAblyModularTests(Helper) {
                   },
                 }),
               );
-              await testRestUsesContentType(client, 'application/x-msgpack');
+              await testHttpUsesContentType(client, 'application/x-msgpack');
             });
           });
 
@@ -969,7 +969,7 @@ function registerAblyModularTests(Helper) {
                 },
               }),
             );
-            const txRest = new BaseRest(
+            const txHttp = new BaseHttp(
               this.test.helper.ablyClientOptions({
                 clientId: Helper.randomString(10),
                 plugins: {
@@ -994,10 +994,10 @@ function registerAblyModularTests(Helper) {
               let annotation = await rxOnAnnotation;
               expect(annotation.name).to.equal('👍');
 
-              // and try a rest annotation publish
+              // and try an HTTP annotation publish
               rxOnAnnotation = rxChannel.annotations.subscriptions.once();
-              const txRestChannel = txRest.channels.get(channelName);
-              await txRestChannel.annotations.publish(message, { type: 'reaction:distinct.v1', name: '😕' });
+              const txHttpChannel = txHttp.channels.get(channelName);
+              await txHttpChannel.annotations.publish(message, { type: 'reaction:distinct.v1', name: '😕' });
               annotation = await rxOnAnnotation;
               expect(annotation.name).to.equal('😕');
             }, txRealtime);
@@ -1074,10 +1074,10 @@ function registerAblyModularTests(Helper) {
             }
           };
 
-          const rest = new BaseRest(
+          const http = new BaseHttp(
             this.test.helper.ablyClientOptions({ plugins: { FetchRequest, XHRRequest: XHRRequestSpy } }),
           );
-          await rest.time();
+          await http.time();
 
           expect(usedXHR).to.be.true;
         });

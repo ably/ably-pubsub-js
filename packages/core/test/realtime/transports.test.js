@@ -2,7 +2,7 @@
 
 define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai, Ably) {
   const expect = chai.expect;
-  const Defaults = Ably.Rest.Platform.Defaults;
+  const Defaults = Ably.Http.Platform.Defaults;
   const originialWsCheckUrl = Defaults.wsConnectivityCheckUrl;
   const transportPreferenceName = 'ably-transport-preference';
   const localStorageSupported = globalThis.localStorage;
@@ -25,7 +25,7 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
     Defaults.wsConnectivityCheckUrl = originialWsCheckUrl;
   }
 
-  const Config = Ably.Rest.Platform.Config;
+  const Config = Ably.Http.Platform.Config;
   const oldWs = Config.WebSocket;
 
   function restoreWebSocketConstructor() {
@@ -218,7 +218,7 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
       /** @nospec */
       it('ws_primary_host_fails', function (done) {
         const helper = this.test.helper;
-        const goodHost = helper.AblyRest().options.primaryDomain;
+        const goodHost = helper.AblyHttp().options.primaryDomain;
         const realtime = helper.AblyRealtime(
           options(helper, { endpoint: helper.unroutableAddress, fallbackHosts: [goodHost] }),
         );
@@ -284,7 +284,7 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
       it('ws_can_reconnect_after_ws_connectivity_fail', function (done) {
         const helper = this.test.helper;
         helper.recordPrivateApi('read.realtime.options.primaryDomain');
-        const goodHost = helper.AblyRest().options.primaryDomain;
+        const goodHost = helper.AblyHttp().options.primaryDomain;
 
         helper.recordPrivateApi('pass.clientOption.webSocketSlowTimeout');
         helper.recordPrivateApi('pass.clientOption.wsConnectivityCheckUrl');

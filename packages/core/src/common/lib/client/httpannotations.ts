@@ -1,7 +1,7 @@
 import * as Utils from '../util/utils';
 import Annotation, { WireAnnotation, _fromEncodedArray } from '../types/annotation';
 import type Message from '../types/message';
-import type RestChannel from './restchannel';
+import type HttpChannel from './httpchannel';
 import type RealtimeChannel from './realtimechannel';
 import Defaults from '../util/defaults';
 import PaginatedResource, { PaginatedResult } from './paginatedresource';
@@ -9,7 +9,7 @@ import Resource from './resource';
 import type { Properties } from '../util/utils';
 import ErrorInfo from '../types/errorinfo';
 
-export interface RestGetAnnotationsParams {
+export interface HttpGetAnnotationsParams {
   limit?: number;
 }
 
@@ -64,16 +64,16 @@ export function constructValidateAnnotation(
   return annotation;
 }
 
-function basePathForSerial(channel: RestChannel | RealtimeChannel, serial: string) {
+function basePathForSerial(channel: HttpChannel | RealtimeChannel, serial: string) {
   return (
-    channel.client.rest.channelMixin.basePath(channel) + '/messages/' + encodeURIComponent(serial) + '/annotations'
+    channel.client.http.channelMixin.basePath(channel) + '/messages/' + encodeURIComponent(serial) + '/annotations'
   );
 }
 
-class RestAnnotations {
-  private channel: RestChannel;
+class HttpAnnotations {
+  private channel: HttpChannel;
 
-  constructor(channel: RestChannel) {
+  constructor(channel: HttpChannel) {
     this.channel = channel;
   }
 
@@ -117,12 +117,12 @@ class RestAnnotations {
 
   async get(
     msgOrSerial: string | Message,
-    params: RestGetAnnotationsParams | null,
+    params: HttpGetAnnotationsParams | null,
   ): Promise<PaginatedResult<Annotation>> {
     const client = this.channel.client,
       messageSerial = serialFromMsgOrSerial(msgOrSerial, 'get'),
       format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = client.http.supportsLinkHeaders ? undefined : format,
+      envelope = client.httpRequester.supportsLinkHeaders ? undefined : format,
       headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);
@@ -143,4 +143,4 @@ class RestAnnotations {
   }
 }
 
-export default RestAnnotations;
+export default HttpAnnotations;

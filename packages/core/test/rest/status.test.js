@@ -1,10 +1,10 @@
 'use strict';
 
 define(['shared_helper', 'chai'], function (Helper, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
 
-  describe('rest/status', function () {
+  describe('http/status', function () {
     this.timeout(30 * 1000);
 
     before(function (done) {
@@ -14,7 +14,7 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
           done(err);
           return;
         }
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         done();
       });
     });
@@ -35,8 +35,8 @@ define(['shared_helper', 'chai'], function (Helper, chai) {
      * @spec CHM2f
      */
     Helper.testOnJsonMsgpack('status0', async function (options, _, helper) {
-      const rest = helper.AblyRest(options);
-      var channel = rest.channels.get('status0');
+      const http = helper.AblyHttp(options);
+      var channel = http.channels.get('status0');
       var channelDetails = await channel.status();
       expect(channelDetails.channelId).to.equal('status0');
       expect(channelDetails.status.isActive).to.be.a('boolean');

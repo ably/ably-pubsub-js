@@ -4,7 +4,7 @@
  * Spec points: RTC5, RTC5a, RTC5b
  * Source: uts/test/realtime/unit/client/realtime_stats.md
  *
- * RTC5: RealtimeClient#stats proxies to RestClient#stats.
+ * RTC5: RealtimeClient#stats proxies to HttpClient#stats.
  * These are representative tests from the REST stats suite using a Realtime client.
  */
 

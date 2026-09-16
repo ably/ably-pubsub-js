@@ -1,5 +1,5 @@
 import * as API from '../../../../ably';
-import RestChannel from './restchannel';
+import HttpChannel from './httpchannel';
 import ErrorInfo from '../types/errorinfo';
 import RealtimeChannel from './realtimechannel';
 import * as Utils from '../util/utils';
@@ -8,25 +8,25 @@ import Defaults from '../util/defaults';
 import PaginatedResource, { PaginatedResult } from './paginatedresource';
 import Resource from './resource';
 
-export interface RestHistoryParams {
+export interface HttpHistoryParams {
   start?: number;
   end?: number;
   direction?: string;
   limit?: number;
 }
 
-export class RestChannelMixin {
-  static basePath(channel: RestChannel | RealtimeChannel) {
+export class HttpChannelMixin {
+  static basePath(channel: HttpChannel | RealtimeChannel) {
     return '/channels/' + encodeURIComponent(channel.name);
   }
 
   static history(
-    channel: RestChannel | RealtimeChannel,
-    params: RestHistoryParams | null,
+    channel: HttpChannel | RealtimeChannel,
+    params: HttpHistoryParams | null,
   ): Promise<PaginatedResult<Message>> {
     const client = channel.client,
       format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = channel.client.http.supportsLinkHeaders ? undefined : format,
+      envelope = channel.client.httpRequester.supportsLinkHeaders ? undefined : format,
       headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);
@@ -44,7 +44,7 @@ export class RestChannelMixin {
     }).get(params as Record<string, unknown>);
   }
 
-  static async status(channel: RestChannel | RealtimeChannel): Promise<API.ChannelDetails> {
+  static async status(channel: HttpChannel | RealtimeChannel): Promise<API.ChannelDetails> {
     const format = channel.client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json;
     const headers = Defaults.defaultPostHeaders(channel.client.options);
 
@@ -60,7 +60,7 @@ export class RestChannelMixin {
     return response.body!;
   }
 
-  static async getMessage(channel: RestChannel | RealtimeChannel, serialOrMessage: string | Message): Promise<Message> {
+  static async getMessage(channel: HttpChannel | RealtimeChannel, serialOrMessage: string | Message): Promise<Message> {
     const serial = typeof serialOrMessage === 'string' ? serialOrMessage : serialOrMessage.serial;
     if (!serial) {
       throw new ErrorInfo({
@@ -91,7 +91,7 @@ export class RestChannelMixin {
   }
 
   static async updateDeleteMessage(
-    channel: RestChannel | RealtimeChannel,
+    channel: HttpChannel | RealtimeChannel,
     action: 'message.update' | 'message.delete' | 'message.append',
     message: Message,
     operation?: API.MessageOperation,
@@ -136,7 +136,7 @@ export class RestChannelMixin {
   }
 
   static getMessageVersions(
-    channel: RestChannel | RealtimeChannel,
+    channel: HttpChannel | RealtimeChannel,
     serialOrMessage: string | Message,
     params?: Record<string, any>,
   ): Promise<PaginatedResult<Message>> {
@@ -153,7 +153,7 @@ export class RestChannelMixin {
 
     const client = channel.client;
     const format = client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json;
-    const envelope = channel.client.http.supportsLinkHeaders ? undefined : format;
+    const envelope = channel.client.httpRequester.supportsLinkHeaders ? undefined : format;
     const headers = Defaults.defaultGetHeaders(client.options);
 
     Utils.mixin(headers, client.options.headers);

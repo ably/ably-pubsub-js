@@ -35,7 +35,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1a/push-publish-clientid-0
   it('RSH1a - publish to clientId recipient should not throw', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -58,7 +58,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1a/push-publish-invalid-recipient-1
   it('RSH1a - publish with empty recipient throws error', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -83,7 +83,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b3/save-and-get-device-0
   it('RSH1b3, RSH1b1 - save and get device registration', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -124,7 +124,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b3/update-device-registration-1
   it('RSH1b3 - save updates existing device registration', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -170,7 +170,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b1/get-unknown-device-error-0
   it('RSH1b1 - get unknown device throws 404', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -191,7 +191,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b2/list-devices-filtered-0
   it('RSH1b2 - list device registrations filtered by deviceId', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -227,7 +227,7 @@ describe('uts/rest/integration/push_admin', function () {
   // UTS: rest/integration/RSH1b2/list-devices-pagination-1
   it('RSH1b2 - list supports pagination with limit', async function () {
     if (!process.env.RUN_DEVIATIONS) this.skip(); // push admin API does not return Link headers for pagination; see ably/realtime#8380
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -272,7 +272,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b4/remove-device-0
   it('RSH1b4 - remove deletes device registration', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -308,7 +308,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b4/remove-nonexistent-device-1
   it('RSH1b4 - remove nonexistent device does not throw', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -324,7 +324,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1b5/remove-where-clientid-0
   it('RSH1b5 - removeWhere deletes devices by clientId', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -367,7 +367,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1c3/save-and-list-subscriptions-0
   it('RSH1c3, RSH1c1 - save and list channel subscription by deviceId', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -424,7 +424,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1c3/save-subscription-clientid-1
   it('RSH1c3 - save channel subscription with clientId', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -456,7 +456,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1c2/list-channels-with-subscriptions-0
   it('RSH1c2 - listChannels includes channel with active subscription', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -491,7 +491,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1c4/remove-channel-subscription-0
   it('RSH1c4 - remove deletes channel subscription', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -526,7 +526,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1c4/remove-nonexistent-subscription-1
   it('RSH1c4 - remove nonexistent subscription does not throw', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -545,7 +545,7 @@ describe('uts/rest/integration/push_admin', function () {
    */
   // UTS: rest/integration/RSH1c5/remove-where-subscriptions-0
   it('RSH1c5 - removeWhere deletes subscriptions by clientId', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });

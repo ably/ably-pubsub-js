@@ -33,7 +33,7 @@ describe('uts/realtime/integration/auth/token_request', function () {
    */
   // UTS: realtime/integration/RSA9a/token-request-server-accepted-0
   it('RSA9a/RSA9g - createTokenRequest produces server-accepted token', async function () {
-    const creator = new Ably.Rest({
+    const creator = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -69,7 +69,7 @@ describe('uts/realtime/integration/auth/token_request', function () {
   it('RSA9 - createTokenRequest with clientId', async function () {
     const testClientId = `token-request-client-${Math.random().toString(36).substring(2, 10)}`;
 
-    const creator = new Ably.Rest({
+    const creator = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });

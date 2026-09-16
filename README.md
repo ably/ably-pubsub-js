@@ -104,12 +104,12 @@ await channel.subscribe((message) => {
 await channel.publish('test-event', 'hello world');
 ```
 
-For a stateless REST client, construct `Rest` directly — `createClient` is realtime-only, and there is no HTTP-only factory:
+For a stateless REST client, construct `Http` directly — `createClient` is realtime-only, and there is no HTTP-only factory:
 
 ```javascript
-import { Rest } from '@ably/pubsub-device';
+import { Http } from '@ably/pubsub-device';
 
-const restClient = new Rest({ key: 'your-ably-api-key', clientId: 'me' });
+const httpClient = new Http({ key: 'your-ably-api-key', clientId: 'me' });
 ```
 
 ## Modular variant
@@ -125,7 +125,7 @@ The modular variant of the library provides:
 
 - A `createClient` factory, which builds a `BaseRealtime` declaring the device side;
 - the `BaseRealtime` class itself, if you would rather construct it directly and declare no side;
-- various plugins that add functionality to a `BaseRealtime` instance, such as `Rest`, `RealtimePresence`, etc.
+- various plugins that add functionality to a `BaseRealtime` instance, such as `Http`, `RealtimePresence`, etc.
 
 To use this variant of the library, import `createClient` from `@ably/pubsub-device/modular`, along with the plugins that you wish to use. Then, pass these plugins in the client options as shown in the example below:
 

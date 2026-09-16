@@ -41,7 +41,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       try {
         /* set up realtime */
         var realtime = helper.AblyRealtime();
-        var rest = helper.AblyRest();
+        var http = helper.AblyHttp();
 
         /* connect and attach */
         realtime.connection.on('connected', function () {
@@ -65,8 +65,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
             });
 
             /* publish event */
-            var restChannel = rest.channels.get('publishonce');
-            restChannel.publish('event0', testMsg);
+            var httpChannel = http.channels.get('publishonce');
+            httpChannel.publish('event0', testMsg);
           });
         });
         helper.monitorConnection(done, realtime);
@@ -345,7 +345,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       try {
         /* set up realtime */
         realtime = helper.AblyRealtime();
-        var rest = helper.AblyRest();
+        var http = helper.AblyHttp();
 
         /* connect and attach */
         realtime.connection.on('connected', function () {
@@ -416,11 +416,11 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
             });
 
             /* publish events */
-            var restChannel = rest.channels.get('publishVariations');
+            var httpChannel = http.channels.get('publishVariations');
             async.eachSeries(
               testArguments,
               function iterator(args, callback) {
-                Helper.whenPromiseSettles(restChannel.publish.apply(restChannel, args), callback);
+                Helper.whenPromiseSettles(httpChannel.publish.apply(httpChannel, args), callback);
               },
               function (err) {
                 if (err) {
@@ -452,7 +452,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       try {
         /* set up realtime */
         var realtime = helper.AblyRealtime();
-        var rest = helper.AblyRest();
+        var http = helper.AblyHttp();
 
         /* connect and attach */
         realtime.connection.on('connected', function () {
@@ -465,10 +465,10 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
 
             (async function () {
               /* publish events */
-              var restChannel = rest.channels.get('publishDisallowed');
+              var httpChannel = http.channels.get('publishDisallowed');
               for (var i = 0; i < testArguments.length; i++) {
                 try {
-                  await restChannel.publish.apply(restChannel, testArguments[i]);
+                  await httpChannel.publish.apply(httpChannel, testArguments[i]);
                   helper.closeAndFinish(done, realtime, new Error('Exception was not raised'));
                 } catch (err) {
                   try {
@@ -513,7 +513,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       try {
         /* set up realtime */
         var realtime = helper.AblyRealtime();
-        var rest = helper.AblyRest();
+        var http = helper.AblyHttp();
 
         /* connect and attach */
         realtime.connection.on('connected', function () {
@@ -560,12 +560,12 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
 
             /* publish events */
             var publishfn = function (cb) {
-              var restChannel = rest.channels.get('publishEncodings');
+              var httpChannel = http.channels.get('publishEncodings');
               async.eachSeries(
                 testArguments,
                 function iterator(item, callback) {
                   try {
-                    Helper.whenPromiseSettles(restChannel.publish(item), function (err) {
+                    Helper.whenPromiseSettles(httpChannel.publish(item), function (err) {
                       try {
                         expect(!err, 'Successfully published').to.be.ok;
                       } catch (err) {
@@ -599,10 +599,10 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
     it('restpublish', function (done) {
       const helper = this.test.helper;
       var count = 10;
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
       var realtime = helper.AblyRealtime();
       var messagesSent = [];
-      var sendchannel = rest.channels.get('restpublish');
+      var sendchannel = http.channels.get('restpublish');
       var recvchannel = realtime.channels.get('restpublish');
       /* subscribe to event */
       recvchannel.subscribe('event0', function (msg) {
@@ -808,9 +808,9 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       var helper = this.test.helper,
         clientId = 'explicit_client_id_1',
         invalidClientId = 'invalid',
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
 
-      Helper.whenPromiseSettles(rest.auth.requestToken({ clientId: clientId }), function (err, token) {
+      Helper.whenPromiseSettles(http.auth.requestToken({ clientId: clientId }), function (err, token) {
         if (err) {
           done(err);
           return;
@@ -1527,7 +1527,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       try {
         /* set up realtime */
         var realtime = helper.AblyRealtime({ key: helper.getTestApp().keys[5].keyStr });
-        var rest = helper.AblyRest();
+        var http = helper.AblyHttp();
 
         realtime.connection.on('connected', function () {
           var rtFilteredChannel = realtime.channels.getDerived('chan', filterOption);
@@ -1608,8 +1608,8 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
                     helper.closeAndFinish(done, realtime);
                   });
               });
-              var restChannel = rest.channels.get('chan');
-              restChannel.publish(testData);
+              var httpChannel = http.channels.get('chan');
+              httpChannel.publish(testData);
             });
           });
         });

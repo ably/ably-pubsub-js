@@ -17,11 +17,11 @@ const side = process.env.UTS_SIDE || 'core';
 
 // What each mode must stamp, per client kind — the side flags are versionless bare tokens
 // (see ably/ably-common#361). Device REST is deliberately unstamped: the device package ships
-// no HTTP factory, only the core `Rest` re-export.
-const expectedStamp: Record<string, { rest: string | null; realtime: string | null }> = {
-  core: { rest: null, realtime: null },
-  device: { rest: null, realtime: 'ably-pubsub-device' },
-  server: { rest: 'ably-pubsub-server', realtime: 'ably-pubsub-server' },
+// no HTTP factory, only the core `Http` re-export.
+const expectedStamp: Record<string, { http: string | null; realtime: string | null }> = {
+  core: { http: null, realtime: null },
+  device: { http: null, realtime: 'ably-pubsub-device' },
+  server: { http: 'ably-pubsub-server', realtime: 'ably-pubsub-server' },
 };
 
 describe(`uts harness: side mode '${side}'`, function () {
@@ -66,8 +66,8 @@ describe(`uts harness: side mode '${side}'`, function () {
   }
 
   it('REST clients carry the agent stamp of the selected entry point', async function () {
-    const agent = await agentHeaderFrom(() => new Ably.Rest({ key: 'app.key:secret' }));
-    assertStamp(agent, expectedStamp[side].rest);
+    const agent = await agentHeaderFrom(() => new Ably.Http({ key: 'app.key:secret' }));
+    assertStamp(agent, expectedStamp[side].http);
   });
 
   it('realtime clients carry the agent stamp of the selected entry point', async function () {

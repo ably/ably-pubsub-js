@@ -1,9 +1,9 @@
-import { Rest } from './rest';
+import { Http } from './http';
 import { IUntypedCryptoStatic } from '../../types/ICryptoStatic';
 import { MsgPack } from 'common/types/msgpack';
 import RealtimePresence from './realtimepresence';
 import RealtimeAnnotations from './realtimeannotations';
-import RestAnnotations from './restannotations';
+import HttpAnnotations from './httpannotations';
 import XHRRequest from 'platform/web/lib/http/request/xhrrequest';
 import fetchRequest from 'platform/web/lib/http/request/fetchrequest';
 import { FilteredSubscriptions } from './filteredsubscriptions';
@@ -27,11 +27,11 @@ export type AnnotationsPlugin = {
   Annotation: typeof Annotation;
   WireAnnotation: typeof WireAnnotation;
   RealtimeAnnotations: typeof RealtimeAnnotations;
-  RestAnnotations: typeof RestAnnotations;
+  HttpAnnotations: typeof HttpAnnotations;
 };
 
 export interface ModularPlugins {
-  Rest?: typeof Rest;
+  Http?: typeof Http;
   Crypto?: IUntypedCryptoStatic;
   MsgPack?: MsgPack;
   RealtimePresence?: RealtimePresencePlugin;
@@ -50,4 +50,4 @@ export interface ModularPlugins {
   LiveObjects?: typeof LiveObjectsPlugin; // PC5, PT2b
 }
 
-export const allCommonModularPlugins: ModularPlugins = { Rest };
+export const allCommonModularPlugins: ModularPlugins = { Http };

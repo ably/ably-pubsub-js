@@ -25,14 +25,14 @@ describe('uts/rest/unit/channels_collection', function () {
   });
 
   /**
-   * RSN1 - Channels collection accessible via RestClient
+   * RSN1 - Channels collection accessible via HttpClient
    *
-   * The RestClient exposes a channels collection with a get() method
-   * for obtaining RestChannel instances.
+   * The HttpClient exposes a channels collection with a get() method
+   * for obtaining HttpChannel instances.
    */
   // UTS: rest/unit/RSN1/channels-collection-accessible-0
-  it('RSN1 - Channels collection accessible via RestClient', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+  it('RSN1 - Channels collection accessible via HttpClient', function () {
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     expect(client.channels).to.exist;
     expect(client.channels.get).to.be.a('function');
@@ -46,7 +46,7 @@ describe('uts/rest/unit/channels_collection', function () {
    */
   // UTS: rest/unit/RSN2/check-channel-exists-0
   it('RSN2 - Check channel existence', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     // Before creating any channel
     expect('test' in client.channels.all).to.be.false;
@@ -69,7 +69,7 @@ describe('uts/rest/unit/channels_collection', function () {
    */
   // UTS: rest/unit/RSN2/iterate-channels-1
   it('RSN2 - Iterate through existing channels', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     client.channels.get('channel-a');
     client.channels.get('channel-b');
@@ -87,11 +87,11 @@ describe('uts/rest/unit/channels_collection', function () {
    * RSN3a - Get creates new channel if none exists
    *
    * Calling get() with a channel name that does not yet exist
-   * creates a new RestChannel with the specified name.
+   * creates a new HttpChannel with the specified name.
    */
   // UTS: rest/unit/RSN3a/get-creates-new-channel-0
   it('RSN3a - Get creates new channel if none exists', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const channel = client.channels.get('test');
 
@@ -104,11 +104,11 @@ describe('uts/rest/unit/channels_collection', function () {
    * RSN3a - Get returns same instance for existing channel
    *
    * Calling get() with the same channel name returns the same
-   * cached RestChannel instance (identity equality).
+   * cached HttpChannel instance (identity equality).
    */
   // UTS: rest/unit/RSN3a/get-returns-existing-channel-1
   it('RSN3a - Get returns same instance for existing channel', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const channel1 = client.channels.get('test');
     const channel2 = client.channels.get('test');
@@ -124,7 +124,7 @@ describe('uts/rest/unit/channels_collection', function () {
    */
   // UTS: rest/unit/RSN4a/release-removes-channel-0
   it('RSN4a - Release removes channel from collection', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     client.channels.get('test');
     expect('test' in client.channels.all).to.be.true;
@@ -141,7 +141,7 @@ describe('uts/rest/unit/channels_collection', function () {
    */
   // UTS: rest/unit/RSN4b/release-nonexistent-noop-0
   it('RSN4b - Release on non-existent channel is no-op', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     // Should not throw
     expect(() => client.channels.release('nonexistent')).to.not.throw();
@@ -154,11 +154,11 @@ describe('uts/rest/unit/channels_collection', function () {
    * RSN3a - Get after release creates new instance
    *
    * After releasing a channel and calling get() again with the same name,
-   * a new RestChannel instance is created (not the previously cached one).
+   * a new HttpChannel instance is created (not the previously cached one).
    */
   // UTS: rest/unit/RSN3a/get-after-release-new-instance-3
   it('RSN3a - Get after release creates new instance', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const channel1 = client.channels.get('test');
     client.channels.release('test');
@@ -177,7 +177,7 @@ describe('uts/rest/unit/channels_collection', function () {
    */
   // UTS: rest/unit/RSN3a/subscript-creates-or-returns-2
   it('RSN3c - Get with channelOptions updates options', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const channel = client.channels.get('test', { params: { rewind: '1' } });
 

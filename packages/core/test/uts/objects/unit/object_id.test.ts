@@ -10,11 +10,11 @@
 
 import { expect } from 'chai';
 import '../../../../src/platform/nodejs';
-import { DefaultRest } from '../../../../src/common/lib/client/defaultrest';
+import { DefaultHttp } from '../../../../src/common/lib/client/defaulthttp';
 import { ObjectId } from '../../../../src/plugins/liveobjects/objectid';
 import { restoreAll } from '../../helpers';
 
-const Platform = DefaultRest.Platform;
+const Platform = DefaultHttp.Platform;
 
 describe('uts/objects/unit/object_id', function () {
   afterEach(function () {

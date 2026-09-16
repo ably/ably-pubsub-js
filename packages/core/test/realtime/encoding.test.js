@@ -3,7 +3,7 @@
 define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async, chai) {
   var expect = chai.expect;
   var BufferUtils = Ably.Realtime.Platform.BufferUtils;
-  var Defaults = Ably.Rest.Platform.Defaults;
+  var Defaults = Ably.Http.Platform.Defaults;
 
   function encodingFixturesPath(helper) {
     return helper.testResourcesPath + 'messages-encoding.json';
@@ -134,7 +134,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * Publish each fixture with both a json and msgpack realtime, get history
      * manually, and check everything was encoded correctly
      *
-     * @specpartial RSL6a1 - publish through realtime, receive via rest (history) for all transports
+     * @specpartial RSL6a1 - publish through realtime, receive via http (history) for all transports
      */
     it('message_encoding', function (done) {
       const helper = this.test.helper;

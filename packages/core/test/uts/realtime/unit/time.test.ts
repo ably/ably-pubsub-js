@@ -4,7 +4,7 @@
  * Spec points: RTC6, RTC6a
  * Source: specification/uts/realtime/unit/client/realtime_time.md
  *
- * RTC6a: RealtimeClient#time proxies to RestClient#time.
+ * RTC6a: RealtimeClient#time proxies to HttpClient#time.
  * These are the same tests as uts/rest/time but using a Realtime client
  * with autoConnect: false to avoid WebSocket connection.
  */

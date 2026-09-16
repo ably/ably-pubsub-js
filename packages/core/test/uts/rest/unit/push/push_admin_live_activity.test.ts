@@ -31,7 +31,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.liveActivity.start({
       recipient: { channels: ['nba:lakers', 'nba:celtics'] },
       apnsBroadcast: 'broadcast-1',
@@ -60,7 +60,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.liveActivity.start({
       recipient: { deviceId: 'device-7' },
       apnsBroadcast: 'broadcast/with space',
@@ -82,7 +82,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.liveActivity.update({
       apnsBroadcast: 'broadcast-1',
       apns: { aps: { event: 'update', 'content-state': { homeScore: 14 } } },
@@ -108,7 +108,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.liveActivity.update({
       apnsBroadcast: 'broadcast-1',
       apns: { aps: { event: 'update', 'content-state': {} } },
@@ -127,7 +127,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.liveActivity.end({
       apnsBroadcast: 'broadcast-1',
       apns: { aps: { event: 'end', 'content-state': { homeScore: 112 }, 'dismissal-date': 1700000000 } },
@@ -151,7 +151,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured, 400, { error: { code: 40000, statusCode: 400, message: 'Invalid request' } });
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.liveActivity.start({
@@ -170,7 +170,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured, 400, { error: { code: 40000, statusCode: 400, message: 'Invalid request' } });
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.liveActivity.update({ apnsBroadcast: 'broadcast-1', apns: {} });
@@ -185,7 +185,7 @@ describe('uts/rest/unit/push/push_admin_live_activity', function () {
     const captured: any[] = [];
     mockCapturing(captured, 400, { error: { code: 40000, statusCode: 400, message: 'Invalid request' } });
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.liveActivity.end({ apnsBroadcast: 'broadcast-1', apns: {} });

@@ -1877,14 +1877,14 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
     it('rewind_has_backlog_1', function (done) {
       const helper = this.test.helper;
       var realtime = helper.AblyRealtime();
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
       var channelName = 'rewind_has_backlog_1';
       var channelOpts = { params: { rewind: '1' } };
       var rtChannel = realtime.channels.get(channelName, channelOpts);
-      var restChannel = rest.channels.get(channelName);
+      var httpChannel = http.channels.get(channelName);
 
       // attach with rewind after publishing - hasBacklog should be true
-      Helper.whenPromiseSettles(restChannel.publish('foo', 'bar'), function (err) {
+      Helper.whenPromiseSettles(httpChannel.publish('foo', 'bar'), function (err) {
         if (err) {
           helper.closeAndFinish(done, realtime, err);
           return;

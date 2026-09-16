@@ -4,13 +4,13 @@ import Auth from './auth';
 import { HttpPaginatedResponse, PaginatedResult } from './paginatedresource';
 import ErrorInfo from '../types/errorinfo';
 import Stats from '../types/stats';
-import { Http, RequestParams } from '../../types/http';
+import { HttpRequester, RequestParams } from '../../types/http';
 import ClientOptions, { NormalisedClientOptions } from '../../types/ClientOptions';
 import * as API from '../../../../ably';
 import * as Utils from '../util/utils';
 
 import Platform from '../../platform';
-import { Rest } from './rest';
+import { Http } from './http';
 import { IUntypedCryptoStatic } from 'common/types/ICryptoStatic';
 import { AnnotationsPlugin } from './modularplugins';
 import { throwMissingPluginError } from '../util/utils';
@@ -42,10 +42,10 @@ class BaseClient {
     validUntil: number;
   };
   serverTimeOffset: number | null;
-  http: Http;
+  httpRequester: HttpRequester;
   auth: Auth;
 
-  private readonly _rest: Rest | null;
+  private readonly _http: Http | null;
   readonly _Crypto: IUntypedCryptoStatic | null;
   readonly _MsgPack: MsgPack | null;
   // Extra HTTP request implementations available to this client, in addition to those in web’s Http.bundledRequestImplementations
@@ -115,21 +115,21 @@ class BaseClient {
     this._currentFallback = null;
 
     this.serverTimeOffset = null;
-    this.http = new Http(this);
+    this.httpRequester = new HttpRequester(this);
     this.auth = new Auth(this, normalOptions);
 
-    this._rest = options.plugins?.Rest ? new options.plugins.Rest(this) : null;
+    this._http = options.plugins?.Http ? new options.plugins.Http(this) : null;
     this._Crypto = options.plugins?.Crypto ?? null;
     this.__FilteredSubscriptions = options.plugins?.MessageInteractions ?? null;
     this._Annotations = options.plugins?.Annotations ?? null;
     this._liveObjectsPlugin = options.plugins?.LiveObjects ?? null;
   }
 
-  get rest(): Rest {
-    if (!this._rest) {
-      throwMissingPluginError('Rest');
+  get http(): Http {
+    if (!this._http) {
+      throwMissingPluginError('Http');
     }
-    return this._rest;
+    return this._http;
   }
 
   get _FilteredSubscriptions(): typeof FilteredSubscriptions {
@@ -140,11 +140,11 @@ class BaseClient {
   }
 
   get channels() {
-    return this.rest.channels;
+    return this.http.channels;
   }
 
   get push() {
-    return this.rest.push;
+    return this.http.push;
   }
 
   /**
@@ -209,11 +209,11 @@ class BaseClient {
   }
 
   async stats(params?: RequestParams): Promise<PaginatedResult<Stats>> {
-    return this.rest.stats(params);
+    return this.http.stats(params);
   }
 
   async time(params?: RequestParams): Promise<number> {
-    return this.rest.time(params);
+    return this.http.time(params);
   }
 
   async request(
@@ -224,17 +224,17 @@ class BaseClient {
     body?: unknown,
     customHeaders?: Record<string, string>,
   ): Promise<HttpPaginatedResponse<unknown>> {
-    return this.rest.request(method, path, version, params, body, customHeaders);
+    return this.http.request(method, path, version, params, body, customHeaders);
   }
 
   batchPublish<T extends BatchPublishSpec | BatchPublishSpec[]>(
     specOrSpecs: T,
   ): Promise<T extends BatchPublishSpec ? BatchPublishResult : BatchPublishResult[]> {
-    return this.rest.batchPublish(specOrSpecs);
+    return this.http.batchPublish(specOrSpecs);
   }
 
   batchPresence(channels: string[]): Promise<BatchPresenceResult> {
-    return this.rest.batchPresence(channels);
+    return this.http.batchPresence(channels);
   }
 
   setLog(logOptions: LoggerOptions): void {

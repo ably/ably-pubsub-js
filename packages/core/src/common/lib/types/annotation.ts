@@ -4,10 +4,10 @@ import * as API from '../../../../ably';
 import * as Utils from '../util/utils';
 
 import type { Properties } from '../util/utils';
-import type RestChannel from '../client/restchannel';
+import type HttpChannel from '../client/httpchannel';
 import type RealtimeChannel from '../client/realtimechannel';
 import type { ChannelOptions } from '../../types/channel';
-type Channel = RestChannel | RealtimeChannel;
+type Channel = HttpChannel | RealtimeChannel;
 
 const actions = ['annotation.create', 'annotation.delete'];
 

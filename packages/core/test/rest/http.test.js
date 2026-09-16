@@ -1,16 +1,16 @@
 'use strict';
 
 define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
-  var rest;
+  var http;
   var expect = chai.expect;
-  var Defaults = Ably.Rest.Platform.Defaults;
+  var Defaults = Ably.Http.Platform.Defaults;
 
-  describe('rest/http', function () {
+  describe('http/http', function () {
     this.timeout(60 * 1000);
     before(function (done) {
       const helper = Helper.forHook(this);
       helper.setupApp(function () {
-        rest = helper.AblyRest({
+        http = helper.AblyHttp({
           agents: {
             'custom-agent': '0.1.2',
           },
@@ -25,7 +25,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      */
     it('Should send X-Ably-Version and Ably-Agent headers in get/post requests', async function () {
       const helper = this.test.helper;
-      var originalDo = rest.http.do;
+      var originalDo = http.httpRequester.do;
 
       // Intercept Http.do with test
       async function testRequestHandler(method, path, headers, body, params) {
@@ -51,18 +51,18 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
           expect(headers['Ably-Agent'].indexOf('nodejs') > -1, 'Verify agent').to.be.ok;
         }
 
-        helper.recordPrivateApi('call.rest.http.do');
-        return originalDo.call(rest.http, method, path, headers, body, params);
+        helper.recordPrivateApi('call.http.httpRequester.do');
+        return originalDo.call(http.httpRequester, method, path, headers, body, params);
       }
 
-      helper.recordPrivateApi('replace.rest.http.do');
-      rest.http.do = testRequestHandler;
+      helper.recordPrivateApi('replace.http.httpRequester.do');
+      http.httpRequester.do = testRequestHandler;
 
-      // Call all methods that use rest http calls
-      await rest.auth.requestToken();
-      await rest.time();
-      await rest.stats();
-      var channel = rest.channels.get('http_test_channel');
+      // Call all methods that use HTTP calls
+      await http.auth.requestToken();
+      await http.time();
+      await http.stats();
+      var channel = http.channels.get('http_test_channel');
       await channel.publish('test', 'Testing http headers');
       await channel.presence.get();
     });
@@ -76,10 +76,10 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         return { error: null, body: null, headers: { 'X-Ably-Foo': 'headerValue' }, unpacked: false, statusCode: 204 };
       }
 
-      helper.recordPrivateApi('replace.rest.http.do');
-      rest.http.do = testRequestHandler;
+      helper.recordPrivateApi('replace.http.httpRequester.do');
+      http.httpRequester.do = testRequestHandler;
 
-      const response = await rest.request('GET', '/foo', {}, null, {});
+      const response = await http.request('GET', '/foo', {}, null, {});
 
       expect(response.statusCode).to.equal(204);
       expect(response.items).to.be.empty;

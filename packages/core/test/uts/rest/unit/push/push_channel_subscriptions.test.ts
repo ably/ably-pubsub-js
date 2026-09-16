@@ -33,7 +33,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.save({
       channel: 'my-channel',
       deviceId: 'device-001',
@@ -66,7 +66,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.channelSubscriptions.save({
       channel: 'my-channel',
       deviceId: 'device-001',
@@ -99,7 +99,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.list({});
 
     expect(captured).to.have.length(1);
@@ -128,7 +128,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.list({ channel: 'my-channel' });
 
     expect(captured).to.have.length(1);
@@ -153,7 +153,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.channelSubscriptions.list({ channel: 'my-channel' });
 
     expect(result.items).to.have.length(2);
@@ -180,7 +180,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.removeWhere({ clientId: 'client-abc' });
 
     expect(captured).to.have.length(1);
@@ -207,7 +207,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.removeWhere({
       channel: 'my-channel',
       deviceId: 'device-001',
@@ -237,7 +237,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.listChannels({});
 
     expect(captured).to.have.length(1);
@@ -261,7 +261,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.channelSubscriptions.listChannels({});
 
     expect(result.items).to.have.length(3);
@@ -287,7 +287,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.channelSubscriptions.listChannels({ limit: '1' });
 
     expect(captured).to.have.length(1);
@@ -313,7 +313,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.list({ deviceId: 'device-001', clientId: 'client-abc' });
 
     expect(captured).to.have.length(1);
@@ -338,7 +338,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.list({ limit: '5' });
 
     expect(captured).to.have.length(1);
@@ -363,7 +363,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.channelSubscriptions.save({
@@ -394,7 +394,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.remove({ channel: 'ch', deviceId: 'dev-1' });
 
     expect(captured).to.have.length(1);
@@ -421,7 +421,7 @@ describe('uts/rest/unit/push/push_channel_subscriptions', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.channelSubscriptions.removeWhere({ deviceId: 'device-001' });
 
     expect(captured).to.have.length(1);

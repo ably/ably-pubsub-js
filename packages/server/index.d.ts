@@ -1,4 +1,4 @@
-import type { ClientOptions, Realtime, Rest } from '@ably/pubsub-core';
+import type { ClientOptions, Realtime, Http } from '@ably/pubsub-core';
 
 /**
  * The full public type surface of the core. Safe as a star re-export because it resolves
@@ -10,7 +10,7 @@ export * from '@ably/pubsub-core';
 /**
  * Creates a stateless Pub/Sub client for a server, talking to Ably over HTTP.
  *
- * The client this returns is identical to one built with the {@link Rest} constructor,
+ * The client this returns is identical to one built with the {@link Http} constructor,
  * except that it declares itself a server. Server traffic is exempt from monthly active
  * user counting, from the per-client-ID concurrency limit, and from the requirement to
  * carry a client ID on an account billed by MAU.
@@ -28,7 +28,7 @@ export * from '@ably/pubsub-core';
  *
  * @param options - A client options object, an Ably API key, or an Ably token.
  */
-export declare function createHttpClient(options: ClientOptions | string): Rest;
+export declare function createHttpClient(options: ClientOptions | string): Http;
 
 /**
  * Creates a realtime Pub/Sub client for a server, holding a persistent connection to Ably.

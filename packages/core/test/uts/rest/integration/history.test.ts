@@ -33,7 +33,7 @@ describeEachProtocol('uts/rest/integration/history', function (protocol) {
    */
   // UTS: rest/integration/RSL2a/history-returns-messages-0
   it('RSL2a - history returns published messages', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -80,7 +80,7 @@ describeEachProtocol('uts/rest/integration/history', function (protocol) {
    */
   // UTS: rest/integration/RSL2b1/history-direction-forwards-0
   it('RSL2b1 - history direction forwards', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -116,7 +116,7 @@ describeEachProtocol('uts/rest/integration/history', function (protocol) {
    */
   // UTS: rest/integration/RSL2b2/history-limit-parameter-0
   it('RSL2b2 - history limit parameter', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -153,7 +153,7 @@ describeEachProtocol('uts/rest/integration/history', function (protocol) {
    */
   // UTS: rest/integration/RSL2b3/history-time-range-0
   it('RSL2b3 - history time range parameters', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -219,7 +219,7 @@ describeEachProtocol('uts/rest/integration/history', function (protocol) {
    */
   // UTS: rest/integration/RSL2/history-empty-channel-0
   it('RSL2 - history on empty channel returns empty result', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',

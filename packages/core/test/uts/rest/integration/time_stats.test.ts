@@ -28,7 +28,7 @@ describe('uts/rest/integration/time_stats', function () {
    */
   // UTS: rest/integration/RSC16/time-returns-server-time-0
   it('RSC16 - time() returns server time', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -54,7 +54,7 @@ describe('uts/rest/integration/time_stats', function () {
    */
   // UTS: rest/integration/RSC6/stats-returns-result-0
   it('RSC6 - stats() returns a PaginatedResult', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });
@@ -78,7 +78,7 @@ describe('uts/rest/integration/time_stats', function () {
    */
   // UTS: rest/integration/RSC6/stats-with-parameters-1
   it('RSC6 - stats() with parameters', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
     });

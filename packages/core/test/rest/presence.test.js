@@ -1,7 +1,7 @@
 'use strict';
 
 define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async, chai) {
-  var rest;
+  var http;
   var cipherConfig;
   var expect = chai.expect;
   var Crypto = Ably.Realtime.Platform.Crypto;
@@ -21,13 +21,13 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
     return cipherParams;
   }
 
-  describe('rest/presence', function () {
+  describe('http/presence', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
       const helper = Helper.forHook(this);
       helper.setupApp(function () {
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         cipherConfig = helper.getTestApp().cipherConfig;
         done();
       });
@@ -37,7 +37,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       return async function () {
         const helper = this.test.helper.withParameterisedTestTitle('presence_simple');
         var cipherParams = cipherParamsFromConfig(cipherConfig, helper);
-        var channel = rest.channels.get('persisted:presence_fixtures', { cipher: cipherParams });
+        var channel = http.channels.get('persisted:presence_fixtures', { cipher: cipherParams });
         var resultPage = await channel.presence[operation]();
         var presenceMessages = resultPage.items;
         expect(presenceMessages.length).to.equal(6, 'Verify correct number of messages found');
@@ -83,7 +83,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @nospec
      */
     it('Presence message JSON serialisation', async function () {
-      var channel = rest.channels.get('persisted:presence_fixtures');
+      var channel = http.channels.get('persisted:presence_fixtures');
       var resultPage = await channel.presence.get();
       var presenceMessages = resultPage.items;
       var presenceBool = presenceMessages.find(function (msg) {
@@ -100,7 +100,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
      * @specpartial RSP3a1 - should also test maximum supported limit of 1000
      */
     it('Presence get limits and filtering', async function () {
-      var channel = rest.channels.get('persisted:presence_fixtures');
+      var channel = http.channels.get('persisted:presence_fixtures');
 
       var tests = [
         // Result limit

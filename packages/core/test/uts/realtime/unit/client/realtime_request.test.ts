@@ -4,7 +4,7 @@
  * Spec points: RTC9
  * Source: uts/test/realtime/unit/client/realtime_request.md
  *
- * RTC9: RealtimeClient#request proxies to RestClient#request.
+ * RTC9: RealtimeClient#request proxies to HttpClient#request.
  * These are representative tests from the REST request suite using a Realtime client.
  */
 

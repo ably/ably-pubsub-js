@@ -4,7 +4,7 @@
  * Spec points: RSC24, BGR2, BGF2
  * Source: specification/uts/rest/integration/batch_presence.md
  *
- * End-to-end verification of RestClient#batchPresence against the Ably sandbox.
+ * End-to-end verification of HttpClient#batchPresence against the Ably sandbox.
  * Client A enters presence members via Realtime, then the REST client calls
  * batchPresence and verifies the response structure and content.
  */
@@ -65,13 +65,13 @@ describeEachProtocol('uts/rest/integration/batch_presence', function (protocol) 
     await chB.presence.enterClient('user-3', 'data-b1');
 
     // Query via REST batchPresence (keep realtime open so presence persists)
-    const rest = new Ably.Rest({
+    const http = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
     });
 
-    const result = await rest.batchPresence([channelAName, channelBName]);
+    const result = await http.batchPresence([channelAName, channelBName]);
 
     expect(result.successCount).to.equal(2);
     expect(result.failureCount).to.equal(0);
@@ -140,13 +140,13 @@ describeEachProtocol('uts/rest/integration/batch_presence', function (protocol) 
     await closeAndWait(realtime);
 
     // Query with restricted key (keys[2], has "channel6":["*"])
-    const restrictedRest = new Ably.Rest({
+    const restrictedHttp = new Ably.Http({
       key: getApiKey(2),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
     });
 
-    const result = await restrictedRest.batchPresence([allowedChannel, deniedChannel]);
+    const result = await restrictedHttp.batchPresence([allowedChannel, deniedChannel]);
 
     expect(result.successCount).to.equal(1);
     expect(result.failureCount).to.equal(1);
@@ -194,13 +194,13 @@ describeEachProtocol('uts/rest/integration/batch_presence', function (protocol) 
     await ch.presence.enterClient('someone', 'here');
 
     // Keep realtime open during the REST query so the presence member persists
-    const rest = new Ably.Rest({
+    const http = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
     });
 
-    const result = await rest.batchPresence([emptyChannel, populatedChannel]);
+    const result = await http.batchPresence([emptyChannel, populatedChannel]);
 
     expect(result.successCount).to.equal(2);
     expect(result.failureCount).to.equal(0);

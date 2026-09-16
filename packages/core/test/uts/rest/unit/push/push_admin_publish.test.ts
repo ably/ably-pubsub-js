@@ -30,7 +30,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.publish(
       { transportType: 'apns', deviceToken: 'foo' },
       { notification: { title: 'Test', body: 'Hello' } },
@@ -59,7 +59,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.publish(
       { transportType: 'apns', deviceToken: 'foo' },
       { notification: { title: 'Test', body: 'Hello' } },
@@ -90,7 +90,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.publish({ clientId: 'user-123' }, { data: { key: 'value' } });
 
     expect(captured).to.have.length(1);
@@ -116,7 +116,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.publish({ deviceId: 'device-abc' }, { notification: { title: 'Device Push' } });
 
     expect(captured).to.have.length(1);
@@ -143,7 +143,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.publish(
       { clientId: 'user-1' },
       {
@@ -178,7 +178,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.publish({ clientId: 'user-1' }, { notification: { title: 'Test' } });
 
     expect(captured).to.have.length(1);
@@ -193,7 +193,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
    */
   // UTS: rest/unit/RSH1/push-admin-accessible-0
   it('RSH1 - client.push.admin exposes PushAdmin', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     expect(client.push).to.exist;
     expect(client.push.admin).to.exist;
@@ -219,7 +219,7 @@ describe('uts/rest/unit/push/push_admin_publish', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.publish({ clientId: 'user-1' }, { notification: { title: 'Test' } });

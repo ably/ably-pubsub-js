@@ -31,7 +31,7 @@ await realtime.channels.get('test-channel').subscribe((message) => {
 });
 ```
 
-Both return exactly what the `Rest` and `Realtime` constructors return, so everything in the [Ably Pub/Sub JavaScript documentation](https://ably.com/docs/getting-started/javascript) applies unchanged. The only difference is that these clients declare themselves servers.
+Both return exactly what the `Http` and `Realtime` constructors return, so everything in the [Ably Pub/Sub JavaScript documentation](https://ably.com/docs/getting-started/javascript) applies unchanged. The only difference is that these clients declare themselves servers.
 
 ## Entry points
 
@@ -71,14 +71,14 @@ Replace the constructors with the matching factory, and change the import:
 
 ```diff
 - import * as Ably from '@ably/pubsub-core';
-- const http = new Ably.Rest({ key });
+- const http = new Ably.Http({ key });
 - const realtime = new Ably.Realtime({ key });
 + import { createHttpClient, createRealtimeClient } from '@ably/pubsub-server';
 + const http = createHttpClient({ key });
 + const realtime = createRealtimeClient({ key });
 ```
 
-Nothing else changes, other than the token-auth requirement above. The `Rest` and `Realtime` constructors still work and are not going away; they simply declare no side, which means Ably has to fall back to its default classification.
+Nothing else changes, other than the token-auth requirement above. The `Http` and `Realtime` constructors still work and are not going away; they simply declare no side, which means Ably has to fall back to its default classification.
 
 Only use this package for code you operate. Installing it in an application that ships to end users would declare those users servers and stop them being counted, which is not something to rely on.
 

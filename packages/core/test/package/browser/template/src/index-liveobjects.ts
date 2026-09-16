@@ -1,4 +1,4 @@
-import { Realtime, Rest } from '@ably/pubsub-core';
+import { Realtime, Http } from '@ably/pubsub-core';
 import {
   AnyPathObject,
   CompactedJsonValue,
@@ -10,10 +10,10 @@ import {
   LiveObjects,
   ObjectMessage,
   PathObject,
-  RestObjectGetCompactResult,
-  RestObjectGetFullResult,
-  RestObject,
-  RestObjectPublishResult,
+  HttpObjectGetCompactResult,
+  HttpObjectGetFullResult,
+  HttpObject,
+  HttpObjectPublishResult,
 } from '@ably/pubsub-core/liveobjects';
 import { createSandboxAblyAPIKey } from './sandbox';
 
@@ -125,19 +125,19 @@ globalThis.testAblyPackage = async function () {
     | undefined = compactJson;
 
   // REST client LiveObjects type checks
-  const rest = new Rest({ key, endpoint: 'nonprod:sandbox', plugins: { LiveObjects } });
-  const restChannel = rest.channels.get('channel');
+  const http = new Http({ key, endpoint: 'nonprod:sandbox', plugins: { LiveObjects } });
+  const httpChannel = http.channels.get('channel');
 
-  // check RestObject is accessible on a REST channel
-  const restObject: RestObject = restChannel.object;
+  // check HttpObject is accessible on a REST channel
+  const httpObject: HttpObject = httpChannel.object;
 
   // check get() returns correct types for compact and full responses
-  const compactResult: RestObjectGetCompactResult = await restObject.get();
-  const compactWithParam: RestObjectGetCompactResult = await restObject.get({ compact: true });
-  const fullResult: RestObjectGetFullResult = await restObject.get({ compact: false });
+  const compactResult: HttpObjectGetCompactResult = await httpObject.get();
+  const compactWithParam: HttpObjectGetCompactResult = await httpObject.get({ compact: true });
+  const fullResult: HttpObjectGetFullResult = await httpObject.get({ compact: false });
 
   // check publish() returns correct type
-  const publishResult: RestObjectPublishResult = await restObject.publish({
+  const publishResult: HttpObjectPublishResult = await httpObject.publish({
     path: '',
     mapSet: { key: 'test', value: { string: 'value' } },
   });

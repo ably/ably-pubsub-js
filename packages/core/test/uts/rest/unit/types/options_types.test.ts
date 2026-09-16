@@ -27,7 +27,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO3/client-options-default-token-params-3
   it('TO3 - tls defaults to true', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     expect(client.options.tls).to.equal(true);
   });
 
@@ -37,7 +37,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO3/client-options-auth-url-2
   it('TO3 - useBinaryProtocol defaults to true', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     expect(client.options.useBinaryProtocol).to.equal(true);
   });
 
@@ -47,7 +47,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO/conflicting-options-validation-1
   it('TO3 - idempotentRestPublishing defaults to true', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     expect(client.options.idempotentRestPublishing).to.equal(true);
   });
 
@@ -57,7 +57,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO/endpoint-affects-host-0
   it('TO3 - maxMessageSize defaults to 65536', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     expect(client.options.maxMessageSize).to.equal(65536);
   });
 
@@ -67,7 +67,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO3/client-options-custom-hosts-1
   it('TO3 - setting custom option values', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       tls: false,
       useBinaryProtocol: false,
@@ -85,7 +85,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO3/client-options-attributes-0
   it('TO3 - clientId option', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       clientId: 'my-client',
     });
@@ -98,7 +98,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/TO3/client-options-attributes-0.1
   it('TO3 - key parsed into keyName and keySecret', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     expect(client.options.keyName).to.equal('appId.keyId');
     expect(client.options.keySecret).to.equal('keySecret');
   });
@@ -110,7 +110,7 @@ describe('uts/rest/unit/types/options_types', function () {
   it('TO - error when no auth options provided', function () {
     installMockHttp(simpleMock());
     try {
-      new Ably.Rest({});
+      new Ably.Http({});
       expect.fail('Expected constructor to throw');
     } catch (error) {
       expect(error).to.exist;
@@ -123,7 +123,7 @@ describe('uts/rest/unit/types/options_types', function () {
   // UTS: rest/unit/AO2/auth-options-attributes-0
   it('AO2 - authUrl and authMethod options', function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
       authMethod: 'POST',
     });
@@ -139,7 +139,7 @@ describe('uts/rest/unit/types/options_types', function () {
     // DEVIATION: see deviations.md
     if (!process.env.RUN_DEVIATIONS) this.skip();
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authUrl: 'https://auth.example.com/token',
     });
     expect(client.auth.authOptions.authMethod).to.equal('GET');

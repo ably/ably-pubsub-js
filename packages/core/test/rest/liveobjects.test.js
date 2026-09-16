@@ -18,8 +18,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
     return helper.AblyRealtime({ ...options, plugins: { LiveObjects: LiveObjectsPlugin } });
   }
 
-  function RestWithLiveObjects(helper, options) {
-    return helper.AblyRest({ ...options, plugins: { LiveObjects: LiveObjectsPlugin } });
+  function HttpWithLiveObjects(helper, options) {
+    return helper.AblyHttp({ ...options, plugins: { LiveObjects: LiveObjectsPlugin } });
   }
 
   /**
@@ -139,7 +139,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
     ];
   }
 
-  describe('rest/liveobjects', function () {
+  describe('http/liveobjects', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -158,26 +158,26 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
       });
     });
 
-    describe('Rest without LiveObjects plugin', () => {
+    describe('Http without LiveObjects plugin', () => {
       /** @nospec */
       it("throws an error when attempting to access the channel's `object` property", async function () {
         const helper = this.test.helper;
-        const client = helper.AblyRest();
+        const client = helper.AblyHttp();
         const channel = client.channels.get('channel');
         expect(() => channel.object).to.throw('LiveObjects plugin not provided');
       });
     });
 
-    describe('Rest with LiveObjects plugin', () => {
+    describe('Http with LiveObjects plugin', () => {
       /** @nospec */
-      it("returns RestObject class instance when accessing channel's `object` property", async function () {
+      it("returns HttpObject class instance when accessing channel's `object` property", async function () {
         const helper = this.test.helper;
-        const client = RestWithLiveObjects(helper);
+        const client = HttpWithLiveObjects(helper);
         const channel = client.channels.get('channel');
-        Helper.expectInstanceOf(channel.object, 'RestObject');
+        Helper.expectInstanceOf(channel.object, 'HttpObject');
       });
 
-      describe('RestObject.get()', () => {
+      describe('HttpObject.get()', () => {
         /** @nospec */
         const getScenarios = [
           {
@@ -455,7 +455,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
         ];
 
         forScenarios(getScenarios, async (helper, scenario, options) => {
-          const client = RestWithLiveObjects(helper, options);
+          const client = HttpWithLiveObjects(helper, options);
           const channel = client.channels.get(liveobjectsFixturesChannel);
           await waitFixtureChannelIsReady(RealtimeWithLiveObjects(helper, options), liveobjectsFixturesChannel);
 
@@ -463,7 +463,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
         });
       });
 
-      describe('RestObject.publish()', () => {
+      describe('HttpObject.publish()', () => {
         /** @nospec */
         const publishScenarios = [
           {
@@ -887,14 +887,14 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
 
         forScenarios(publishScenarios, async (helper, scenario, options, channelName) => {
           const objectsHelper = new LiveObjectsHelper(helper);
-          const client = RestWithLiveObjects(helper, options);
+          const client = HttpWithLiveObjects(helper, options);
           const channel = client.channels.get(channelName);
 
           await scenario.action({ helper, options, client, channel, channelName, objectsHelper });
         });
       });
 
-      describe('RestObject.generateObjectId()', () => {
+      describe('HttpObject.generateObjectId()', () => {
         /** @nospec */
         const generateObjectIdScenarios = [
           {
@@ -1005,7 +1005,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
         ];
 
         forScenarios(generateObjectIdScenarios, async (helper, scenario, options, channelName) => {
-          const client = RestWithLiveObjects(helper, options);
+          const client = HttpWithLiveObjects(helper, options);
           const channel = client.channels.get(channelName);
 
           await scenario.action({ helper, channel });

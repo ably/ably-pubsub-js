@@ -14,11 +14,11 @@ const coreDir = path.join(__dirname, '..', 'packages', 'core');
 // The maximum size we allow for a minimal useful Realtime bundle (i.e. one that can subscribe to a channel)
 const minimalUsefulRealtimeBundleSizeThresholdsKiB = { raw: 122, gzip: 37 };
 
-const baseClientNames = ['BaseRest', 'BaseRealtime'];
+const baseClientNames = ['BaseHttp', 'BaseRealtime'];
 
 // List of all plugins accepted in ModularPlugins
 const pluginNames = [
-  'Rest',
+  'Http',
   'Crypto',
   'MsgPack',
   'RealtimePresence',
@@ -161,7 +161,7 @@ async function calculateAndCheckExportSizes(): Promise<Output> {
       const sizes = await getModularImportSizes([baseClient, exportName]);
       output.tableRows.push({ description: `${baseClient} + ${exportName}`, sizes });
 
-      if (!(baseClientSizes.rawByteSize < sizes.rawByteSize) && !(baseClient === 'BaseRest' && exportName === 'Rest')) {
+      if (!(baseClientSizes.rawByteSize < sizes.rawByteSize) && !(baseClient === 'BaseHttp' && exportName === 'Http')) {
         // Emit an error if adding the export does not increase the bundle size
         // (this means that the export is not being tree-shaken correctly).
         output.errors.push(new Error(`Adding ${exportName} to ${baseClient} does not increase the bundle size.`));
@@ -374,7 +374,7 @@ async function checkLiveObjectsPluginFiles() {
     'src/plugins/liveobjects/pathobject.ts',
     'src/plugins/liveobjects/pathobjectsubscriptionregister.ts',
     'src/plugins/liveobjects/realtimeobject.ts',
-    'src/plugins/liveobjects/restobject.ts',
+    'src/plugins/liveobjects/httpobject.ts',
     'src/plugins/liveobjects/rootbatchcontext.ts',
     'src/plugins/liveobjects/syncobjectspool.ts',
   ]);

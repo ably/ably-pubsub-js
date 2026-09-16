@@ -15,8 +15,8 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
     return helper.AblyRealtime({ ...options, plugins: { Push: PushPlugin } });
   }
 
-  function PushRest(helper, options) {
-    return helper.AblyRest({ ...options, plugins: { Push: PushPlugin } });
+  function PushHttp(helper, options) {
+    return helper.AblyHttp({ ...options, plugins: { Push: PushPlugin } });
   }
 
   var testDevice = {
@@ -44,7 +44,7 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
     },
   };
 
-  describe('rest/push', function () {
+  describe('http/push', function () {
     this.timeout(60 * 1000);
 
     before(function (done) {
@@ -95,18 +95,18 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
           }
           subsByChannel[sub.channel].push(sub);
 
-          var rest = helper.AblyRest({ clientId: sub.clientId });
-          subscribes.push(() => rest.push.admin.channelSubscriptions.save(sub));
-          deletes.push(() => rest.push.admin.channelSubscriptions.remove(sub));
+          var http = helper.AblyHttp({ clientId: sub.clientId });
+          subscribes.push(() => http.push.admin.channelSubscriptions.save(sub));
+          deletes.push(() => http.push.admin.channelSubscriptions.remove(sub));
         })(i);
       }
 
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
 
       await Promise.all(subscribes.map((sub) => sub()));
 
-      var res1 = await rest.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo1' });
-      var res2 = await rest.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo2' });
+      var res1 = await http.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo1' });
+      var res2 = await http.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo2' });
 
       await Promise.all(deletes.map((del) => del()));
 
@@ -158,11 +158,11 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
     /** @specpartial RSH1b3 - tests only successful save, should also test a successful subsequent save with an update, and a failed save operation */
     it('deviceRegistrations save', async function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
 
-      var saved = await rest.push.admin.deviceRegistrations.save(testDevice);
-      var got = await rest.push.admin.deviceRegistrations.get(testDevice.id);
-      await rest.push.admin.deviceRegistrations.remove(testDevice.id);
+      var saved = await http.push.admin.deviceRegistrations.save(testDevice);
+      var got = await http.push.admin.deviceRegistrations.get(testDevice.id);
+      await http.push.admin.deviceRegistrations.remove(testDevice.id);
 
       expect(got.push.state).to.equal('ACTIVE');
       delete got.metadata; // Ignore these properties for testing
@@ -219,27 +219,27 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
           devices.push(device);
           devices_withoutSecret.push(device_withoutSecret);
 
-          var rest = helper.AblyRest({ clientId: device.clientId });
+          var http = helper.AblyHttp({ clientId: device.clientId });
           registrations.push(function () {
-            return rest.push.admin.deviceRegistrations.save(device);
+            return http.push.admin.deviceRegistrations.save(device);
           });
           deletes.push(function () {
-            return rest.push.admin.deviceRegistrations.remove('device' + (i + 1));
+            return http.push.admin.deviceRegistrations.remove('device' + (i + 1));
           });
         })(i);
       }
 
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
 
       var res0 = await Promise.all(registrations.map((x) => x()));
-      var res1 = await rest.push.admin.deviceRegistrations.list(null);
-      var res2 = await rest.push.admin.deviceRegistrations.list({ clientId: 'testClient1' });
-      var res3 = await rest.push.admin.deviceRegistrations.list({ clientId: 'testClient2' });
-      var res4 = await rest.push.admin.deviceRegistrations.get(devices[0].id);
+      var res1 = await http.push.admin.deviceRegistrations.list(null);
+      var res2 = await http.push.admin.deviceRegistrations.list({ clientId: 'testClient1' });
+      var res3 = await http.push.admin.deviceRegistrations.list({ clientId: 'testClient2' });
+      var res4 = await http.push.admin.deviceRegistrations.get(devices[0].id);
 
       await Promise.all([
-        rest.push.admin.deviceRegistrations.removeWhere({ clientId: 'testClient1' }),
-        rest.push.admin.deviceRegistrations.removeWhere({ clientId: 'testClient2' }),
+        http.push.admin.deviceRegistrations.removeWhere({ clientId: 'testClient1' }),
+        http.push.admin.deviceRegistrations.removeWhere({ clientId: 'testClient2' }),
       ]);
 
       await Promise.all(deletes.map((x) => x()));
@@ -259,23 +259,23 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
      */
     it('deviceRegistrations remove removeWhere', async function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
 
-      await rest.push.admin.deviceRegistrations.save(testDevice);
-      await rest.push.admin.deviceRegistrations.remove(testDevice.id);
+      await http.push.admin.deviceRegistrations.save(testDevice);
+      await http.push.admin.deviceRegistrations.remove(testDevice.id);
 
       try {
-        await rest.push.admin.deviceRegistrations.get(testDevice.id);
+        await http.push.admin.deviceRegistrations.get(testDevice.id);
         expect.fail('Expected push.admin.deviceRegistrations.get() to throw');
       } catch (err) {
         expect(err.statusCode).to.equal(404, 'Check device reg not found after removal');
       }
 
-      await rest.push.admin.deviceRegistrations.save(testDevice);
-      await rest.push.admin.deviceRegistrations.removeWhere({ deviceId: testDevice.id });
+      await http.push.admin.deviceRegistrations.save(testDevice);
+      await http.push.admin.deviceRegistrations.removeWhere({ deviceId: testDevice.id });
 
       try {
-        await rest.push.admin.deviceRegistrations.get(testDevice.id);
+        await http.push.admin.deviceRegistrations.get(testDevice.id);
         expect.fail('Expected push.admin.deviceRegistrations.get() to throw');
       } catch (err) {
         expect(err.statusCode).to.equal(404, 'Check device reg not found after removal');
@@ -285,13 +285,13 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
     /** @specpartial RSH1c3 - tests only successful save, should also test a successful subsequent save with an update, and a failed save operation */
     it('channelSubscriptions save', async function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest({ clientId: 'testClient' });
+      var http = helper.AblyHttp({ clientId: 'testClient' });
       var subscription = { clientId: 'testClient', channel: 'pushenabled:foo' };
 
-      var saved = await rest.push.admin.channelSubscriptions.save(subscription);
-      var result = await rest.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo' });
+      var saved = await http.push.admin.channelSubscriptions.save(subscription);
+      var result = await http.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo' });
       var sub = result.items[0];
-      await rest.push.admin.channelSubscriptions.remove(subscription);
+      await http.push.admin.channelSubscriptions.remove(subscription);
 
       expect(subscription.clientId).to.equal(saved.clientId);
       expect(subscription.channel).to.equal(saved.channel);
@@ -318,22 +318,22 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
           }
           subsByChannel[sub.channel].push(sub);
 
-          var rest = helper.AblyRest();
+          var http = helper.AblyHttp();
           subscribes.push(function () {
-            return rest.push.admin.channelSubscriptions.save(sub);
+            return http.push.admin.channelSubscriptions.save(sub);
           });
           deletes.push(function () {
-            return rest.push.admin.channelSubscriptions.remove({ clientId: 'testClient' + i });
+            return http.push.admin.channelSubscriptions.remove({ clientId: 'testClient' + i });
           });
         })(i);
       }
 
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
 
       await Promise.all(subscribes.map((x) => x()));
 
-      var res1 = await rest.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo1' });
-      var res2 = await rest.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo2' });
+      var res1 = await http.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo1' });
+      var res2 = await http.push.admin.channelSubscriptions.list({ channel: 'pushenabled:foo2' });
 
       await Promise.all(deletes.map((x) => x()));
 
@@ -347,11 +347,11 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
      */
     it('push_channelSubscriptions_remove', async function () {
       const helper = this.test.helper;
-      var rest = helper.AblyRest({ clientId: 'testClient' });
+      var http = helper.AblyHttp({ clientId: 'testClient' });
       var subscription = { clientId: 'testClient', channel: 'pushenabled:foo' };
 
-      await rest.push.admin.channelSubscriptions.save(subscription);
-      await rest.push.admin.channelSubscriptions.remove(subscription);
+      await http.push.admin.channelSubscriptions.save(subscription);
+      await http.push.admin.channelSubscriptions.remove(subscription);
     });
 
     /**
@@ -365,21 +365,21 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
       for (var i = 0; i < 5; i++) {
         (function (i) {
           var sub = { channel: 'pushenabled:listChannels' + ((i % 2) + 1), clientId: 'testClient' + ((i % 3) + 1) };
-          var rest = helper.AblyRest({ clientId: sub.clientId });
+          var http = helper.AblyHttp({ clientId: sub.clientId });
           subscribes.push(function (callback) {
-            return rest.push.admin.channelSubscriptions.save(sub);
+            return http.push.admin.channelSubscriptions.save(sub);
           });
           deletes.push(function () {
-            return rest.push.admin.channelSubscriptions.remove(sub);
+            return http.push.admin.channelSubscriptions.remove(sub);
           });
         })(i);
       }
 
-      var rest = helper.AblyRest();
+      var http = helper.AblyHttp();
 
       await Promise.all(subscribes.map((x) => x()));
 
-      var result = await rest.push.admin.channelSubscriptions.listChannels(null);
+      var result = await http.push.admin.channelSubscriptions.listChannels(null);
 
       await Promise.all(deletes.map((x) => x()));
 
@@ -392,9 +392,9 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
         const helper = this.test.helper;
 
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRealtime(helper, { pushRecipientChannel: 'my_channel' });
-        await rest.push.activate();
-        expect(rest.device().deviceIdentityToken).to.be.ok;
+        const http = PushRealtime(helper, { pushRecipientChannel: 'my_channel' });
+        await http.push.activate();
+        expect(http.device().deviceIdentityToken).to.be.ok;
       });
 
       /** @nospec */
@@ -451,10 +451,10 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
         const clientId = 'me';
         const channelName = 'pushenabled:subscribe_client';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { clientId, pushRecipientChannel: channelName });
-        const channel = rest.channels.get(channelName);
+        const http = PushHttp(helper, { clientId, pushRecipientChannel: channelName });
+        const channel = http.channels.get(channelName);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         await channel.push.subscribeClient();
 
@@ -471,9 +471,9 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
         const channelName = 'pushenabled:subscribe_client_without_clientId';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { pushRecipientChannel: 'hello' });
-        await rest.push.activate();
-        const channel = rest.channels.get(channelName);
+        const http = PushHttp(helper, { pushRecipientChannel: 'hello' });
+        await http.push.activate();
+        const channel = http.channels.get(channelName);
         try {
           await channel.push.subscribeClient();
         } catch (err) {
@@ -491,10 +491,10 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
         const clientId = 'me';
         const channelName = 'pushenabled:unsubscribe_client';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { clientId, pushRecipientChannel: channelName });
-        const channel = rest.channels.get(channelName);
+        const http = PushHttp(helper, { clientId, pushRecipientChannel: channelName });
+        const channel = http.channels.get(channelName);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         await channel.push.subscribeClient();
         await channel.push.unsubscribeClient();
@@ -512,12 +512,12 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
         const clientId = 'me2';
         const channelName = 'pushenabled:direct_publish_client_id';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { clientId, pushRecipientChannel: channelName });
+        const http = PushHttp(helper, { clientId, pushRecipientChannel: channelName });
         const realtime = PushRealtime(helper);
         const rtChannel = realtime.channels.get(channelName);
-        const channel = rest.channels.get(channelName);
+        const channel = http.channels.get(channelName);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         const pushRecipient = {
           clientId,
@@ -533,7 +533,7 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
           rtChannel.subscribe('__ably_push__', (msg) => {
             resolve(msg);
           });
-          rest.push.admin.publish(pushRecipient, pushPayload).catch(reject);
+          http.push.admin.publish(pushRecipient, pushPayload).catch(reject);
         });
 
         const receivedPushPayload = JSON.parse(msg.data);
@@ -550,10 +550,10 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
         const channelName = 'pushenabled:subscribe_device';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { pushRecipientChannel: channelName });
-        const channel = rest.channels.get(channelName);
+        const http = PushHttp(helper, { pushRecipientChannel: channelName });
+        const channel = http.channels.get(channelName);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         await channel.push.subscribeDevice();
 
@@ -561,7 +561,7 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
         const subscription = result.items[0];
         expect(subscription.channel).to.equal(channelName);
-        expect(subscription.deviceId).to.equal(rest.device().id);
+        expect(subscription.deviceId).to.equal(http.device().id);
       });
 
       /** @spec RSH7c */
@@ -570,10 +570,10 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
         const channelName = 'pushenabled:unsubscribe_device';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { pushRecipientChannel: channelName });
-        const channel = rest.channels.get(channelName);
+        const http = PushHttp(helper, { pushRecipientChannel: channelName });
+        const channel = http.channels.get(channelName);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         await channel.push.subscribeDevice();
         await channel.push.unsubscribeDevice();
@@ -590,15 +590,15 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
         const channelName = 'direct_publish_device_id';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { pushRecipientChannel: channelName });
+        const http = PushHttp(helper, { pushRecipientChannel: channelName });
         const realtime = PushRealtime(helper);
         const rtChannel = realtime.channels.get(channelName);
-        const channel = rest.channels.get(channelName);
+        const channel = http.channels.get(channelName);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         const pushRecipient = {
-          deviceId: rest.device().id,
+          deviceId: http.device().id,
         };
 
         const pushPayload = {
@@ -611,7 +611,7 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
           rtChannel.subscribe('__ably_push__', (msg) => {
             resolve(msg);
           });
-          rest.push.admin.publish(pushRecipient, pushPayload).catch(reject);
+          http.push.admin.publish(pushRecipient, pushPayload).catch(reject);
         });
 
         const receivedPushPayload = JSON.parse(msg.data);
@@ -629,12 +629,12 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
         const pushRecipientChannel = 'push_channel_subscription_device_id';
         const channelName = 'pushenabled:push_channel_subscription_device_id';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { pushRecipientChannel });
+        const http = PushHttp(helper, { pushRecipientChannel });
         const realtime = PushRealtime(helper);
-        const channel = rest.channels.get(channelName);
+        const channel = http.channels.get(channelName);
         const rtChannel = realtime.channels.get(pushRecipientChannel);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         await channel.push.subscribeDevice();
 
@@ -673,12 +673,12 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
         const pushRecipientChannel = 'push_channel_subscription_client_id';
         const channelName = 'pushenabled:push_channel_subscription_client_id';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { clientId: 'me', pushRecipientChannel });
+        const http = PushHttp(helper, { clientId: 'me', pushRecipientChannel });
         const realtime = PushRealtime(helper);
-        const channel = rest.channels.get(channelName);
+        const channel = http.channels.get(channelName);
         const rtChannel = realtime.channels.get(pushRecipientChannel);
 
-        await rest.push.activate();
+        await http.push.activate();
 
         await channel.push.subscribeClient();
 
@@ -712,15 +712,15 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
       /** @spec RSH8h */
       it('failed_getting_device_details', async function () {
-        const rest = PushRest(this.test.helper);
+        const http = PushHttp(this.test.helper);
         try {
-          await rest.push.activate();
+          await http.push.activate();
         } catch (err) {
           expect(err.code).to.equal(40000);
           expect(err.statusCode).to.equal(400);
           return;
         }
-        expect.fail('expect rest.push.activate() to throw');
+        expect.fail('expect http.push.activate() to throw');
       });
 
       /** @spec RSH3b3c */
@@ -729,16 +729,16 @@ define(['ably', 'shared_helper', 'async', 'chai', 'test/support/push_channel_tra
 
         const pushRecipientChannel = 'failed_registration';
         helper.recordPrivateApi('pass.clientOption.pushRecipientChannel');
-        const rest = PushRest(helper, { pushRecipientChannel });
-        rest.device().platform = 'not_a_real_platform';
+        const http = PushHttp(helper, { pushRecipientChannel });
+        http.device().platform = 'not_a_real_platform';
         try {
-          await rest.push.activate();
+          await http.push.activate();
         } catch (err) {
           expect(err.code).to.equal(40000);
           expect(err.statusCode).to.equal(400);
           return;
         }
-        expect.fail('expect rest.push.activate() to throw');
+        expect.fail('expect http.push.activate() to throw');
       });
     });
 

@@ -5,10 +5,10 @@ import * as Utils from '../util/utils';
 
 import type { IUntypedCryptoStatic } from 'common/types/ICryptoStatic';
 import type { Properties } from '../util/utils';
-import type RestChannel from '../client/restchannel';
+import type HttpChannel from '../client/httpchannel';
 import type RealtimeChannel from '../client/realtimechannel';
 import type { ChannelOptions } from '../../types/channel';
-type Channel = RestChannel | RealtimeChannel;
+type Channel = HttpChannel | RealtimeChannel;
 
 const actions = ['absent', 'present', 'enter', 'leave', 'update'];
 

@@ -437,22 +437,22 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       for (const scenario of [
         {
           description: 'XHR request disable connectivity check',
-          ctx: { initialFetchSupported: Ably.Rest.Platform.Config.fetchSupported },
+          ctx: { initialFetchSupported: Ably.Http.Platform.Config.fetchSupported },
           before: (ctx) => {
-            Ably.Rest.Platform.Config.fetchSupported = false;
+            Ably.Http.Platform.Config.fetchSupported = false;
           },
           after: (ctx) => {
-            Ably.Rest.Platform.Config.fetchSupported = ctx.initialFetchSupported;
+            Ably.Http.Platform.Config.fetchSupported = ctx.initialFetchSupported;
           },
         },
         {
           description: 'Fetch request disable connectivity check',
-          ctx: { initialXhrSupported: Ably.Rest.Platform.Config.xhrSupported },
+          ctx: { initialXhrSupported: Ably.Http.Platform.Config.xhrSupported },
           before: (ctx) => {
-            Ably.Rest.Platform.Config.xhrSupported = false;
+            Ably.Http.Platform.Config.xhrSupported = false;
           },
           after: (ctx) => {
-            Ably.Rest.Platform.Config.xhrSupported = ctx.initialXhrSupported;
+            Ably.Http.Platform.Config.xhrSupported = ctx.initialXhrSupported;
           },
         },
       ]) {
@@ -472,8 +472,8 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
               autoConnect: false,
             };
 
-            helper.recordPrivateApi('call.http.checkConnectivity');
-            res = await helper.AblyRealtime(options).http.checkConnectivity();
+            helper.recordPrivateApi('call.httpRequester.checkConnectivity');
+            res = await helper.AblyRealtime(options).httpRequester.checkConnectivity();
           } catch (error) {
             thrownError = error;
           } finally {

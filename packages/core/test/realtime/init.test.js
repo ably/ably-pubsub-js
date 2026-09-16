@@ -97,10 +97,10 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       const helper = this.test.helper;
       try {
         /* first generate a token ... */
-        var rest = helper.AblyRest();
+        var http = helper.AblyHttp();
         var testKeyOpts = { key: helper.getTestApp().keys[1].keyStr };
 
-        Helper.whenPromiseSettles(rest.auth.requestToken(null, testKeyOpts), function (err, tokenDetails) {
+        Helper.whenPromiseSettles(http.auth.requestToken(null, testKeyOpts), function (err, tokenDetails) {
           if (err) {
             done(err);
             return;
@@ -490,8 +490,8 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       });
       realtime.connection.once('connected', function () {
         try {
-          helper.recordPrivateApi('call.http._getHosts');
-          var hosts = new Ably.Rest._Http()._getHosts(realtime);
+          helper.recordPrivateApi('call.httpRequester._getHosts');
+          var hosts = new Ably.Http._HttpRequester()._getHosts(realtime);
           /* restHost rather than realtimeHost as that's what connectionManager
            * knows about; converted to realtimeHost by the websocketTransport */
           helper.recordPrivateApi('read.realtime.options.primaryDomain');
@@ -511,15 +511,15 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     /** @specpartial RTN17e */
     it('init_fallbacks_once_connected_2', function (done) {
       const helper = this.test.helper;
-      var goodHost = helper.AblyRest().options.primaryDomain;
+      var goodHost = helper.AblyHttp().options.primaryDomain;
       var realtime = helper.AblyRealtimeWithoutEndpoint({
         httpMaxRetryCount: 3,
         restHost: 'a',
         fallbackHosts: [goodHost, 'b', 'c'],
       });
       realtime.connection.once('connected', function () {
-        helper.recordPrivateApi('call.http._getHosts');
-        var hosts = new Ably.Realtime._Http()._getHosts(realtime);
+        helper.recordPrivateApi('call.httpRequester._getHosts');
+        var hosts = new Ably.Realtime._HttpRequester()._getHosts(realtime);
         /* restHost rather than realtimeHost as that's what connectionManager
          * knows about; converted to realtimeHost by the websocketTransport */
         try {

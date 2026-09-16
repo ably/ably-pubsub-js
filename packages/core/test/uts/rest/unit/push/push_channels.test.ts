@@ -6,7 +6,7 @@
  * Source: uts/rest/unit/push/push_channels.md
  *
  * These tests cover the PushChannel interface (RSH7), which is the `push`
- * field on RestChannel/RealtimeChannel. PushChannel methods operate from
+ * field on HttpChannel/RealtimeChannel. PushChannel methods operate from
  * the perspective of the local device (the push target), not the admin API.
  *
  * Deviations from UTS spec (ably-js-specific):
@@ -22,7 +22,7 @@ import { Ably, installMockHttp, restoreAll } from '../../../helpers';
 import * as PushPlugin from '../../../../../src/plugins/push';
 
 /**
- * Configure a Rest client with a fake local device for PushChannel testing.
+ * Configure a Http client with a fake local device for PushChannel testing.
  *
  * ably-js's PushChannel requires:
  * 1. The Push plugin to be provided via options.plugins.Push (so channel.push exists)
@@ -72,7 +72,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },
@@ -117,7 +117,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },
@@ -169,7 +169,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     installMockHttp(mock);
 
     // clientId is set on the client options (which sets client.auth.clientId)
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       clientId: 'test-client',
@@ -208,7 +208,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     installMockHttp(mock);
 
     // No clientId on client options
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },
@@ -249,7 +249,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },
@@ -291,7 +291,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },
@@ -338,7 +338,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       clientId: 'test-client',
@@ -374,7 +374,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },
@@ -427,7 +427,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       clientId: 'test-client',
@@ -482,7 +482,7 @@ describe('uts/rest/unit/push/push_channels', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
       plugins: { Push: PushPlugin },

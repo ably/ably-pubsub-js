@@ -1,12 +1,12 @@
 import type BaseClient from 'common/lib/client/baseclient';
 import type RealtimeChannel from 'common/lib/client/realtimechannel';
-import type RestChannel from 'common/lib/client/restchannel';
+import type HttpChannel from 'common/lib/client/httpchannel';
 
 class PushChannel {
   client: BaseClient;
-  channel: RestChannel | RealtimeChannel;
+  channel: HttpChannel | RealtimeChannel;
 
-  constructor(channel: RestChannel | RealtimeChannel) {
+  constructor(channel: HttpChannel | RealtimeChannel) {
     this.channel = channel;
     this.client = channel.client;
   }
@@ -23,7 +23,7 @@ class PushChannel {
     client.Utils.mixin(headers, this._getPushAuthHeaders(device));
 
     const requestBody = client.Utils.encodeBody(body, client._MsgPack, format);
-    await client.rest.Resource.post(client, '/push/channelSubscriptions', requestBody, headers, {}, format, true);
+    await client.http.Resource.post(client, '/push/channelSubscriptions', requestBody, headers, {}, format, true);
   }
 
   async unsubscribeDevice() {
@@ -36,7 +36,7 @@ class PushChannel {
 
     client.Utils.mixin(headers, this._getPushAuthHeaders(device));
 
-    await client.rest.Resource.delete(
+    await client.http.Resource.delete(
       client,
       '/push/channelSubscriptions',
       headers,
@@ -65,7 +65,7 @@ class PushChannel {
     if (client.options.headers) client.Utils.mixin(headers, client.options.headers);
 
     const requestBody = client.Utils.encodeBody(body, client._MsgPack, format);
-    await client.rest.Resource.post(client, '/push/channelSubscriptions', requestBody, headers, {}, format, true);
+    await client.http.Resource.post(client, '/push/channelSubscriptions', requestBody, headers, {}, format, true);
   }
 
   async unsubscribeClient() {
@@ -86,7 +86,7 @@ class PushChannel {
 
     if (client.options.headers) client.Utils.mixin(headers, client.options.headers);
 
-    await client.rest.Resource.delete(
+    await client.http.Resource.delete(
       client,
       '/push/channelSubscriptions',
       headers,

@@ -305,20 +305,20 @@ describeWithProtocols('uts/objects/integration/objects_lifecycle', function (use
    */
   // UTS: objects/integration/RTPO15/rest-provisioned-data-sync-0
   it('RTPO15 - client syncs pre-existing data provisioned via REST', async function () {
-    const channelName = uniqueChannelName('objects-rest-provision');
+    const channelName = uniqueChannelName('objects-http-provision');
 
     // Provision data via REST before any realtime client connects. The spec's
     // provision_objects_via_rest helper is a raw JSON POST, so the provisioning
     // client stays on json regardless of the protocol variant under test.
-    const restClient = new Ably.Rest({
+    const httpClient = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: false,
       plugins: { LiveObjects: LiveObjectsPlugin },
     });
 
-    const restChannel = restClient.channels.get(channelName);
-    await restChannel.object.publish({
+    const httpChannel = httpClient.channels.get(channelName);
+    await httpChannel.object.publish({
       objectId: 'root',
       mapSet: { key: 'provisioned', value: { string: 'from_rest' } },
     });

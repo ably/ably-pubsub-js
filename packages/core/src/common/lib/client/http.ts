@@ -2,7 +2,7 @@ import * as Utils from '../util/utils';
 import Defaults from '../util/defaults';
 import Push from './push';
 import PaginatedResource, { HttpPaginatedResponse, PaginatedResult } from './paginatedresource';
-import RestChannel from './restchannel';
+import HttpChannel from './httpchannel';
 import ErrorInfo from '../types/errorinfo';
 import Stats from '../types/stats';
 import HttpMethods from '../../constants/HttpMethods';
@@ -14,8 +14,8 @@ import Resource from './resource';
 import Platform from '../../platform';
 import BaseClient from './baseclient';
 import { useTokenAuth } from './auth';
-import { RestChannelMixin } from './restchannelmixin';
-import { RestPresenceMixin } from './restpresencemixin';
+import { HttpChannelMixin } from './httpchannelmixin';
+import { HttpPresenceMixin } from './httppresencemixin';
 import DeviceDetails from '../types/devicedetails';
 import PushChannelSubscription from '../types/pushchannelsubscription';
 
@@ -35,13 +35,13 @@ type TokenRevocationSuccessResult = API.TokenRevocationSuccessResult;
 type TokenRevocationFailureResult = API.TokenRevocationFailureResult;
 type TokenRevocationResult = BatchResult<TokenRevocationSuccessResult | TokenRevocationFailureResult>;
 
-export class Rest {
+export class Http {
   private readonly client: BaseClient;
   readonly channels: Channels;
   readonly push: Push;
 
-  readonly channelMixin = RestChannelMixin;
-  readonly presenceMixin = RestPresenceMixin;
+  readonly channelMixin = HttpChannelMixin;
+  readonly presenceMixin = HttpPresenceMixin;
 
   // exposed for plugins but shouldn't be bundled with minimal realtime
   Resource = Resource;
@@ -58,7 +58,7 @@ export class Rest {
   async stats(params?: RequestParams): Promise<PaginatedResult<Stats>> {
     const headers = Defaults.defaultGetHeaders(this.client.options),
       format = this.client.options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
-      envelope = this.client.http.supportsLinkHeaders ? undefined : format;
+      envelope = this.client.httpRequester.supportsLinkHeaders ? undefined : format;
 
     Utils.mixin(headers, this.client.options.headers);
 
@@ -78,7 +78,7 @@ export class Rest {
       return this.client.baseUri(host) + '/time';
     };
 
-    let { error, body, unpacked } = await this.client.http.do(
+    let { error, body, unpacked } = await this.client.httpRequester.do(
       HttpMethods.Get,
       timeUri,
       headers,
@@ -117,7 +117,7 @@ export class Rest {
         return [JSON.stringify, JSON.parse, Utils.Format.json];
       }
     })();
-    const envelope = this.client.http.supportsLinkHeaders ? undefined : format;
+    const envelope = this.client.httpRequester.supportsLinkHeaders ? undefined : format;
     params = params || {};
     const _method = method.toLowerCase() as HttpMethods;
     const headers =
@@ -222,7 +222,7 @@ export class Rest {
         code: 40162,
         statusCode: 401,
         remediation:
-          'Token revocation must use basic auth, so construct a separate Ably.Rest client with ClientOptions.key (the API key that issued the tokens) just for this call. Revocable tokens must have been enabled on the key in the Ably dashboard before the tokens were issued, otherwise there is nothing to revoke.',
+          'Token revocation must use basic auth, so construct a separate Ably.Http client with ClientOptions.key (the API key that issued the tokens) just for this call. Revocable tokens must have been enabled on the key in the Ably dashboard before the tokens were issued, otherwise there is nothing to revoke.',
       });
     }
 
@@ -261,7 +261,7 @@ export class Rest {
 class Channels {
   client: BaseClient;
   // RSN2
-  all: Record<string, RestChannel>;
+  all: Record<string, HttpChannel>;
 
   constructor(client: BaseClient) {
     this.client = client;
@@ -272,7 +272,7 @@ class Channels {
     name = String(name);
     let channel = this.all[name];
     if (!channel) {
-      this.all[name] = channel = new RestChannel(this.client, name, channelOptions);
+      this.all[name] = channel = new HttpChannel(this.client, name, channelOptions);
     } else if (channelOptions) {
       channel.setOptions(channelOptions);
     }

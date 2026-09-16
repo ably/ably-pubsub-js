@@ -1,22 +1,22 @@
-import type RestChannel from 'common/lib/client/restchannel';
+import type HttpChannel from 'common/lib/client/httpchannel';
 import type * as Utils from 'common/lib/util/utils';
 import type { FlattenUnion } from 'common/types/utils';
 import type {
   ObjectsMapSemantics,
-  RestLiveMap,
-  RestLiveObject,
-  RestObject as PublicRestObject,
-  RestObjectData,
-  RestObjectGenerateIdResult,
-  RestObjectGetCompactParams,
-  RestObjectGetCompactResult,
-  RestObjectGetFullParams,
-  RestObjectGetFullResult,
-  RestObjectGetParams,
-  RestObjectOperation,
-  RestObjectOperationCounterCreateBody,
-  RestObjectOperationMapCreateBody,
-  RestObjectPublishResult,
+  HttpLiveMap,
+  HttpLiveObject,
+  HttpObject as PublicHttpObject,
+  HttpObjectData,
+  HttpObjectGenerateIdResult,
+  HttpObjectGetCompactParams,
+  HttpObjectGetCompactResult,
+  HttpObjectGetFullParams,
+  HttpObjectGetFullResult,
+  HttpObjectGetParams,
+  HttpObjectOperation,
+  HttpObjectOperationCounterCreateBody,
+  HttpObjectOperationMapCreateBody,
+  HttpObjectPublishResult,
 } from '../../../liveobjects';
 import { ObjectId } from './objectid';
 import {
@@ -45,19 +45,19 @@ const mapSemanticsWireToPublic: Record<WireObjectsMapSemantics, ObjectsMapSemant
 };
 
 /** Wire format for a full GET response: either a live object or a typed leaf value. */
-type WireRestObjectGetFullResult = WireRestLiveObject | WireObjectData;
+type WireHttpObjectGetFullResult = WireHttpLiveObject | WireObjectData;
 
-type WireRestLiveObject = WireRestLiveMap | WireRestLiveCounter | WireAnyRestLiveObject;
+type WireHttpLiveObject = WireHttpLiveMap | WireHttpLiveCounter | WireAnyHttpLiveObject;
 
-interface WireRestLiveMap {
+interface WireHttpLiveMap {
   objectId: string;
   map: {
     semantics: WireObjectsMapSemantics;
-    entries: Record<string, { data: WireObjectData | WireRestLiveObject }>;
+    entries: Record<string, { data: WireObjectData | WireHttpLiveObject }>;
   };
 }
 
-interface WireRestLiveCounter {
+interface WireHttpLiveCounter {
   objectId: string;
   counter: {
     data: {
@@ -66,7 +66,7 @@ interface WireRestLiveCounter {
   };
 }
 
-type WireAnyRestLiveObject = {
+type WireAnyHttpLiveObject = {
   objectId: string;
 };
 
@@ -75,7 +75,7 @@ type WireAnyRestLiveObject = {
  * The `action` field is omitted as the server infers it from the operation-specific field.
  * Includes additional REST-specific fields such as `id` and `path`.
  */
-interface WireRestObjectOperation {
+interface WireHttpObjectOperation {
   id?: string;
   path?: string;
   objectId?: string;
@@ -89,24 +89,24 @@ interface WireRestObjectOperation {
 }
 
 /**
- * Flattened view of {@link RestObjectOperation} with all possible fields as optional.
+ * Flattened view of {@link HttpObjectOperation} with all possible fields as optional.
  * Derived from the public union type so it stays in sync automatically.
  */
-type AnyRestObjectOperation = FlattenUnion<RestObjectOperation>;
+type AnyHttpObjectOperation = FlattenUnion<HttpObjectOperation>;
 
-export class RestObject implements PublicRestObject {
-  constructor(private _channel: RestChannel) {}
+export class HttpObject implements PublicHttpObject {
+  constructor(private _channel: HttpChannel) {}
 
-  async get(params?: RestObjectGetCompactParams): Promise<RestObjectGetCompactResult>;
-  async get(params: RestObjectGetFullParams): Promise<RestObjectGetFullResult>;
-  async get(params?: RestObjectGetParams): Promise<RestObjectGetCompactResult | RestObjectGetFullResult> {
+  async get(params?: HttpObjectGetCompactParams): Promise<HttpObjectGetCompactResult>;
+  async get(params: HttpObjectGetFullParams): Promise<HttpObjectGetFullResult>;
+  async get(params?: HttpObjectGetParams): Promise<HttpObjectGetCompactResult | HttpObjectGetFullResult> {
     const client = this._channel.client;
     const format = client.options.useBinaryProtocol ? client.Utils.Format.msgpack : client.Utils.Format.json;
     const headers = client.Defaults.defaultGetHeaders(client.options);
 
     client.Utils.mixin(headers, client.options.headers);
 
-    const { unpacked, body } = await client.rest.Resource.get<RestObjectGetCompactResult | WireRestObjectGetFullResult>(
+    const { unpacked, body } = await client.http.Resource.get<HttpObjectGetCompactResult | WireHttpObjectGetFullResult>(
       client,
       this._basePath(params?.objectId),
       headers,
@@ -117,7 +117,7 @@ export class RestObject implements PublicRestObject {
 
     const decoded = unpacked
       ? body!
-      : client.Utils.decodeBody<RestObjectGetCompactResult | WireRestObjectGetFullResult>(
+      : client.Utils.decodeBody<HttpObjectGetCompactResult | WireHttpObjectGetFullResult>(
           body,
           client._MsgPack,
           format,
@@ -128,15 +128,15 @@ export class RestObject implements PublicRestObject {
       // Compact mode: return as-is. Values are JSON-like; bytes appear as base64 strings
       // (JSON protocol) or Buffer/ArrayBuffer (binary protocol). We cannot deterministically
       // decode values since we can't tell string vs JSON-encoded string.
-      return decoded as RestObjectGetCompactResult;
+      return decoded as HttpObjectGetCompactResult;
     }
 
     // Full mode: response is a live object (map/counter) or a typed leaf ObjectData.
     // Decode wire values using objectmessage decoding.
-    return this._decodeFullResponseNode(decoded as WireRestObjectGetFullResult, format);
+    return this._decodeFullResponseNode(decoded as WireHttpObjectGetFullResult, format);
   }
 
-  async publish(op: RestObjectOperation | RestObjectOperation[]): Promise<RestObjectPublishResult> {
+  async publish(op: HttpObjectOperation | HttpObjectOperation[]): Promise<HttpObjectPublishResult> {
     const client = this._channel.client;
     const format = client.options.useBinaryProtocol ? client.Utils.Format.msgpack : client.Utils.Format.json;
     const headers = client.Defaults.defaultPostHeaders(client.options, { format });
@@ -149,7 +149,7 @@ export class RestObject implements PublicRestObject {
 
     const requestBody = client.Utils.encodeBody(wireOps, client._MsgPack, format);
 
-    const { unpacked, body } = await client.rest.Resource.post<RestObjectPublishResult>(
+    const { unpacked, body } = await client.http.Resource.post<HttpObjectPublishResult>(
       client,
       this._basePath(),
       requestBody,
@@ -163,8 +163,8 @@ export class RestObject implements PublicRestObject {
   }
 
   async generateObjectId(
-    createBody: RestObjectOperationMapCreateBody | RestObjectOperationCounterCreateBody,
-  ): Promise<RestObjectGenerateIdResult> {
+    createBody: HttpObjectOperationMapCreateBody | HttpObjectOperationCounterCreateBody,
+  ): Promise<HttpObjectGenerateIdResult> {
     const client = this._channel.client;
     // operations for initialValue string are always encoded as JSON format
     const format = client.Utils.Format.json;
@@ -208,7 +208,7 @@ export class RestObject implements PublicRestObject {
 
   private _basePath(objectId?: string): string {
     return (
-      this._channel.client.rest.channelMixin.basePath(this._channel) +
+      this._channel.client.http.channelMixin.basePath(this._channel) +
       '/object' +
       (objectId ? '/' + encodeURIComponent(objectId) : '')
     );
@@ -223,11 +223,11 @@ export class RestObject implements PublicRestObject {
    * ObjectData has bytes/json decoded). Unrecognized object types or fields are passed through as-is.
    */
   private _decodeFullResponseNode(
-    wire: WireRestLiveObject | WireObjectData,
+    wire: WireHttpLiveObject | WireObjectData,
     format: Utils.Format,
-  ): RestLiveObject | RestObjectData {
+  ): HttpLiveObject | HttpObjectData {
     if ('map' in wire) {
-      return this._decodeWireRestLiveMap(wire, format);
+      return this._decodeWireHttpLiveMap(wire, format);
     }
 
     if ('counter' in wire) {
@@ -240,8 +240,8 @@ export class RestObject implements PublicRestObject {
     return decodeWireObjectData(wire, this._channel.client, format);
   }
 
-  private _decodeWireRestLiveMap(wire: WireRestLiveMap, format: Utils.Format): RestLiveMap {
-    const entries: RestLiveMap['map']['entries'] = {};
+  private _decodeWireHttpLiveMap(wire: WireHttpLiveMap, format: Utils.Format): HttpLiveMap {
+    const entries: HttpLiveMap['map']['entries'] = {};
 
     for (const [key, entry] of Object.entries(wire.map.entries ?? {})) {
       entries[key] = {
@@ -249,8 +249,8 @@ export class RestObject implements PublicRestObject {
       };
     }
 
-    // construct the public RestLiveMap object, and include any unrecognized fields as-is
-    const liveMap: RestLiveMap = {
+    // construct the public HttpLiveMap object, and include any unrecognized fields as-is
+    const liveMap: HttpLiveMap = {
       ...wire,
       objectId: wire.objectId,
       map: {
@@ -262,7 +262,7 @@ export class RestObject implements PublicRestObject {
     return liveMap;
   }
 
-  private _constructWireOperations(op: AnyRestObjectOperation, format: Utils.Format): WireRestObjectOperation {
+  private _constructWireOperations(op: AnyHttpObjectOperation, format: Utils.Format): WireHttpObjectOperation {
     const { id, path, mapCreate, ...rest } = op;
 
     // Build the operation fields for encoding. If mapCreate is present, convert semantics
@@ -277,7 +277,7 @@ export class RestObject implements PublicRestObject {
     // Encode ObjectData values (json stringification, bytes encoding) via ObjectMessage pipeline.
     const encoded = encodePartialObjectOperationForWire(operationFields, this._channel.client, format);
 
-    const result: WireRestObjectOperation = { ...encoded };
+    const result: WireHttpObjectOperation = { ...encoded };
     if (id != null) result.id = id;
     if (path != null) result.path = path;
     return result;

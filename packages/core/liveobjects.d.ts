@@ -12,12 +12,12 @@ import {
   EventCallback,
   RealtimeChannel,
   RealtimeClient,
-  RestClient,
+  HttpClient,
   StatusSubscription,
   Subscription,
   __livetype,
 } from './ably';
-import { BaseRealtime, BaseRest, Rest } from './modular';
+import { BaseRealtime, BaseHttp, Http } from './modular';
 /* eslint-enable no-unused-vars, @typescript-eslint/no-unused-vars */
 
 /**
@@ -70,12 +70,12 @@ export type BatchFunction<T extends LiveObject> = (ctx: BatchContext<T>) => void
 /**
  * Enables REST-based operations on Objects on a channel.
  */
-export declare interface RestObject {
+export declare interface HttpObject {
   /**
    * Reads object data from the channel in compact object response format.
    * If no `objectId` is provided then the entire channel object is returned.
    *
-   * Returns a {@link RestObjectGetCompactResult} representing the logical structure of your data as a JSON-like value.
+   * Returns a {@link HttpObjectGetCompactResult} representing the logical structure of your data as a JSON-like value.
    * {@link LiveMap} instances appear as JSON objects with their entries, and {@link LiveCounter} instances appear
    * as numbers. Binary values appear as base64 strings (JSON protocol) or `Buffer`/`ArrayBuffer` (binary protocol).
    * JSON-typed values remain as their JSON-encoded string representation.
@@ -86,14 +86,14 @@ export declare interface RestObject {
    * @param params - Optional parameters to specify the object to fetch.
    * @returns A promise which, upon success, will be fulfilled with the object data in compact format. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    */
-  get(params?: RestObjectGetCompactParams): Promise<RestObjectGetCompactResult>;
+  get(params?: HttpObjectGetCompactParams): Promise<HttpObjectGetCompactResult>;
   /**
    * Reads object data from the channel in full object response format.
    * If no `objectId` is provided then the entire channel object is returned.
    *
-   * Returns a {@link RestObjectGetFullResult} with full object metadata and decoded object data values
+   * Returns a {@link HttpObjectGetFullResult} with full object metadata and decoded object data values
    * (`bytes` decoded to `Buffer`/`ArrayBuffer`, `json` decoded to native objects/arrays).
-   * If the path resolves to a leaf value in a map, returns the decoded {@link RestObjectData | ObjectData} directly.
+   * If the path resolves to a leaf value in a map, returns the decoded {@link HttpObjectData | ObjectData} directly.
    *
    * Cyclic references are included as `{ objectId: string }` rather than including the same object instance
    * in the result more than once.
@@ -101,19 +101,19 @@ export declare interface RestObject {
    * @param params - Parameters specifying the object to fetch with `compact: false`.
    * @returns A promise which, upon success, will be fulfilled with the object data in full format. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    */
-  get(params: RestObjectGetFullParams): Promise<RestObjectGetFullResult>;
+  get(params: HttpObjectGetFullParams): Promise<HttpObjectGetFullResult>;
   /**
    * Reads object data from the channel.
    * If no `objectId` is provided then the entire channel object is returned.
    *
-   * When `compact` is `true` (the default), returns a {@link RestObjectGetCompactResult} representing the logical
+   * When `compact` is `true` (the default), returns a {@link HttpObjectGetCompactResult} representing the logical
    * structure of your data as a JSON-like value. {@link LiveMap} instances appear as JSON objects with their entries,
    * and {@link LiveCounter} instances appear as numbers. Binary values appear as base64 strings (JSON protocol) or
    * `Buffer`/`ArrayBuffer` (binary protocol). JSON-typed values remain as their JSON-encoded string representation.
    *
-   * When `compact` is `false`, returns a {@link RestObjectGetFullResult} with full object metadata
+   * When `compact` is `false`, returns a {@link HttpObjectGetFullResult} with full object metadata
    * and decoded object data values (`bytes` decoded to `Buffer`/`ArrayBuffer`, `json` decoded to native objects/arrays).
-   * If the path resolves to a leaf value in a map, returns the decoded {@link RestObjectData | ObjectData} directly.
+   * If the path resolves to a leaf value in a map, returns the decoded {@link HttpObjectData | ObjectData} directly.
    *
    * For both formats, cyclic references in the channel object are included as `{ objectId: string }`
    * rather than including the same object instance in the result more than once.
@@ -121,7 +121,7 @@ export declare interface RestObject {
    * @param params - Optional parameters to specify the object to fetch and the format of the returned data.
    * @returns A promise which, upon success, will be fulfilled with the object data in the requested format. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    */
-  get(params?: RestObjectGetParams): Promise<RestObjectGetCompactResult | RestObjectGetFullResult>;
+  get(params?: HttpObjectGetParams): Promise<HttpObjectGetCompactResult | HttpObjectGetFullResult>;
 
   /**
    * Publishes one or more operations to modify objects on the channel.
@@ -142,32 +142,32 @@ export declare interface RestObject {
    * the operation, the operation is not applied to the new object instances.
    *
    * @param op - A single operation or array of operations to publish.
-   * @returns A promise which, upon success, will be fulfilled with a {@link RestObjectPublishResult} containing information about the published operations. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
+   * @returns A promise which, upon success, will be fulfilled with a {@link HttpObjectPublishResult} containing information about the published operations. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    */
-  publish(op: RestObjectOperation | RestObjectOperation[]): Promise<RestObjectPublishResult>;
+  publish(op: HttpObjectOperation | HttpObjectOperation[]): Promise<HttpObjectPublishResult>;
 
   /**
    * Generates an object ID for a create operation. The returned ID, nonce, and initial value
-   * can be used to construct a {@link RestObjectOperationMapCreateWithObjectId} or
-   * {@link RestObjectOperationCounterCreateWithObjectId} operation for use with {@link publish}.
+   * can be used to construct a {@link HttpObjectOperationMapCreateWithObjectId} or
+   * {@link HttpObjectOperationCounterCreateWithObjectId} operation for use with {@link publish}.
    *
    * Client-generated object IDs enable atomic batch operations with cross-references between
    * newly created objects. When publishing a batch of operations using {@link publish}, you
    * can reference an object by its pre-computed ID in the same batch - for example, creating
    * a map and assigning it to a key in another map in a single atomic publish call.
    *
-   * @param createBody - The create operation body, either a {@link RestObjectOperationMapCreateBody} or {@link RestObjectOperationCounterCreateBody}.
-   * @returns A promise which, upon success, will be fulfilled with a {@link RestObjectGenerateIdResult}. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
+   * @param createBody - The create operation body, either a {@link HttpObjectOperationMapCreateBody} or {@link HttpObjectOperationCounterCreateBody}.
+   * @returns A promise which, upon success, will be fulfilled with a {@link HttpObjectGenerateIdResult}. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
    */
   generateObjectId(
-    createBody: RestObjectOperationMapCreateBody | RestObjectOperationCounterCreateBody,
-  ): Promise<RestObjectGenerateIdResult>;
+    createBody: HttpObjectOperationMapCreateBody | HttpObjectOperationCounterCreateBody,
+  ): Promise<HttpObjectGenerateIdResult>;
 }
 
 /**
  * Base interface for all REST object operations. Contains common fields shared across all operation types.
  */
-export interface RestObjectOperationBase {
+export interface HttpObjectOperationBase {
   /**
    * An ID associated with the message. Clients may set this field explicitly when publishing an operation to enable
    * idempotent publishing. If not set, this will be generated by the server.
@@ -207,10 +207,10 @@ type TargetByPath = {
  * Base type for operations that can target objects either by object ID or by path.
  * Ensures that exactly one targeting method is specified.
  */
-export type AnyTargetRestObjectOperationBase = RestObjectOperationBase & (TargetByObjectId | TargetByPath);
+export type AnyTargetHttpObjectOperationBase = HttpObjectOperationBase & (TargetByObjectId | TargetByPath);
 
 /**
- * Represents a leaf data value used when publishing operations via {@link RestObject.publish}.
+ * Represents a leaf data value used when publishing operations via {@link HttpObject.publish}.
  * Either a primitive value or a reference to another object. Exactly one property must be set, indicating the type.
  */
 export type PublishObjectData =
@@ -271,9 +271,9 @@ export type PublishObjectData =
 
 /**
  * The map creation payload, specifying the semantics and initial entries for a new map object.
- * Used as the body of {@link RestObjectOperationMapCreate} and as input to {@link RestObject.generateObjectId}.
+ * Used as the body of {@link HttpObjectOperationMapCreate} and as input to {@link HttpObject.generateObjectId}.
  */
-export interface RestObjectOperationMapCreateBody {
+export interface HttpObjectOperationMapCreateBody {
   /** The map creation parameters. */
   mapCreate: {
     /** The conflict-resolution semantics for the map. */
@@ -294,25 +294,25 @@ export interface RestObjectOperationMapCreateBody {
 /**
  * Operation to create a new map object at the specified path with initial entries.
  */
-export type RestObjectOperationMapCreate = RestObjectOperationBase &
+export type HttpObjectOperationMapCreate = HttpObjectOperationBase &
   Partial<TargetByPath> &
-  RestObjectOperationMapCreateBody;
+  HttpObjectOperationMapCreateBody;
 
 /**
  * Operation to create a new map object with a client-generated object ID and initial entries.
- * Use {@link RestObject.generateObjectId} to generate the object ID, nonce, and initial value
+ * Use {@link HttpObject.generateObjectId} to generate the object ID, nonce, and initial value
  * needed for this operation.
  */
-export type RestObjectOperationMapCreateWithObjectId = RestObjectOperationBase & {
+export type HttpObjectOperationMapCreateWithObjectId = HttpObjectOperationBase & {
   /**
    * The object ID for the new map object.
-   * Use {@link RestObject.generateObjectId} to generate this value along with the matching nonce and initial value.
+   * Use {@link HttpObject.generateObjectId} to generate this value along with the matching nonce and initial value.
    */
   objectId: string;
   /** The map creation parameters for a pre-computed object ID. */
   mapCreateWithObjectId: {
     /**
-     * JSON-encoded string representation of the {@link RestObjectOperationMapCreate.mapCreate} object.
+     * JSON-encoded string representation of the {@link HttpObjectOperationMapCreate.mapCreate} object.
      * Binary values in entries must be Base64-encoded in this JSON string.
      * For example: `'{"semantics":"lww","entries":{"name":{"data":{"string":"Alice"}}}}'`.
      */
@@ -326,7 +326,7 @@ export type RestObjectOperationMapCreateWithObjectId = RestObjectOperationBase &
  * Operation to set a key to a specified value in an existing map object.
  * Can target the map by either object ID or path.
  */
-export type RestObjectOperationMapSet = AnyTargetRestObjectOperationBase & {
+export type HttpObjectOperationMapSet = AnyTargetHttpObjectOperationBase & {
   /** The map set parameters. */
   mapSet: {
     /** The key to set. */
@@ -340,7 +340,7 @@ export type RestObjectOperationMapSet = AnyTargetRestObjectOperationBase & {
  * Operation to remove a key from an existing map object.
  * Can target the map by either object ID or path.
  */
-export type RestObjectOperationMapRemove = AnyTargetRestObjectOperationBase & {
+export type HttpObjectOperationMapRemove = AnyTargetHttpObjectOperationBase & {
   /** The map remove parameters. */
   mapRemove: {
     /** The key to remove. */
@@ -350,9 +350,9 @@ export type RestObjectOperationMapRemove = AnyTargetRestObjectOperationBase & {
 
 /**
  * The counter creation payload, specifying the initial count for a new counter object.
- * Used as the body of {@link RestObjectOperationCounterCreate} and as input to {@link RestObject.generateObjectId}.
+ * Used as the body of {@link HttpObjectOperationCounterCreate} and as input to {@link HttpObject.generateObjectId}.
  */
-export interface RestObjectOperationCounterCreateBody {
+export interface HttpObjectOperationCounterCreateBody {
   /** The counter creation parameters. */
   counterCreate: {
     /** The initial value of the counter. */
@@ -363,25 +363,25 @@ export interface RestObjectOperationCounterCreateBody {
 /**
  * Operation to create a new counter object at the specified path with an initial count value.
  */
-export type RestObjectOperationCounterCreate = RestObjectOperationBase &
+export type HttpObjectOperationCounterCreate = HttpObjectOperationBase &
   Partial<TargetByPath> &
-  RestObjectOperationCounterCreateBody;
+  HttpObjectOperationCounterCreateBody;
 
 /**
  * Operation to create a new counter object with a client-generated object ID and an initial count value.
- * Use {@link RestObject.generateObjectId} to generate the object ID, nonce, and initial value
+ * Use {@link HttpObject.generateObjectId} to generate the object ID, nonce, and initial value
  * needed for this operation.
  */
-export type RestObjectOperationCounterCreateWithObjectId = RestObjectOperationBase & {
+export type HttpObjectOperationCounterCreateWithObjectId = HttpObjectOperationBase & {
   /**
    * The object ID for the new counter object.
-   * Use {@link RestObject.generateObjectId} to generate this value along with the matching nonce and initial value.
+   * Use {@link HttpObject.generateObjectId} to generate this value along with the matching nonce and initial value.
    */
   objectId: string;
   /** The counter creation parameters for a pre-computed object ID. */
   counterCreateWithObjectId: {
     /**
-     * JSON-encoded string representation of the {@link RestObjectOperationCounterCreate.counterCreate} object.
+     * JSON-encoded string representation of the {@link HttpObjectOperationCounterCreate.counterCreate} object.
      * For example: `'{"count":0}'`.
      */
     initialValue: string;
@@ -394,7 +394,7 @@ export type RestObjectOperationCounterCreateWithObjectId = RestObjectOperationBa
  * Operation to increment (or decrement with negative values) an existing counter object.
  * Can target the counter by either object ID or path.
  */
-export type RestObjectOperationCounterInc = AnyTargetRestObjectOperationBase & {
+export type HttpObjectOperationCounterInc = AnyTargetHttpObjectOperationBase & {
   /** The counter increment parameters. */
   counterInc: {
     /** The amount to increment by. Use a negative value to decrement. */
@@ -405,20 +405,20 @@ export type RestObjectOperationCounterInc = AnyTargetRestObjectOperationBase & {
 /**
  * Union type representing all possible REST object operations.
  */
-export type RestObjectOperation =
-  | RestObjectOperationMapCreate
-  | RestObjectOperationMapCreateWithObjectId
-  | RestObjectOperationMapSet
-  | RestObjectOperationMapRemove
-  | RestObjectOperationCounterCreate
-  | RestObjectOperationCounterCreateWithObjectId
-  | RestObjectOperationCounterInc;
+export type HttpObjectOperation =
+  | HttpObjectOperationMapCreate
+  | HttpObjectOperationMapCreateWithObjectId
+  | HttpObjectOperationMapSet
+  | HttpObjectOperationMapRemove
+  | HttpObjectOperationCounterCreate
+  | HttpObjectOperationCounterCreateWithObjectId
+  | HttpObjectOperationCounterInc;
 
 /**
  * Result returned after successfully publishing object operations via REST.
  * Contains information about the published message and affected object IDs.
  */
-export interface RestObjectPublishResult {
+export interface HttpObjectPublishResult {
   /** The ID of the message containing the published operations. */
   messageId: string;
   /** The name of the channel the object message was published to. */
@@ -431,11 +431,11 @@ export interface RestObjectPublishResult {
 }
 
 /**
- * Result returned by {@link RestObject.generateObjectId}, containing the generated object ID
- * and the values needed to construct a {@link RestObjectOperationMapCreateWithObjectId}
- * or {@link RestObjectOperationCounterCreateWithObjectId} operation.
+ * Result returned by {@link HttpObject.generateObjectId}, containing the generated object ID
+ * and the values needed to construct a {@link HttpObjectOperationMapCreateWithObjectId}
+ * or {@link HttpObjectOperationCounterCreateWithObjectId} operation.
  */
-export interface RestObjectGenerateIdResult {
+export interface HttpObjectGenerateIdResult {
   /** The generated object ID. */
   objectId: string;
   /** The nonce used in ID generation. */
@@ -445,9 +445,9 @@ export interface RestObjectGenerateIdResult {
 }
 
 /**
- * Request parameters for {@link RestObject.get}.
+ * Request parameters for {@link HttpObject.get}.
  */
-export interface RestObjectGetParams {
+export interface HttpObjectGetParams {
   /** The unique identifier of the object instance to fetch. If omitted, fetches from the channel object. */
   objectId?: string;
   /** A dot-separated path to return a subset of the object. Evaluated relative to the channel object or the specified objectId. */
@@ -457,17 +457,17 @@ export interface RestObjectGetParams {
 }
 
 /**
- * Parameters for {@link RestObject.get} when requesting compact format (default).
+ * Parameters for {@link HttpObject.get} when requesting compact format (default).
  */
-export type RestObjectGetCompactParams = Omit<RestObjectGetParams, 'compact'> & {
+export type HttpObjectGetCompactParams = Omit<HttpObjectGetParams, 'compact'> & {
   /** Must be `true` or omitted for compact format. */
   compact?: true;
 };
 
 /**
- * Parameters for {@link RestObject.get} when requesting full object response format.
+ * Parameters for {@link HttpObject.get} when requesting full object response format.
  */
-export type RestObjectGetFullParams = Omit<RestObjectGetParams, 'compact'> & {
+export type HttpObjectGetFullParams = Omit<HttpObjectGetParams, 'compact'> & {
   /** Must be `false` for full object response format. */
   compact: false;
 };
@@ -475,37 +475,37 @@ export type RestObjectGetFullParams = Omit<RestObjectGetParams, 'compact'> & {
 // Note: this type does not include arrays as no LiveObject type currently compacts
 // into one, and json-typed values remain as JSON-encoded strings rather than being parsed.
 /**
- * Result of {@link RestObject.get} when `compact` is `true` (default).
+ * Result of {@link HttpObject.get} when `compact` is `true` (default).
  * Represents a compacted view of the object on a channel or its leaf value.
  */
-export type RestObjectGetCompactResult =
+export type HttpObjectGetCompactResult =
   | JsonScalar
   | Buffer
   | ArrayBuffer
-  | { [key: string]: RestObjectGetCompactResult };
+  | { [key: string]: HttpObjectGetCompactResult };
 
 /**
- * Result of {@link RestObject.get} when `compact` is `false`.
+ * Result of {@link HttpObject.get} when `compact` is `false`.
  *
  * One of:
- * - A {@link RestLiveMap} or {@link RestLiveCounter} with full object metadata and decoded data values.
- * - An {@link AnyRestLiveObject} for unrecognized object types.
- * - A {@link RestObjectData | ObjectData} leaf value when the path resolves to a primitive entry in a map.
+ * - A {@link HttpLiveMap} or {@link HttpLiveCounter} with full object metadata and decoded data values.
+ * - An {@link AnyHttpLiveObject} for unrecognized object types.
+ * - A {@link HttpObjectData | ObjectData} leaf value when the path resolves to a primitive entry in a map.
  *
  * In all cases, `bytes` values are decoded to `Buffer`/`ArrayBuffer` and `json` values are decoded
  * to native objects/arrays.
  */
-export type RestObjectGetFullResult = RestLiveObject | RestObjectData;
+export type HttpObjectGetFullResult = HttpLiveObject | HttpObjectData;
 
 /**
- * A full object structure including object IDs and type metadata, returned as part of {@link RestObjectGetFullResult}.
+ * A full object structure including object IDs and type metadata, returned as part of {@link HttpObjectGetFullResult}.
  */
-export type RestLiveObject = RestLiveMap | RestLiveCounter | AnyRestLiveObject;
+export type HttpLiveObject = HttpLiveMap | HttpLiveCounter | AnyHttpLiveObject;
 
 /**
  * Full object structure of a map object with metadata.
  */
-export interface RestLiveMap {
+export interface HttpLiveMap {
   /** The ID of the map object. */
   objectId: string;
   /** Describes the value of a map object. */
@@ -513,30 +513,30 @@ export interface RestLiveMap {
     /** The conflict-resolution semantics used by the map object, one of the {@link ObjectsMapSemantics} enum values. */
     semantics: ObjectsMapSemantics;
     /** The map entries, indexed by key. */
-    entries: Record<string, RestObjectDataMapEntry | RestLiveObjectMapEntry>;
+    entries: Record<string, HttpObjectDataMapEntry | HttpLiveObjectMapEntry>;
   };
 }
 
 /**
  * A map entry containing a primitive leaf value.
  */
-export interface RestObjectDataMapEntry {
+export interface HttpObjectDataMapEntry {
   /** The decoded object data for this entry. */
-  data: RestObjectData;
+  data: HttpObjectData;
 }
 
 /**
  * A map entry containing a nested LiveObject.
  */
-export interface RestLiveObjectMapEntry {
+export interface HttpLiveObjectMapEntry {
   /** The nested LiveObject at this entry. */
-  data: RestLiveObject;
+  data: HttpLiveObject;
 }
 
 /**
  * Full object structure of a counter object with metadata.
  */
-export interface RestLiveCounter {
+export interface HttpLiveCounter {
   /** The ID of the counter object. */
   objectId: string;
   /** Describes the value of a counter object. */
@@ -552,15 +552,15 @@ export interface RestLiveCounter {
 /**
  * Fallback type for compatibility with future object types.
  */
-export type AnyRestLiveObject = {
+export type AnyHttpLiveObject = {
   /** The ID of the object, available for all object types. */
   objectId: string;
 };
 
 /**
- * A decoded leaf data value in the full {@link RestObject.get} responses.
+ * A decoded leaf data value in the full {@link HttpObject.get} responses.
  */
-type RestObjectData = Omit<ObjectData, 'value'>;
+type HttpObjectData = Omit<ObjectData, 'value'>;
 
 /**
  * Enables the Objects to be read, modified and subscribed to for a realtime channel.
@@ -2313,9 +2313,9 @@ export class LiveCounter {
 }
 
 /**
- * The LiveObjects plugin that provides a {@link RestClient} or {@link RealtimeClient} instance with the ability to use LiveObjects functionality.
+ * The LiveObjects plugin that provides a {@link HttpClient} or {@link RealtimeClient} instance with the ability to use LiveObjects functionality.
  *
- * To create a client that includes this plugin, include it in the client options that you pass to the {@link RestClient.constructor} or {@link RealtimeClient.constructor}:
+ * To create a client that includes this plugin, include it in the client options that you pass to the {@link HttpClient.constructor} or {@link RealtimeClient.constructor}:
  *
  * ```javascript
  * import { Realtime } from '@ably/pubsub-core';
@@ -2323,13 +2323,13 @@ export class LiveCounter {
  * const realtime = new Realtime({ ...options, plugins: { LiveObjects } });
  * ```
  *
- * The LiveObjects plugin can also be used with a {@link BaseRest} or {@link BaseRealtime} client.
+ * The LiveObjects plugin can also be used with a {@link BaseHttp} or {@link BaseRealtime} client.
  *
  * ```javascript
- * import { BaseRealtime, BaseRest, WebSocketTransport, FetchRequest } from '@ably/pubsub-core/modular';
+ * import { BaseRealtime, BaseHttp, WebSocketTransport, FetchRequest } from '@ably/pubsub-core/modular';
  * import { LiveObjects } from '@ably/pubsub-core/liveobjects';
  * const realtime = new BaseRealtime({ ...options, plugins: { WebSocketTransport, FetchRequest, LiveObjects } });
- * const rest = new BaseRest({ ...options, plugins: { FetchRequest, LiveObjects } });
+ * const http = new BaseHttp({ ...options, plugins: { FetchRequest, LiveObjects } });
  * ```
  *
  * You can also import individual utilities alongside the plugin:
@@ -2362,8 +2362,8 @@ declare module '@ably/pubsub-core' {
 declare module '@ably/pubsub-core' {
   interface Channel {
     /**
-     * A {@link RestObject} object.
+     * A {@link HttpObject} object.
      */
-    object: RestObject;
+    object: HttpObject;
   }
 }

@@ -28,7 +28,7 @@
 
 import {
   ErrorInfo,
-  RestClient,
+  HttpClient,
   ClientOptions,
   Crypto as CryptoClass,
   MessageStatic,
@@ -78,8 +78,8 @@ export declare const decodeAnnotations: AnnotationStatic['fromEncodedArray'];
  * To create a client that includes this plugin, include it in the client options that you pass to the {@link BaseRealtime.constructor}:
  *
  * ```javascript
- * import { BaseRealtime, WebSocketTransport, FetchRequest, Rest } from '@ably/pubsub-core/modular';
- * const realtime = new BaseRealtime({ ...options, plugins: { WebSocketTransport, FetchRequest, Rest } });
+ * import { BaseRealtime, WebSocketTransport, FetchRequest, Http } from '@ably/pubsub-core/modular';
+ * const realtime = new BaseRealtime({ ...options, plugins: { WebSocketTransport, FetchRequest, Http } });
  * ```
  *
  * When provided, the following functionality becomes available:
@@ -97,10 +97,10 @@ export declare const decodeAnnotations: AnnotationStatic['fromEncodedArray'];
  *
  * If this plugin is not provided, then trying to use the above functionality will cause a runtime error.
  */
-export declare const Rest: unknown;
+export declare const Http: unknown;
 
 /**
- * Provides a {@link BaseRest} or {@link BaseRealtime} instance with the ability to encrypt and decrypt {@link ably!Message} payloads.
+ * Provides a {@link BaseHttp} or {@link BaseRealtime} instance with the ability to encrypt and decrypt {@link ably!Message} payloads.
  *
  * To create a client that includes this plugin, include it in the client options that you pass to the {@link BaseRealtime.constructor}:
  *
@@ -114,7 +114,7 @@ export declare const Rest: unknown;
 export declare const Crypto: unknown;
 
 /**
- * Provides a {@link BaseRest} or {@link BaseRealtime} instance with the ability to communicate with the Ably service using the more space-efficient [MessagePack](https://msgpack.org/index.html) format.
+ * Provides a {@link BaseHttp} or {@link BaseRealtime} instance with the ability to communicate with the Ably service using the more space-efficient [MessagePack](https://msgpack.org/index.html) format.
  *
  * To create a client that includes this plugin, include it in the client options that you pass to the {@link BaseRealtime.constructor}:
  *
@@ -190,7 +190,7 @@ export declare const WebSocketTransport: unknown;
 export declare const XHRPolling: unknown;
 
 /**
- * Provides a {@link BaseRest} or {@link BaseRealtime} instance with the ability to make HTTP requests using the browser’s [XMLHttpRequest API](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest).
+ * Provides a {@link BaseHttp} or {@link BaseRealtime} instance with the ability to make HTTP requests using the browser’s [XMLHttpRequest API](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest).
  *
  * To create a client that includes this plugin, include it in the client options that you pass to the {@link BaseRealtime.constructor}:
  *
@@ -202,7 +202,7 @@ export declare const XHRPolling: unknown;
 export declare const XHRRequest: unknown;
 
 /**
- * Provides a {@link BaseRest} or {@link BaseRealtime} instance with the ability to make HTTP requests using the browser’s [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
+ * Provides a {@link BaseHttp} or {@link BaseRealtime} instance with the ability to make HTTP requests using the browser’s [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API).
  *
  * To create a client that includes this plugin, include it in the client options that you pass to the {@link BaseRealtime.constructor}:
  *
@@ -228,13 +228,13 @@ export declare const FetchRequest: unknown;
 export declare const MessageInteractions: unknown;
 
 /**
- * Pass a `ModularPlugins` in the {@link ClientOptions.plugins} property of the options that you pass to { @link BaseRest.constructor | the constructor of BaseRest } or {@link BaseRealtime.constructor | that of BaseRealtime} to specify which functionality should be made available to that client.
+ * Pass a `ModularPlugins` in the {@link ClientOptions.plugins} property of the options that you pass to { @link BaseHttp.constructor | the constructor of BaseHttp } or {@link BaseRealtime.constructor | that of BaseRealtime} to specify which functionality should be made available to that client.
  */
 export interface ModularPlugins {
   /**
-   * See {@link Rest | documentation for the `Rest` plugin}.
+   * See {@link Http | documentation for the `Http` plugin}.
    */
-  Rest?: typeof Rest;
+  Http?: typeof Http;
 
   /**
    * See {@link Crypto | documentation for the `Crypto` plugin}.
@@ -285,18 +285,18 @@ export interface ModularPlugins {
 /**
  * A client that offers a simple stateless API to interact directly with Ably's REST API.
  *
- * `BaseRest` is the equivalent, in the modular variant of the Ably Client Library SDK, of the [`Rest`](../../default/classes/Rest.html) class in the default variant of the SDK. The difference is that its constructor allows you to decide exactly which functionality the client should include. This allows unused functionality to be tree-shaken, reducing bundle size.
+ * `BaseHttp` is the equivalent, in the modular variant of the Ably Client Library SDK, of the [`Http`](../../default/classes/Http.html) class in the default variant of the SDK. The difference is that its constructor allows you to decide exactly which functionality the client should include. This allows unused functionality to be tree-shaken, reducing bundle size.
  *
  * > **Note**
  * >
- * > In order to further reduce bundle size, `BaseRest` performs less logging than the `Rest` class exported by the default variant of the SDK. It only logs:
+ * > In order to further reduce bundle size, `BaseHttp` performs less logging than the `Http` class exported by the default variant of the SDK. It only logs:
  * >
  * > - messages that have a {@link ClientOptions.logLevel | `logLevel`} of 1 (that is, errors)
  * > - a small number of other network events
  * >
  * > If you need more verbose logging, use the default variant of the SDK.
  */
-export declare class BaseRest implements RestClient {
+export declare class BaseHttp implements HttpClient {
   /**
    * Construct a client object using an Ably {@link ClientOptions} object.
    *
@@ -304,11 +304,11 @@ export declare class BaseRest implements RestClient {
    *
    * You must provide at least one HTTP request implementation; that is, one of {@link FetchRequest} or {@link XHRRequest}. For minimum bundle size, favour `FetchRequest`.
    *
-   * The {@link Rest} plugin is always implicitly included.
+   * The {@link Http} plugin is always implicitly included.
    */
   constructor(options: ClientOptions<CorePlugins & ModularPlugins>);
 
-  // Requirements of RestClient
+  // Requirements of HttpClient
 
   auth: Auth;
   channels: Channels<Channel>;
@@ -333,7 +333,7 @@ export declare class BaseRest implements RestClient {
 }
 
 /**
- * A client that extends the functionality of {@link BaseRest} and provides additional realtime-specific features.
+ * A client that extends the functionality of {@link BaseHttp} and provides additional realtime-specific features.
  *
  * `BaseRealtime` is the equivalent, in the modular variant of the Ably Client Library SDK, of the [`Realtime`](../../default/classes/Realtime.html) class in the default variant of the SDK. The difference is that its constructor allows you to decide exactly which functionality the client should include. This allows unused functionality to be tree-shaken, reducing bundle size.
  *

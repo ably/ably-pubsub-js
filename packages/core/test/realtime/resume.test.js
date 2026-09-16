@@ -40,11 +40,11 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
     function resume_inactive(done, helper, channelName, txOpts, rxOpts) {
       var count = 5;
 
-      var txRest = helper.AblyRest(mixin(txOpts));
+      var txHttp = helper.AblyHttp(mixin(txOpts));
       var rxRealtime = helper.AblyRealtime(mixin(rxOpts));
 
       var rxChannel = rxRealtime.channels.get(channelName);
-      var txChannel = txRest.channels.get(channelName);
+      var txChannel = txHttp.channels.get(channelName);
       var rxCount = 0;
 
       function phase0(callback) {
@@ -153,11 +153,11 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
     function resume_active(done, helper, channelName, txOpts, rxOpts) {
       var count = 5;
 
-      var txRest = helper.AblyRest(mixin(txOpts));
+      var txHttp = helper.AblyHttp(mixin(txOpts));
       var rxRealtime = helper.AblyRealtime(mixin(rxOpts));
 
       var rxChannel = rxRealtime.channels.get(channelName);
-      var txChannel = txRest.channels.get(channelName);
+      var txChannel = txHttp.channels.get(channelName);
       var rxCount = 0;
 
       function phase0(callback) {
@@ -651,7 +651,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
       const helper = this.test.helper;
       const NUM_MSGS = 5;
 
-      const txRest = helper.AblyRest();
+      const txHttp = helper.AblyHttp();
       const rxRealtime = helper.AblyRealtime(
         {
           transports: [helper.bestTransport],
@@ -672,7 +672,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
         async.each(
           channelNames,
           (name, cb) => {
-            const tx = txRest.channels.get(name);
+            const tx = txHttp.channels.get(name);
             const rx = rxRealtime.channels.get(name);
             sendAndAwait(null, tx, rx, cb);
           },
@@ -694,7 +694,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
         async.each(
           channelNames,
           (name, cb) => {
-            const tx = txRest.channels.get(name);
+            const tx = txHttp.channels.get(name);
             Helper.whenPromiseSettles(tx.publish('sentWhileDisconnected', null), cb);
           },
           callback,

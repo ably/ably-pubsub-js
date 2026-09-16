@@ -3,7 +3,7 @@ import { LiveMapValueType } from './livemapvaluetype';
 import { ObjectId } from './objectid';
 import { ObjectMessage, WireObjectMessage } from './objectmessage';
 import { RealtimeObject } from './realtimeobject';
-import { RestObject } from './restobject';
+import { HttpObject } from './httpobject';
 
 export {
   LiveCounterValueType as LiveCounter,
@@ -11,7 +11,7 @@ export {
   ObjectId,
   ObjectMessage,
   RealtimeObject,
-  RestObject,
+  HttpObject,
   WireObjectMessage,
 };
 
@@ -24,6 +24,6 @@ export const LiveObjects = {
   ObjectId,
   ObjectMessage,
   RealtimeObject,
-  RestObject,
+  HttpObject,
   WireObjectMessage,
 };

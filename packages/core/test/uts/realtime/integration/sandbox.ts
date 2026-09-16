@@ -9,11 +9,11 @@ import * as crypto from 'crypto';
 import testAppSetup from '../../../common/ably-common/test-resources/test-app-setup.json';
 import '../../../../src/platform/nodejs';
 import { DefaultRealtime } from '../../../../src/common/lib/client/defaultrealtime';
-import { DefaultRest } from '../../../../src/common/lib/client/defaultrest';
+import { DefaultHttp } from '../../../../src/common/lib/client/defaulthttp';
 import ErrorInfo from '../../../../src/common/lib/types/errorinfo';
 
 const Ably = {
-  Rest: DefaultRest,
+  Http: DefaultHttp,
   Realtime: DefaultRealtime,
   ErrorInfo,
 };

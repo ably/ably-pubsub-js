@@ -27,7 +27,7 @@ describe('uts/rest/unit/push/push_admin_apns_broadcast', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.createApnsBroadcast({ messageStoragePolicy: 1 });
 
     expect(captured).to.have.length(1);
@@ -50,7 +50,7 @@ describe('uts/rest/unit/push/push_admin_apns_broadcast', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.createApnsBroadcast({ messageStoragePolicy: 0 });
 
     expect(captured).to.have.length(1);
@@ -71,7 +71,7 @@ describe('uts/rest/unit/push/push_admin_apns_broadcast', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     const result = await client.push.admin.createApnsBroadcast({ messageStoragePolicy: 1 });
 
     expect(result.id).to.equal('broadcast-xyz');
@@ -93,7 +93,7 @@ describe('uts/rest/unit/push/push_admin_apns_broadcast', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.push.admin.createApnsBroadcast({ messageStoragePolicy: 1 });
 
     expect(captured).to.have.length(1);
@@ -115,7 +115,7 @@ describe('uts/rest/unit/push/push_admin_apns_broadcast', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
     try {
       await client.push.admin.createApnsBroadcast({ messageStoragePolicy: 1 });

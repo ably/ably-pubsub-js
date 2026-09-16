@@ -23,8 +23,8 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      */
     it('http_connectivity_check', function (done) {
       const helper = this.test.helper;
-      helper.recordPrivateApi('call.http.checkConnectivity');
-      Helper.whenPromiseSettles(new Ably.Realtime._Http().checkConnectivity(), function (err, res) {
+      helper.recordPrivateApi('call.httpRequester.checkConnectivity');
+      Helper.whenPromiseSettles(new Ably.Realtime._HttpRequester().checkConnectivity(), function (err, res) {
         try {
           expect(
             res && !err,
@@ -58,9 +58,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       /** @nospec */
       it('succeeds with scheme', function (done) {
         const helper = this.test.helper;
-        helper.recordPrivateApi('call.http.checkConnectivity');
+        helper.recordPrivateApi('call.httpRequester.checkConnectivity');
         Helper.whenPromiseSettles(
-          helper.AblyRealtime(options(helper, urlScheme + successUrl)).http.checkConnectivity(),
+          helper.AblyRealtime(options(helper, urlScheme + successUrl)).httpRequester.checkConnectivity(),
           function (err, res) {
             try {
               expect(
@@ -80,9 +80,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       /** @nospec */
       it('fails with scheme', function (done) {
         const helper = this.test.helper;
-        helper.recordPrivateApi('call.http.checkConnectivity');
+        helper.recordPrivateApi('call.httpRequester.checkConnectivity');
         Helper.whenPromiseSettles(
-          helper.AblyRealtime(options(helper, urlScheme + failUrl)).http.checkConnectivity(),
+          helper.AblyRealtime(options(helper, urlScheme + failUrl)).httpRequester.checkConnectivity(),
           function (err, res) {
             try {
               expect(!res, 'Connectivity check expected to return false').to.be.ok;
@@ -97,9 +97,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       /** @nospec */
       it('succeeds with querystring', function (done) {
         const helper = this.test.helper;
-        helper.recordPrivateApi('call.http.checkConnectivity');
+        helper.recordPrivateApi('call.httpRequester.checkConnectivity');
         Helper.whenPromiseSettles(
-          helper.AblyRealtime(options(helper, successUrl)).http.checkConnectivity(),
+          helper.AblyRealtime(options(helper, successUrl)).httpRequester.checkConnectivity(),
           function (err, res) {
             try {
               expect(
@@ -118,9 +118,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       /** @nospec */
       it('fails with querystring', function (done) {
         const helper = this.test.helper;
-        helper.recordPrivateApi('call.http.checkConnectivity');
+        helper.recordPrivateApi('call.httpRequester.checkConnectivity');
         Helper.whenPromiseSettles(
-          helper.AblyRealtime(options(helper, failUrl)).http.checkConnectivity(),
+          helper.AblyRealtime(options(helper, failUrl)).httpRequester.checkConnectivity(),
           function (err, res) {
             try {
               expect(!res, 'Connectivity check expected to return false').to.be.ok;
@@ -136,7 +136,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       it('succeeds with plain url', function (done) {
         const helper = this.test.helper;
         Helper.whenPromiseSettles(
-          helper.AblyRealtime(options(helper, 'sandbox.realtime.ably-nonprod.net/time')).http.checkConnectivity(),
+          helper
+            .AblyRealtime(options(helper, 'sandbox.realtime.ably-nonprod.net/time'))
+            .httpRequester.checkConnectivity(),
           function (err, res) {
             try {
               expect(
@@ -155,9 +157,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       /** @nospec */
       it('fails with plain url', function (done) {
         const helper = this.test.helper;
-        helper.recordPrivateApi('call.http.checkConnectivity');
+        helper.recordPrivateApi('call.httpRequester.checkConnectivity');
         Helper.whenPromiseSettles(
-          helper.AblyRealtime(options(helper, 'echo.ably.io')).http.checkConnectivity(),
+          helper.AblyRealtime(options(helper, 'echo.ably.io')).httpRequester.checkConnectivity(),
           function (err, res) {
             try {
               expect(!res, 'Connectivity check expected to return false').to.be.ok;
@@ -173,9 +175,9 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     /** @nospec */
     it('disable_connectivity_check', function (done) {
       const helper = this.test.helper;
-      helper.recordPrivateApi('call.http.checkConnectivity');
+      helper.recordPrivateApi('call.httpRequester.checkConnectivity');
       Helper.whenPromiseSettles(
-        helper.AblyRealtime(options(helper, 'notarealhost', true)).http.checkConnectivity(),
+        helper.AblyRealtime(options(helper, 'notarealhost', true)).httpRequester.checkConnectivity(),
         function (err, res) {
           try {
             expect(

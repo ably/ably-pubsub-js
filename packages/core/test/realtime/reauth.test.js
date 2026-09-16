@@ -3,7 +3,7 @@
 define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
   var expect = chai.expect;
   var clientId = 'testClientId';
-  var rest;
+  var http;
 
   describe('realtime/reauth', function () {
     this.timeout(60 * 1000);
@@ -15,7 +15,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
           done(err);
           return;
         }
-        rest = helper.AblyRest();
+        http = helper.AblyHttp();
         done();
       });
     });
@@ -24,7 +24,7 @@ define(['shared_helper', 'async', 'chai'], function (Helper, async, chai) {
 
     function getToken(helper, tokenParams) {
       return function (state, callback) {
-        Helper.whenPromiseSettles(rest.auth.requestToken(tokenParams, null), function (err, token) {
+        Helper.whenPromiseSettles(http.auth.requestToken(tokenParams, null), function (err, token) {
           callback(err, helper.Utils.mixin(state, { token: token }));
         });
       };

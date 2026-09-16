@@ -1,6 +1,6 @@
 'use strict';
 
-/* Shared test helper used for creating Rest and Real-time clients */
+/* Shared test helper used for creating Http and Real-time clients */
 
 define(['ably', 'globals', 'test/common/modules/testapp_module'], function (Ably, ablyGlobals, testAppHelper) {
   var utils = Ably.Realtime.Utils;
@@ -42,22 +42,22 @@ define(['ably', 'globals', 'test/common/modules/testapp_module'], function (Ably
     return clientOptions;
   }
 
-  function ablyRest(helper, options) {
-    helper = helper.addingHelperFunction('ablyRest');
-    return new Ably.Rest(ablyClientOptions(helper, options));
+  function ablyHttp(helper, options) {
+    helper = helper.addingHelperFunction('ablyHttp');
+    return new Ably.Http(ablyClientOptions(helper, options));
   }
 
-  /* A Rest client pointed at the echo server rather than the app's endpoint. Drops the app's
+  /* A Http client pointed at the echo server rather than the app's endpoint. Drops the app's
    * routing (port/tlsPort) — against a local sandbox those point at an ephemeral port
    * echo.ably.io isn't listening on — while keeping the app key for auth. */
-  function ablyRestEcho(helper, options) {
-    helper = helper.addingHelperFunction('ablyRestEcho');
+  function ablyHttpEcho(helper, options) {
+    helper = helper.addingHelperFunction('ablyHttpEcho');
     var clientOptions = ablyClientOptions(helper, options);
     delete clientOptions.port;
     delete clientOptions.tlsPort;
     clientOptions.endpoint = echoServerHost;
     clientOptions.tls = true;
-    return new Ably.Rest(clientOptions);
+    return new Ably.Http(clientOptions);
   }
 
   function ablyRealtime(helper, options) {
@@ -74,8 +74,8 @@ define(['ably', 'globals', 'test/common/modules/testapp_module'], function (Ably
 
   return (module.exports = {
     Ably: Ably,
-    AblyRest: ablyRest,
-    AblyRestEcho: ablyRestEcho,
+    AblyHttp: ablyHttp,
+    AblyHttpEcho: ablyHttpEcho,
     AblyRealtime: ablyRealtime,
     AblyRealtimeWithoutEndpoint: ablyRealtimeWithoutEndpoint,
     ablyClientOptions,

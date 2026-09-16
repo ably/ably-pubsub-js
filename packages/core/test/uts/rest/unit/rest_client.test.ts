@@ -19,7 +19,7 @@ describe('uts/rest/unit/rest_client', function () {
    */
   // UTS: rest/unit/RSC5/auth-attribute-accessible-0
   it('RSC5 - client.auth is accessible', function () {
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     expect(client.auth).to.not.be.null;
     expect(client.auth).to.not.be.undefined;
   });
@@ -41,7 +41,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     await client.time();
 
     expect(captured).to.have.length(1);
@@ -67,7 +67,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     await client.time();
 
     expect(captured).to.have.length(1);
@@ -99,7 +99,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', addRequestIds: true } as any);
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', addRequestIds: true } as any);
     await client.time();
 
     expect(captured).to.have.length(1);
@@ -125,7 +125,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.channels.get('test').publish('e', 'd');
 
     expect(captured).to.have.length(1);
@@ -149,7 +149,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
     await client.channels.get('test').publish('e', 'd');
 
     expect(captured).to.have.length(1);
@@ -163,7 +163,7 @@ describe('uts/rest/unit/rest_client', function () {
    */
   // UTS: rest/unit/RSC17/client-id-from-options-0
   it('RSC17 - clientId from options is accessible via auth.clientId', function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'appId.keyId:keySecret',
       clientId: 'explicit-client',
     });
@@ -185,7 +185,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     await client.time();
 
     expect(captured).to.have.length(1);
@@ -207,7 +207,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ token: 'tok', tls: false });
+    const client = new Ably.Http({ token: 'tok', tls: false });
     await client.time();
 
     expect(captured).to.have.length(1);
@@ -231,7 +231,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     try {
       await client.stats({} as any);
     } catch (e) {
@@ -259,7 +259,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', httpRequestTimeout: 1000 });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', httpRequestTimeout: 1000 });
 
     try {
       await client.time();
@@ -306,7 +306,7 @@ describe('uts/rest/unit/rest_client', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret', addRequestIds: true } as any);
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret', addRequestIds: true } as any);
     await client.time();
 
     expect(captured).to.have.length(2);

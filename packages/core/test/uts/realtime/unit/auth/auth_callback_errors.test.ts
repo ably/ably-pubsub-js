@@ -498,7 +498,7 @@ describe('uts/realtime/unit/auth/auth_callback_errors', function () {
     });
     installMockHttp(mockHttp);
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: (params: any, cb: any) => {
         // Generic error -- not an explicit ErrorInfo from Ably
         cb(new Error('Network failure connecting to auth server'), null);

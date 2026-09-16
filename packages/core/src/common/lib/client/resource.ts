@@ -15,7 +15,7 @@ async function withAuthDetails<T>(
   params: Record<string, any>,
   opCallback: Function,
 ): Promise<ResourceResult<T>> {
-  if (client.http.supportsAuthHeaders) {
+  if (client.httpRequester.supportsAuthHeaders) {
     const authHeaders = await client.auth.getAuthHeaders();
     return opCallback(Utils.mixin(authHeaders!, headers), params);
   } else {
@@ -338,7 +338,7 @@ class Resource {
         );
       }
 
-      const httpResult = await client.http.do(method, path, headers, body, params);
+      const httpResult = await client.httpRequester.do(method, path, headers, body, params);
 
       if (httpResult.error && Auth.isTokenErr(httpResult.error as ErrorInfo)) {
         /* token has expired, so get a new one */

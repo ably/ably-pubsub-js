@@ -4,7 +4,7 @@
  * Spec points: RSC24, BAR2, BGR2, BGF2
  * Source: specification/uts/rest/unit/batch_presence.md
  *
- * Tests for RestClient#batchPresence: sends GET to /presence with channel
+ * Tests for HttpClient#batchPresence: sends GET to /presence with channel
  * names as a comma-separated query parameter, returns per-channel results.
  */
 
@@ -41,7 +41,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       await client.batchPresence(['channel-a', 'channel-b']);
 
       expect(captured).to.have.length(1);
@@ -66,7 +66,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       await client.batchPresence(['my-channel']);
 
       expect(captured).to.have.length(1);
@@ -92,7 +92,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       await client.batchPresence(['foo:bar', 'baz/qux']);
 
       expect(captured).to.have.length(1);
@@ -124,7 +124,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['ch-a', 'ch-b']);
 
       expect(result.successCount).to.equal(2);
@@ -157,7 +157,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['ch-1', 'ch-2', 'ch-3', 'ch-4']);
 
       expect(result.successCount).to.equal(3);
@@ -188,7 +188,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['ch-a', 'ch-b']);
 
       expect(result.successCount).to.equal(0);
@@ -238,7 +238,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['my-channel']);
 
       expect(result.results).to.have.lengthOf(1);
@@ -265,7 +265,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['empty-channel']);
 
       const success = result.results[0] as any;
@@ -305,7 +305,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['restricted-channel']);
 
       expect(result.successCount).to.equal(0);
@@ -359,7 +359,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       const result = await client.batchPresence(['allowed-channel', 'restricted-channel']);
 
       expect(result.successCount).to.equal(1);
@@ -385,7 +385,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
       let threw = false;
       try {
@@ -410,7 +410,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
 
       let threw = false;
       try {
@@ -445,7 +445,7 @@ describe('uts/rest/unit/batch_presence', function () {
       });
       installMockHttp(mock);
 
-      const client = new Ably.Rest({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
+      const client = new Ably.Http({ key: 'appId.keyId:keySecret', useBinaryProtocol: false });
       await client.batchPresence(['ch']);
 
       expect(captured).to.have.length(1);

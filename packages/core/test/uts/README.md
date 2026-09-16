@@ -12,11 +12,11 @@ This builds the Node.js bundle and runs all UTS tests via mocha. UTS tests are i
 
 ## Per-side package modes
 
-The suite constructs its clients through a single seam (`Ably.Rest` / `Ably.Realtime` in `helpers.ts`), selected by the `UTS_SIDE` environment variable:
+The suite constructs its clients through a single seam (`Ably.Http` / `Ably.Realtime` in `helpers.ts`), selected by the `UTS_SIDE` environment variable:
 
 ```bash
 npm run test:uts             # core (default): the core constructors
-UTS_SIDE=device npm run test:uts   # @ably/pubsub-device: realtime via createClient; REST via the Rest re-export
+UTS_SIDE=device npm run test:uts   # @ably/pubsub-device: realtime via createClient; REST via the Http re-export
 UTS_SIDE=server npm run test:uts   # @ably/pubsub-server: createHttpClient / createRealtimeClient
 ```
 
@@ -52,7 +52,7 @@ const mock = new MockHttpClient({
 });
 
 installMockHttp(mock);
-const client = new Ably.Rest({ key: 'app.key:secret' });
+const client = new Ably.Http({ key: 'app.key:secret' });
 const time = await client.time();
 // captured[0].method === 'GET'
 // captured[0].path === '/time'
@@ -68,7 +68,7 @@ import { installMockHttp, uninstallMockHttp, Ably } from '../helpers';
 const mock = new MockHttpClient();
 installMockHttp(mock);
 
-const client = new Ably.Rest({ key: 'app.key:secret' });
+const client = new Ably.Http({ key: 'app.key:secret' });
 const timePromise = client.time();
 
 const conn = await mock.await_connection_attempt();
@@ -153,7 +153,7 @@ describe('uts/rest/my-feature', function () {
   });
 
   it('RSC99 - does something', async function () {
-    const client = new Ably.Rest({ key: 'app.key:secret' });
+    const client = new Ably.Http({ key: 'app.key:secret' });
     // ... test ...
   });
 });

@@ -32,7 +32,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   });
 
   // ---------------------------------------------------------------------------
-  // RSP1 - RestPresence accessible via channel
+  // RSP1 - HttpPresence accessible via channel
   // ---------------------------------------------------------------------------
 
   /**
@@ -42,7 +42,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP1/access-presence-from-channel-0
   it('RSP1_Integration - presence accessible on channel', function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -57,7 +57,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   });
 
   // ---------------------------------------------------------------------------
-  // RSP3 - RestPresence#get
+  // RSP3 - HttpPresence#get
   // ---------------------------------------------------------------------------
 
   /**
@@ -68,7 +68,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3/get-presence-members-0
   it('RSP3_Integration_1 - get returns presence members from fixture channel', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -94,7 +94,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3/presence-message-fields-1
   it('RSP3_Integration_2 - get returns PresenceMessage with correct fields', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -121,7 +121,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3a1/get-with-limit-0
   it('RSP3a1_Integration - get with limit parameter', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -145,7 +145,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3a2/get-with-clientid-filter-0
   it('RSP3a2_Integration - get with clientId filter', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -167,7 +167,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3/get-empty-channel-2
   it('RSP3_Integration_Empty - get on empty channel returns empty result', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -184,7 +184,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   });
 
   // ---------------------------------------------------------------------------
-  // RSP4 - RestPresence#history
+  // RSP4 - HttpPresence#history
   // ---------------------------------------------------------------------------
 
   /**
@@ -197,7 +197,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   it('RSP4_Integration_1 - history returns presence events', async function () {
     const channelName = uniqueChannelName('presence-history');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -223,11 +223,11 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     await closeAndWait(realtime);
 
     // Poll REST history until events appear
-    const restChannel = client.channels.get(channelName);
+    const httpChannel = client.channels.get(channelName);
 
     const history = await pollUntil(
       async () => {
-        const result = await restChannel.presence.history({});
+        const result = await httpChannel.presence.history({});
         return result.items.length >= 3 ? result : null;
       },
       {
@@ -254,7 +254,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   it('RSP4b1_Integration - history with start/end time range', async function () {
     const channelName = uniqueChannelName('presence-history-time');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -284,10 +284,10 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     const timeAfter = Date.now();
 
     // Poll until events appear
-    const restChannel = client.channels.get(channelName);
+    const httpChannel = client.channels.get(channelName);
     await pollUntil(
       async () => {
-        const result = await restChannel.presence.history({});
+        const result = await httpChannel.presence.history({});
         return result.items.length >= 2 ? true : null;
       },
       {
@@ -297,7 +297,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     );
 
     // Query with time range
-    const history = await restChannel.presence.history({
+    const history = await httpChannel.presence.history({
       start: timeBefore,
       end: timeAfter,
     });
@@ -314,7 +314,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   it('RSP4b2_Integration - history direction forwards', async function () {
     const channelName = uniqueChannelName('presence-direction');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -340,10 +340,10 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     await closeAndWait(realtime);
 
     // Poll until events appear
-    const restChannel = client.channels.get(channelName);
+    const httpChannel = client.channels.get(channelName);
     await pollUntil(
       async () => {
-        const result = await restChannel.presence.history({});
+        const result = await httpChannel.presence.history({});
         return result.items.length >= 3 ? true : null;
       },
       {
@@ -353,13 +353,13 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     );
 
     // Get history forwards (oldest first)
-    const historyForwards = await restChannel.presence.history({ direction: 'forwards' });
+    const historyForwards = await httpChannel.presence.history({ direction: 'forwards' });
 
     expect(historyForwards.items.length).to.be.at.least(3);
     expect(historyForwards.items[0].data).to.equal('first');
 
     // Get history backwards (newest first) - default
-    const historyBackwards = await restChannel.presence.history({ direction: 'backwards' });
+    const historyBackwards = await httpChannel.presence.history({ direction: 'backwards' });
 
     expect(historyBackwards.items[0].data).to.equal('third');
   });
@@ -373,7 +373,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   it('RSP4b3_Integration - history with limit and pagination', async function () {
     const channelName = uniqueChannelName('presence-limit');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -399,10 +399,10 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     await closeAndWait(realtime);
 
     // Poll until all events appear
-    const restChannel = client.channels.get(channelName);
+    const httpChannel = client.channels.get(channelName);
     await pollUntil(
       async () => {
-        const result = await restChannel.presence.history({});
+        const result = await httpChannel.presence.history({});
         return result.items.length >= 5 ? true : null;
       },
       {
@@ -412,7 +412,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     );
 
     // Request with small limit
-    const page1 = await restChannel.presence.history({ limit: 2 });
+    const page1 = await httpChannel.presence.history({ limit: 2 });
 
     expect(page1.items.length).to.equal(2);
     expect(page1.hasNext()).to.be.true;
@@ -435,7 +435,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP5/decode-string-data-0
   it('RSP5_Integration_1 - string data decoded from fixtures', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -456,7 +456,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP5/decode-json-data-1
   it('RSP5_Integration_2 - JSON data decoded from fixtures', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -477,7 +477,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP5/decode-encrypted-data-2
   it('RSP5_Integration_3 - encrypted data decoded with cipher', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -504,7 +504,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
   it('RSP5_Integration_4 - presence history with JSON data decoded', async function () {
     const channelName = uniqueChannelName('presence-decode-history');
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -529,10 +529,10 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
     await closeAndWait(realtime);
 
     // Poll and retrieve history
-    const restChannel = client.channels.get(channelName);
+    const httpChannel = client.channels.get(channelName);
     const history = await pollUntil(
       async () => {
-        const result = await restChannel.presence.history({});
+        const result = await httpChannel.presence.history({});
         return result.items.length >= 1 ? result : null;
       },
       {
@@ -557,7 +557,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3/full-pagination-3
   it('RSP_Pagination_Integration - paginate through all fixture members', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -598,7 +598,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3/invalid-credentials-rejected-4
   it('RSP_Error_Integration_1 - invalid credentials rejected', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: 'invalid.key:secret',
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',
@@ -621,7 +621,7 @@ describeEachProtocol('uts/rest/integration/presence', function (protocol) {
    */
   // UTS: rest/integration/RSP3/subscribe-capability-sufficient-5
   it('RSP_Error_Integration_2 - subscribe-only key can do presence.get()', async function () {
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       key: getApiKey(3),
       endpoint: SANDBOX_ENDPOINT,
       useBinaryProtocol: protocol === 'msgpack',

@@ -34,7 +34,7 @@ describe('uts/rest/unit/types/token_types', function () {
   it('TD1-TD5 - TokenDetails attributes from authCallback', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({
+    const client = new Ably.Http({
       authCallback: function (params, callback) {
         callback(null, {
           token: 'test-token',
@@ -71,7 +71,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TK1/token-params-attributes-0
   it('TK1-TK6 - TokenParams attributes via createTokenRequest', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(
       {
@@ -102,7 +102,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TK1/token-params-attributes-0.1
   it('TK1 - TTL defaults to null when not specified', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest({}, null);
 
@@ -115,7 +115,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TK1/token-params-attributes-0.2
   it('TK2 - Capability defaults to null when not specified', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest({}, null);
 
@@ -133,7 +133,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE1/token-request-attributes-0
   it('TE1-TE6 - TokenRequest attributes from createTokenRequest', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(
       {
@@ -169,7 +169,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE/token-request-mac-signature-0
   it('TE - TokenRequest has mac (signature)', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(
       {
@@ -194,7 +194,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE/token-request-to-json-1
   it('TE - TokenRequest JSON round-trip', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(
       {
@@ -245,7 +245,7 @@ describe('uts/rest/unit/types/token_types', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
     const tokenDetails = await client.auth.authorize();
 
     expect(tokenDetails.token).to.equal('authorized-token');
@@ -262,7 +262,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE1/token-request-attributes-0.1
   it('TE1 - keyName derived from API key', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'myApp.myKey:mySecret' });
+    const client = new Ably.Http({ key: 'myApp.myKey:mySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(null, null);
 
@@ -278,7 +278,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE1/token-request-attributes-0.2
   it('TE5 - timestamp auto-generated when not specified', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const before = Date.now();
     const tokenRequest = await client.auth.createTokenRequest(null, null);
@@ -298,7 +298,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE1/token-request-attributes-0.3
   it('TE6 - nonce auto-generated when not specified', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(null, null);
 
@@ -309,14 +309,14 @@ describe('uts/rest/unit/types/token_types', function () {
   /**
    * TD - TokenDetails from token string
    *
-   * When a Rest client is instantiated with a plain token string,
+   * When a Http client is instantiated with a plain token string,
    * the token should be accessible via client.auth.tokenDetails.
    */
   // UTS: rest/unit/TK/token-params-to-query-string-0
   it('TD - TokenDetails from token string', async function () {
     installMockHttp(simpleMock());
 
-    const client = new Ably.Rest({ token: 'test-token' });
+    const client = new Ably.Http({ token: 'test-token' });
 
     // Accessing tokenDetails should reflect the token provided
     expect(client.auth.tokenDetails!.token).to.equal('test-token');
@@ -331,7 +331,7 @@ describe('uts/rest/unit/types/token_types', function () {
   // UTS: rest/unit/TE/token-request-from-json-2
   it('TE - createTokenRequest preserves custom ttl', async function () {
     installMockHttp(simpleMock());
-    const client = new Ably.Rest({ key: 'appId.keyId:keySecret' });
+    const client = new Ably.Http({ key: 'appId.keyId:keySecret' });
 
     const tokenRequest = await client.auth.createTokenRequest(
       {

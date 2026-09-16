@@ -39,7 +39,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
 
     expect(captured).to.have.length(1);
@@ -55,7 +55,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
 
     const body = JSON.parse(captured[0].body);
@@ -79,7 +79,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     };
     installMockHttp(revokeMock(captured, responseBody));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([
       { type: 'clientId', value: 'alice' },
       { type: 'revocationKey', value: 'group-1' },
@@ -108,7 +108,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     };
     installMockHttp(revokeMock(null, responseBody));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     const result = await client.auth.revokeTokens([
       { type: 'clientId', value: 'alice' },
       { type: 'clientId', value: 'bob' },
@@ -131,7 +131,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     };
     installMockHttp(revokeMock(null, responseBody));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     const result = await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
 
     const success = result.results[0] as any;
@@ -163,7 +163,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
 
     const result = await client.auth.revokeTokens([
       { type: 'clientId', value: 'alice' },
@@ -195,7 +195,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
 
     const result = await client.auth.revokeTokens([
       { type: 'invalidType', value: 'foo' },
@@ -229,7 +229,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
 
     const result = await client.auth.revokeTokens([{ type: 'invalidType', value: 'abc' }]);
 
@@ -247,7 +247,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ token: 'a.token.string' });
+    const client = new Ably.Http({ token: 'a.token.string' });
 
     try {
       await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
@@ -269,7 +269,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useTokenAuth: true });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useTokenAuth: true });
 
     try {
       await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
@@ -290,7 +290,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }], { issuedBefore: 1699999000000 });
 
     const body = JSON.parse(captured[0].body);
@@ -305,7 +305,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
 
     const body = JSON.parse(captured[0].body);
@@ -320,7 +320,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }], { allowReauthMargin: true });
 
     const body = JSON.parse(captured[0].body);
@@ -335,7 +335,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
 
     const body = JSON.parse(captured[0].body);
@@ -350,7 +350,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }], {
       issuedBefore: 1699999000000,
       allowReauthMargin: true,
@@ -377,7 +377,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     });
     installMockHttp(mock);
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
 
     try {
       await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
@@ -396,7 +396,7 @@ describe('uts/rest/unit/auth/revoke_tokens', function () {
     const captured: any[] = [];
     installMockHttp(revokeMock(captured));
 
-    const client = new Ably.Rest({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
+    const client = new Ably.Http({ key: 'appId.keyName:keySecret', useBinaryProtocol: false });
     await client.auth.revokeTokens([{ type: 'clientId', value: 'alice' }]);
 
     expect(captured[0].headers.authorization).to.match(/^Basic /);

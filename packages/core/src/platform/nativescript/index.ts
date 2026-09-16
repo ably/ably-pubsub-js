@@ -1,5 +1,5 @@
 // Common
-import { DefaultRest } from '../../common/lib/client/defaultrest';
+import { DefaultHttp } from '../../common/lib/client/defaulthttp';
 import { DefaultRealtime } from '../../common/lib/client/defaultrealtime';
 import Platform from '../../common/platform';
 import ErrorInfo from '../../common/lib/types/errorinfo';
@@ -31,7 +31,7 @@ Platform.Config = Config;
 Platform.Transports = Transports;
 Platform.WebStorage = WebStorage;
 
-for (const clientClass of [DefaultRest, DefaultRealtime]) {
+for (const clientClass of [DefaultHttp, DefaultRealtime]) {
   clientClass.Crypto = Crypto;
   clientClass._MsgPack = msgpack;
 }
@@ -49,7 +49,7 @@ if (Platform.Config.agent) {
 
 export default {
   ErrorInfo,
-  Rest: DefaultRest,
+  Http: DefaultHttp,
   Realtime: DefaultRealtime,
   msgpack,
   makeProtocolMessageFromDeserialized,

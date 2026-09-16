@@ -307,8 +307,9 @@ export function wireToJSON(this: BaseMessage, ...args: any[]): any {
   const { data, encoding } = encodeDataForWire(this.data, this.encoding, format);
 
   const result: Record<string, any> = Object.assign({}, this, { encoding, data });
-  // RSL1e, RTL6i3: fields whose value is null are not sent to Ably
-  for (const key in result) {
+  // RSL1e, RTL6i3: a null `data` or `name` is omitted rather than sent as null.
+  // Only these two, since the spec does not say anything about the other fields.
+  for (const key of ['data', 'name']) {
     if (result[key] == null) {
       delete result[key];
     }

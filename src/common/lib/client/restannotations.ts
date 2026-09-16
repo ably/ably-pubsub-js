@@ -57,6 +57,15 @@ export function constructValidateAnnotation(
   }
 
   const annotation = Annotation.fromValues(annotationValues);
+  if (!annotation.type || typeof annotation.type !== 'string') {
+    throw new ErrorInfo({
+      message: 'The annotation argument of annotations.' + methodName + '() must include a non-empty string `type`',
+      code: 40003,
+      statusCode: 400,
+      remediation:
+        'Set type on the annotation object, e.g. { type: "reaction:unique.v1", name: "👍" }. Other fields are optional.',
+    });
+  }
   annotation.messageSerial = messageSerial;
   if (!annotation.action) {
     annotation.action = 'annotation.create';

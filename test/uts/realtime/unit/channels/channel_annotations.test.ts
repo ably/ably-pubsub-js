@@ -610,10 +610,11 @@ describe('uts/realtime/unit/channels/channel_annotations', function () {
   /**
    * RTAN1a - publish validates type is required
    *
-   * Publishing an annotation without a type field should throw an error.
+   * Publishing an annotation without a type field should throw an error
+   * with code 40003.
    */
   // UTS: realtime/unit/RTAN1a/validates-type-required-1
-  it('RTAN1a - publish validates type is required (deviation: ably-js does not validate type client-side)', async function () {
+  it('RTAN1a - publish validates type is required', async function () {
     const { mock } = setupMock({
       onMessage: (msg, conn) => {
         if (msg.action === 21) {
@@ -642,22 +643,13 @@ describe('uts/realtime/unit/channels/channel_annotations', function () {
     const channel = client.channels.get('test-RTAN1a-validate', { attachOnSubscribe: false });
     await channel.attach();
 
-    // Deviation: ably-js does not validate that type is required client-side.
-    // The annotation is sent to the server without type validation.
-    if (!process.env.RUN_DEVIATIONS) {
-      this.skip();
-      return;
-    }
-
     try {
       await channel.annotations.publish('msg-serial-1', {
         name: 'like',
-        // type is missing
       } as any);
-      expect.fail('Should have thrown');
+      expect.fail('Expected publish without type to throw with code 40003');
     } catch (err: any) {
-      expect(err).to.exist;
-      expect(err.code).to.be.a('number');
+      expect(err.code).to.equal(40003);
     }
     client.close();
   });

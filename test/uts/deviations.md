@@ -86,18 +86,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### annotations: RSAN1a3 - type validation missing
-
-**Spec (RSAN1a3)**: The SDK must validate that the user supplied a `type`.
-
-**ably-js behavior**: `constructValidateAnnotation()` does not validate that `type` is present.
-
-**Tests**: `RSAN1a3 - type required` (realtime), `RTAN1a - publish validates type is required` (REST).
-
-**Issue**: [#2194](https://github.com/ably/ably-js/issues/2194)
-
----
-
 ### annotations: RSAN1c4 / RSC22d - idempotent IDs not generated
 
 **Spec (RSAN1c4)**: Annotations with empty `id` should get a generated idempotent ID. **Spec (RSC22d)**: Same for batch publish.

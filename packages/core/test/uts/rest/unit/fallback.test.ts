@@ -234,62 +234,6 @@ describe('uts/rest/unit/fallback', function () {
   });
 
   /**
-   * REC1d1 - restHost option
-   *
-   * The deprecated restHost option sets the REST host directly.
-   */
-  // UTS: rest/unit/REC1d1/resthost-sets-primary-domain-0
-  it('REC1d1 - restHost option', async function () {
-    const captured: any[] = [];
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        captured.push(req);
-        req.respond_with(200, [1234567890000]);
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      restHost: 'custom.rest.example.com',
-    });
-    await client.time();
-
-    expect(captured).to.have.length(1);
-    expect(captured[0].url.hostname).to.equal('custom.rest.example.com');
-  });
-
-  /**
-   * REC1c2 - environment option
-   *
-   * The deprecated environment option maps to {environment}.realtime.ably.net.
-   */
-  // UTS: rest/unit/REC1c2/environment-sets-primary-domain-0
-  it('REC1c2 - environment option', async function () {
-    const captured: any[] = [];
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        captured.push(req);
-        req.respond_with(200, [1234567890000]);
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      environment: 'sandbox',
-    });
-    await client.time();
-
-    expect(captured).to.have.length(1);
-    expect(captured[0].url.hostname).to.equal('sandbox.realtime.ably.net');
-  });
-
-  /**
    * REC2a2 - custom fallbackHosts
    *
    * When fallbackHosts is set to a custom list, the client should use
@@ -326,41 +270,6 @@ describe('uts/rest/unit/fallback', function () {
     expect(requestCount).to.equal(2);
     expect(hosts[0]).to.equal('main.realtime.ably.net');
     expect(customFallbacks).to.include(hosts[1]);
-  });
-
-  /**
-   * REC2c6 - custom restHost has no fallbacks
-   *
-   * When restHost is set to a custom domain, fallback hosts are not
-   * available (unless explicitly provided). A 500 should not trigger retry.
-   */
-  // UTS: rest/unit/REC2c6/custom-resthost-no-fallbacks-0
-  it('REC2c6 - custom restHost has no fallbacks', async function () {
-    let requestCount = 0;
-
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        requestCount++;
-        req.respond_with(500, { error: { message: 'Server error', code: 50000, statusCode: 500 } });
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      restHost: 'custom.example.com',
-    });
-
-    try {
-      await client.time();
-      expect.fail('Expected time() to throw');
-    } catch (error: any) {
-      expect(error.statusCode).to.equal(500);
-    }
-
-    expect(requestCount).to.equal(1);
   });
 
   // ── Additional fallback tests ─────────────────────────────────────
@@ -860,64 +769,7 @@ describe('uts/rest/unit/fallback', function () {
     expect(captured[0].url.hostname).to.equal('staging.realtime.ably-nonprod.net');
   });
 
-  // UTS: rest/unit/REC1d2/realtimehost-sets-primary-domain-0
-  it('REC1d - realtimeHost sets primary domain when restHost not set', async function () {
-    const captured: any[] = [];
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        captured.push(req);
-        req.respond_with(200, [1234567890000]);
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      realtimeHost: 'custom.realtime.example.com',
-    } as any);
-    await client.time();
-
-    expect(captured).to.have.length(1);
-    expect(captured[0].url.hostname).to.equal('custom.realtime.example.com');
-  });
-
   // ── Category E: Option conflict detection ─────────────────────────
-
-  // UTS: rest/unit/REC1b1/endpoint-conflicts-environment-0
-  it('REC1b1 - endpoint conflicts with environment', function () {
-    try {
-      new Ably.Http({ key: 'app.key:secret', endpoint: 'test', environment: 'production' } as any);
-      expect.fail('Expected constructor to throw');
-    } catch (error: any) {
-      expect(error.code).to.equal(40106);
-    }
-  });
-
-  // UTS: rest/unit/REC1b1/endpoint-conflicts-resthost-1
-  it('REC1b1 - endpoint conflicts with restHost', function () {
-    try {
-      new Ably.Http({ key: 'app.key:secret', endpoint: 'test', restHost: 'custom.host.com' } as any);
-      expect.fail('Expected constructor to throw');
-    } catch (error: any) {
-      expect(error.code).to.equal(40106);
-    }
-  });
-
-  // UTS: rest/unit/REC1b1/endpoint-conflicts-realtimehost-2
-  it('REC1b1 - endpoint conflicts with realtimeHost', function () {
-    try {
-      new Ably.Http({
-        key: 'app.key:secret',
-        endpoint: 'custom.example.com',
-        realtimeHost: 'rt.example.com',
-      } as any);
-      expect.fail('Expected constructor to throw');
-    } catch (error: any) {
-      expect(error.code).to.equal(40106);
-    }
-  });
 
   // UTS: rest/unit/REC1b1/endpoint-conflicts-fallback-default-3
   it.skip('REC1b1 - endpoint conflicts with fallbackHostsUseDefault', function () {
@@ -949,50 +801,6 @@ describe('uts/rest/unit/fallback', function () {
     } catch (error: any) {
       expect(error.code).to.satisfy((c: number) => c === 40000 || c === 40106);
     }
-  });
-
-  // UTS: rest/unit/REC1c1/environment-conflicts-resthost-0
-  it('REC1c1 - environment conflicts with restHost', function () {
-    try {
-      new Ably.Http({ key: 'app.key:secret', environment: 'sandbox', restHost: 'custom.host.com' } as any);
-      expect.fail('Expected constructor to throw');
-    } catch (error: any) {
-      expect(error.code).to.equal(40106);
-    }
-  });
-
-  // UTS: rest/unit/REC1c1/environment-conflicts-realtimehost-1
-  it('REC1c1 - environment conflicts with realtimeHost', function () {
-    try {
-      new Ably.Http({ key: 'app.key:secret', environment: 'sandbox', realtimeHost: 'custom.rt.com' } as any);
-      expect.fail('Expected constructor to throw');
-    } catch (error: any) {
-      expect(error.code).to.equal(40106);
-    }
-  });
-
-  // UTS: rest/unit/REC1d/resthost-precedence-over-realtimehost-0
-  it('REC1d - restHost takes precedence over realtimeHost', async function () {
-    const captured: any[] = [];
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        captured.push(req);
-        req.respond_with(200, [1234567890000]);
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      restHost: 'rest.example.com',
-      realtimeHost: 'realtime.example.com',
-    } as any);
-    await client.time();
-
-    expect(captured).to.have.length(1);
-    expect(captured[0].url.hostname).to.equal('rest.example.com');
   });
 
   // ── Category F: Fallback domain configuration ─────────────────────
@@ -1057,7 +865,7 @@ describe('uts/rest/unit/fallback', function () {
   // UTS: rest/unit/REC2b/fallback-hosts-use-default-0
   it.skip('REC2b - fallbackHostsUseDefault uses default fallback domains', async function () {
     // SKIP: ably-js does not implement the fallbackHostsUseDefault option.
-    // The option is ignored, so setting restHost disables fallbacks as normal.
+    // The option is ignored, so an explicit-hostname endpoint disables fallbacks as normal.
     let requestCount = 0;
     const hosts: string[] = [];
 
@@ -1078,7 +886,7 @@ describe('uts/rest/unit/fallback', function () {
     const client = new Ably.Http({
       key: 'app.key:secret',
       useBinaryProtocol: false,
-      restHost: 'custom.host.com',
+      endpoint: 'custom.host.com',
       fallbackHostsUseDefault: true,
     } as any);
     const result = await client.time();
@@ -1115,67 +923,6 @@ describe('uts/rest/unit/fallback', function () {
     expect(requestCount).to.equal(2);
     expect(hosts[0]).to.equal('main.realtime.ably.net');
     expect(hosts[1]).to.match(/^main\.[a-e]\.fallback\.ably-realtime\.com$/);
-  });
-
-  // UTS: rest/unit/REC2c5/production-environment-fallback-domains-0
-  it('REC2c5 - environment fallback domains', async function () {
-    let requestCount = 0;
-    const hosts: string[] = [];
-
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        requestCount++;
-        hosts.push(req.url.hostname);
-        if (requestCount === 1) {
-          req.respond_with(500, { error: { message: 'Server error', code: 50000, statusCode: 500 } });
-        } else {
-          req.respond_with(200, [1234567890000]);
-        }
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      environment: 'sandbox',
-    });
-    const result = await client.time();
-
-    expect(result).to.equal(1234567890000);
-    expect(requestCount).to.equal(2);
-    expect(hosts[0]).to.equal('sandbox.realtime.ably.net');
-    expect(hosts[1]).to.match(/^sandbox\.[a-e]\.fallback\.ably-realtime\.com$/);
-  });
-
-  // UTS: rest/unit/REC2c6/custom-realtimehost-no-fallbacks-1
-  it('REC2c6 - custom realtimeHost has no fallback domains', async function () {
-    let requestCount = 0;
-
-    const mock = new MockHttpClient({
-      onConnectionAttempt: (conn) => conn.respond_with_success(),
-      onRequest: (req) => {
-        requestCount++;
-        req.respond_with(500, { error: { message: 'Server error', code: 50000, statusCode: 500 } });
-      },
-    });
-    installMockHttp(mock);
-
-    const client = new Ably.Http({
-      key: 'app.key:secret',
-      useBinaryProtocol: false,
-      realtimeHost: 'custom.realtime.example.com',
-    } as any);
-
-    try {
-      await client.time();
-      expect.fail('Expected time() to throw');
-    } catch (error: any) {
-      expect(error.statusCode).to.equal(500);
-    }
-
-    expect(requestCount).to.equal(1);
   });
 
   // UTS: rest/unit/REC2c4/production-endpoint-fallback-domains-0

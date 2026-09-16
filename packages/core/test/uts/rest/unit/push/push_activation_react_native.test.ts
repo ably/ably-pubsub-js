@@ -3,7 +3,7 @@
  *
  * Exercises the ReactNativePush plugin's activation flow against a fake async storage and a
  * stubbed requestToken, with HTTP mocked: full activation (RSH2a) for fcm and apns transports,
- * re-activation from persisted state, deactivation (RSH2b), the deprecated sync device() guard,
+ * re-activation from persisted state, deactivation (RSH2b), the internal sync deviceSync() guard,
  * and token acquisition failure (RSH8h).
  */
 
@@ -245,24 +245,25 @@ describe('push_activation_react_native', function () {
     expect(persisted).to.not.have.property('ably.push.pushRecipient');
   });
 
-  it('device() throws before hydration and returns the cached device after getDevice()', async function () {
+  it('deviceSync() throws before hydration and returns the cached device after getDevice()', async function () {
     mockRegistrationServer();
     const storage = new FakeAsyncStorage();
     const client = rnClient(storage);
 
-    expect(() => client.device())
+    // deviceSync() is internal: the push activation state machine's synchronous accessor, which
+    // relies on activate()/deactivate() hydrating the device with getDevice() first
+    expect(() => (client as any).deviceSync())
       .to.throw()
       .and.satisfy((err: any) => {
         expect(err.code).to.equal(40000);
         expect(err.message).to.match(/synchronously/);
-        expect(err.remediation).to.match(/getDevice/);
         return true;
       });
 
     const device = await client.getDevice();
     expect(device.id).to.be.a('string').and.not.be.empty;
-    // once hydrated, the deprecated sync accessor returns the same cached instance
-    expect(client.device()).to.equal(device);
+    // once hydrated, the sync accessor returns the same cached instance
+    expect((client as any).deviceSync()).to.equal(device);
 
     await flushAsync();
     // loading a fresh device persists its generated identifiers
@@ -319,7 +320,7 @@ describe('push_activation_react_native', function () {
     expect(storage.dump()['ably.push.activationState']).to.equal('NotActivated');
   });
 
-  it('getDevice() with synchronous (web-style) storage returns the same device as device()', async function () {
+  it('getDevice() with synchronous (web-style) storage returns the same device as deviceSync()', async function () {
     mockRegistrationServer();
     const syncData = new Map<string, string>();
     Platform.Config.push = {
@@ -339,7 +340,7 @@ describe('push_activation_react_native', function () {
     });
 
     const device = await client.getDevice();
-    expect(client.device()).to.equal(device);
+    expect((client as any).deviceSync()).to.equal(device);
     expect(syncData.get('ably.push.deviceId')).to.equal(device.id);
   });
 });

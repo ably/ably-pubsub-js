@@ -11,12 +11,10 @@
  * the message that triggered an object change.
  *
  * Deviations from UTS spec:
- * - toUserFacingObjectData adds a deprecated 'value' convenience field to the
- *   public ObjectData (see deviations.md). The numeric-to-'lww' semantics
- *   mapping is the idiomatic JS rendering of the ObjectsMapSemantics.LWW enum
- *   member (OMP2) per the UTS enum-value convention (spec uts/README.md) —
- *   the spec pseudo-code's "LWW" is the symbolic enum name, not a string
- *   contract.
+ * - The numeric-to-'lww' semantics mapping is the idiomatic JS rendering of the
+ *   ObjectsMapSemantics.LWW enum member (OMP2) per the UTS enum-value convention
+ *   (spec uts/README.md) — the spec pseudo-code's "LWW" is the symbolic enum
+ *   name, not a string contract.
  * - ably-js omits undefined fields rather than setting null — the sanctioned
  *   null/undefined convention (spec uts/README.md). Assertions use
  *   .to.be.undefined instead of == null where appropriate.
@@ -79,6 +77,8 @@ describe('uts/objects/unit/public_object_message', function () {
     expect(publicMsg.operation.objectId).to.equal('map:abc@1000');
     expect(publicMsg.operation.mapSet!.key).to.equal('name');
     expect(publicMsg.operation.mapSet!.value.string).to.equal('Alice');
+    // the public ObjectData carries only the typed value fields
+    expect(publicMsg.operation.mapSet!.value).to.not.have.property('value');
   });
 
   // UTS: objects/unit/PAOM3/construction-optional-fields-missing-0

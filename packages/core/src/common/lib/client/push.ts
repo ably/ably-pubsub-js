@@ -384,7 +384,7 @@ class DeviceRegistrations {
         code: 40000,
         statusCode: 400,
         remediation:
-          'Pass either the device id string or a DeviceDetails object with a non-empty .id field. The local device id is available from client.device().id after push.activate() completes. Alternatively pass the .id of a DeviceDetails returned by push.admin.deviceRegistrations.save().',
+          'Pass either the device id string or a DeviceDetails object with a non-empty .id field. The local device id is available from (await client.getDevice()).id after push.activate() completes. Alternatively pass the .id of a DeviceDetails returned by push.admin.deviceRegistrations.save().',
       });
     }
 

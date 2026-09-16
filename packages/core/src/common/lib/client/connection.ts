@@ -62,13 +62,6 @@ class Connection extends EventEmitter {
     this.connectionManager.requestState({ state: 'closing' });
   }
 
-  get recoveryKey(): string | null {
-    this.logger.deprecationWarning(
-      'The `Connection.recoveryKey` attribute has been replaced by the `Connection.createRecoveryKey()` method. Replace your usage of `recoveryKey` with the return value of `createRecoveryKey()`. `recoveryKey` will be removed in a future version.',
-    );
-    return this.createRecoveryKey();
-  }
-
   createRecoveryKey(): string | null {
     return this.connectionManager.createRecoveryKey();
   }

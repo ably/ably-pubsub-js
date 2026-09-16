@@ -220,6 +220,16 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 These tests have been adapted from the UTS spec to account for ably-js API differences. The test still validates the underlying behavior but uses ably-js's actual API surface.
 
+### fallback: REC1c/REC1d - the legacy `environment`, `restHost` and `realtimeHost` options are not implemented
+
+**Spec (REC1c, REC1c1, REC1c2, REC1d, REC1d1, REC1d2, REC2c5, REC2c6)**: a client may set the primary domain through the `environment`, `restHost` or `realtimeHost` options, which conflict with `endpoint` (error 40106) and among themselves, and suppress fallback domains.
+
+**ably-js behavior**: these options were deprecated in favour of `endpoint` and have been removed, so no combination of them is expressible and the conflict errors are unreachable. `endpoint` covers both forms: a routing policy id (`endpoint: 'main'` — REC1b4) replaces `environment`, and an explicit hostname (`endpoint: 'test.org'` — REC1b2) replaces `restHost`/`realtimeHost`, suppressing fallback domains as those options did (REC2c2).
+
+**Tests**: the tests for the removed options are not derived. The `endpoint` equivalents are covered by `REC1b2 - endpoint as explicit hostname`, `REC1b4 - endpoint as routing policy` and `REC2c2 - explicit hostname endpoint has no fallbacks` (`rest/unit/fallback.test.ts`).
+
+---
+
 ### objects/value_types: RTLMV4b - key-type validation untranslatable to JavaScript
 
 **Spec (RTLMV4b)**: `objects/unit/RTLMV4b/evaluate-validates-keys-0` — LiveMap value type consumption validates that entry keys are strings.
@@ -235,16 +245,6 @@ These tests have been adapted from the UTS spec to account for ably-js API diffe
 **ably-js behavior**: `increment(null)` is runtime-reachable in JS, but the public API defines a nullish amount as equivalent to an omitted argument (`amount ?? 1` at the PathObject/Instance layer), so it increments by 1. What is unreachable is the 40003 failure path for the null row — not the input itself. The spec table carries a language-applicability note sanctioning this and directing such SDKs to assert the default-of-1 behavior instead.
 
 **Test**: `RTLC12e1 - table-driven invalid increment amounts` (`test/uts/objects/unit/live_counter_api.test.ts`) — the null row asserts the increment-by-1 default, pinning the null-means-omitted contract; the remaining rows (NaN, ±Infinity, string, boolean, array, object) assert 40003.
-
----
-
-### objects: user-facing ObjectData carries a deprecated `value` field
-
-**Spec**: `PublicAPI::ObjectData` exposes the typed value fields (`boolean`/`bytes`/`number`/`string`/`json`).
-
-**ably-js behavior**: `toUserFacingObjectData` (`src/plugins/liveobjects/objectmessage.ts`) additionally populates a legacy `value` convenience field on the public ObjectData. Harmless extra field; removal is a breaking change reserved for a future major.
-
-**Tests**: `objects/unit/public_object_message.test.ts` exercises the public mapping.
 
 ---
 

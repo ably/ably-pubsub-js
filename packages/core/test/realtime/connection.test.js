@@ -76,7 +76,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
         realtime.connection.on('connected', function () {
           try {
             helper.recordPrivateApi('deserialize.recoveryKey');
-            const recoveryContext = JSON.parse(realtime.connection.recoveryKey);
+            const recoveryContext = JSON.parse(realtime.connection.createRecoveryKey());
             expect(recoveryContext.connectionKey).to.equal(realtime.connection.key);
             helper.recordPrivateApi('read.connectionManager.msgSerial');
             expect(recoveryContext.msgSerial).to.equal(realtime.connection.connectionManager.msgSerial);
@@ -97,7 +97,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
                   channel.subscribe(function () {
                     setTimeout(function () {
                       helper.recordPrivateApi('deserialize.recoveryKey');
-                      const recoveryContext = JSON.parse(realtime.connection.recoveryKey);
+                      const recoveryContext = JSON.parse(realtime.connection.createRecoveryKey());
                       expect(recoveryContext.connectionKey).to.equal(realtime.connection.key);
                       helper.recordPrivateApi('read.connectionManager.msgSerial');
                       expect(recoveryContext.msgSerial).to.equal(realtime.connection.connectionManager.msgSerial);
@@ -117,7 +117,10 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
                 realtime.connection.close();
                 Helper.whenPromiseSettles(realtime.connection.whenState('closed'), function () {
                   try {
-                    expect(realtime.connection.recoveryKey).to.equal(null, 'verify recovery key null after close');
+                    expect(realtime.connection.createRecoveryKey()).to.equal(
+                      null,
+                      'verify recovery key null after close',
+                    );
                     helper.closeAndFinish(done, realtime);
                   } catch (err) {
                     helper.closeAndFinish(done, realtime, err);

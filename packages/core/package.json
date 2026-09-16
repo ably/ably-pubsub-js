@@ -50,27 +50,15 @@
     "./liveobjects/react": {
       "require": "./react/cjs/liveobjects/index.js",
       "import": "./react/mjs/liveobjects/index.js"
-    },
-    "./promises": {
-      "types": "./promises.d.ts",
-      "default": "./promises.js"
-    },
-    "./callbacks": {
-      "types": "./callbacks.d.ts",
-      "default": "./callbacks.js"
     }
   },
   "files": [
     "build/**",
     "ably.d.ts",
-    "callbacks.d.ts",
-    "callbacks.js",
     "liveobjects.d.ts",
     "liveobjects.d.mts",
     "liveobjects/react.d.ts",
     "modular.d.ts",
-    "promises.d.ts",
-    "promises.js",
     "push.d.ts",
     "react-native-push.d.ts",
     "react-native-push.js",

@@ -568,11 +568,7 @@ function toUserFacingObjectData(data: ObjectData): ObjectsApi.ObjectData {
     return { objectId: data.objectId };
   }
 
-  return {
-    ...data,
-    // deprecated field for backwards compatibility
-    value: getObjectDataPrimitive(data),
-  };
+  return { ...data };
 }
 
 function toUserFacingMapEntry(entry: ObjectsMapEntry<ObjectData>): ObjectsApi.ObjectsMapEntry {
@@ -608,22 +604,6 @@ function toUserFacingObjectOperation(operation: ObjectOperation<ObjectData>): Ob
     };
   }
 
-  // ObjectOperation deprecated fields for backwards compatibility
-  let mapOp: ObjectsApi.ObjectsMapOp | undefined;
-  if (mapSet) {
-    mapOp = {
-      key: mapSet.key,
-      data: mapSet.value,
-    };
-  } else if (mapRemove) {
-    mapOp = { key: mapRemove.key };
-  }
-
-  let counterOp: ObjectsApi.ObjectsCounterOp | undefined;
-  if (counterInc) {
-    counterOp = { amount: counterInc.number };
-  }
-
   return {
     action: decodeObjectOperationAction(operation.action),
     objectId: operation.objectId,
@@ -634,11 +614,6 @@ function toUserFacingObjectOperation(operation: ObjectOperation<ObjectData>): Ob
     counterInc,
     objectDelete,
     mapClear,
-    // deprecated fields
-    mapOp,
-    counterOp,
-    map: mapCreate,
-    counter: counterCreate,
   };
 }
 

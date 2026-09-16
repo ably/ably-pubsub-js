@@ -351,15 +351,15 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
      * @spec REC2a2
      * @spec TO3k2
      * @spec TO3l5
-     * @specpartial RSC11 - test override endpoint using restHost
+     * @specpartial RSC11 - test override endpoint using an explicit hostname
      * @specpartial RSC15a - httpMaxRetryCount has been reached
      */
     it('init_fallbacks', function (done) {
       const helper = this.test.helper;
       try {
-        var realtime = helper.AblyRealtimeWithoutEndpoint({
+        var realtime = helper.AblyRealtime({
           key: 'not_a.real:key',
-          restHost: 'a',
+          endpoint: 'a.invalid',
           httpMaxRetryCount: 2,
           autoConnect: false,
           fallbackHosts: ['b', 'c', 'd', 'e'],
@@ -370,13 +370,16 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
           3,
           'Verify hosts list is the expected length',
         );
-        expect(realtime.connection.connectionManager.domains[0]).to.equal('a', 'Verify given restHost is first');
+        expect(realtime.connection.connectionManager.domains[0]).to.equal(
+          'a.invalid',
+          'Verify given endpoint is first',
+        );
         /* Replace chooseTransportForHost with a spy, then try calling
          * chooseHttpTransport to see what host is picked */
         helper.recordPrivateApi('replace.connectionManager.tryATransport');
         realtime.connection.connectionManager.tryATransport = function (transportParams, transport, cb) {
           switch (transportParams.host) {
-            case 'a':
+            case 'a.invalid':
               cb(false);
               break;
             case 'b':
@@ -492,8 +495,8 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         try {
           helper.recordPrivateApi('call.httpRequester._getHosts');
           var hosts = new Ably.Http._HttpRequester()._getHosts(realtime);
-          /* restHost rather than realtimeHost as that's what connectionManager
-           * knows about; converted to realtimeHost by the websocketTransport */
+          /* the primary domain is the HTTP host, which is what connectionManager
+           * knows about; the websocketTransport derives the realtime host from it */
           helper.recordPrivateApi('read.realtime.options.primaryDomain');
           expect(hosts[0]).to.equal(
             realtime.options.primaryDomain,
@@ -512,16 +515,16 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
     it('init_fallbacks_once_connected_2', function (done) {
       const helper = this.test.helper;
       var goodHost = helper.AblyHttp().options.primaryDomain;
-      var realtime = helper.AblyRealtimeWithoutEndpoint({
+      var realtime = helper.AblyRealtime({
         httpMaxRetryCount: 3,
-        restHost: 'a',
+        endpoint: 'a.invalid',
         fallbackHosts: [goodHost, 'b', 'c'],
       });
       realtime.connection.once('connected', function () {
         helper.recordPrivateApi('call.httpRequester._getHosts');
         var hosts = new Ably.Realtime._HttpRequester()._getHosts(realtime);
-        /* restHost rather than realtimeHost as that's what connectionManager
-         * knows about; converted to realtimeHost by the websocketTransport */
+        /* the primary domain is the HTTP host, which is what connectionManager
+         * knows about; the websocketTransport derives the realtime host from it */
         try {
           expect(hosts[0]).to.equal(goodHost, 'Check connected realtime host is the first option');
         } catch (err) {

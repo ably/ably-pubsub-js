@@ -2024,7 +2024,7 @@ declare namespace ObjectsMapSemanticsNamespace {
 }
 
 /**
- * The possible values of the `semantics` field of an {@link ObjectsMap}.
+ * The possible values of the `semantics` field of a {@link MapCreate}.
  */
 export type ObjectsMapSemantics = ObjectsMapSemanticsNamespace.LWW | ObjectsMapSemanticsNamespace.UNKNOWN;
 
@@ -2122,61 +2122,6 @@ export interface ObjectOperation {
    * The payload for the operation if the action is {@link ObjectOperationActions.MAP_CLEAR}.
    */
   mapClear?: MapClear;
-
-  /**
-   * The payload for the operation if it is a mutation operation on a map object.
-   *
-   * @deprecated This property is deprecated and will be removed in a future major version. Use {@link mapSet} and {@link mapRemove} instead.
-   */
-  mapOp?: ObjectsMapOp;
-  /**
-   * The payload for the operation if it is a mutation operation on a counter object.
-   *
-   * @deprecated This property is deprecated and will be removed in a future major version. Use {@link counterInc} instead.
-   */
-  counterOp?: ObjectsCounterOp;
-  /**
-   * The payload for the operation if the action is {@link ObjectOperationActions.MAP_CREATE}.
-   * Defines the initial value of the map object.
-   *
-   * @deprecated This property is deprecated and will be removed in a future major version. Use {@link mapCreate} instead.
-   */
-  map?: ObjectsMap;
-  /**
-   * The payload for the operation if the action is {@link ObjectOperationActions.COUNTER_CREATE}.
-   * Defines the initial value of the counter object.
-   *
-   * @deprecated This property is deprecated and will be removed in a future major version. Use {@link counterCreate} instead.
-   */
-  counter?: ObjectsCounter;
-}
-
-/**
- * Describes an operation that was applied to a map object.
- */
-export interface ObjectsMapOp {
-  /** The key that the operation was applied to. */
-  key: string;
-  /** The data assigned to the key if the operation is {@link ObjectOperationActions.MAP_SET}. */
-  data?: ObjectData;
-}
-
-/**
- * Describes an operation that was applied to a counter object.
- */
-export interface ObjectsCounterOp {
-  /** The value added to the counter. */
-  amount: number;
-}
-
-/**
- * Describes the initial value of a map object.
- */
-export interface ObjectsMap {
-  /** The conflict-resolution semantics used by the map object, one of the {@link ObjectsMapSemantics} enum values. */
-  semantics?: ObjectsMapSemantics;
-  /** The map entries, indexed by key. */
-  entries?: Record<string, ObjectsMapEntry>;
 }
 
 /**
@@ -2191,14 +2136,6 @@ export interface ObjectsMapEntry {
   serialTimestamp?: number;
   /** The value associated with this map entry. */
   data?: ObjectData;
-}
-
-/**
- * Describes the initial value of a counter object.
- */
-export interface ObjectsCounter {
-  /** The value of the counter. */
-  count?: number;
 }
 
 /**
@@ -2271,13 +2208,6 @@ export interface ObjectData {
   string?: string;
   /** A decoded JSON leaf value in the object. */
   json?: JsonObject | JsonArray;
-
-  /**
-   * A decoded primitive value.
-   *
-   * @deprecated This property is deprecated and will be removed in a future major version. Use one of the typed {@link boolean}, {@link bytes}, {@link number}, {@link string} or {@link json} fields instead.
-   */
-  value?: Primitive;
 }
 
 /**

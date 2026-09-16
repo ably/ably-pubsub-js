@@ -1,5 +1,5 @@
 import Logger, { LoggerOptions } from '../util/logger';
-import Defaults from '../util/defaults';
+import Defaults, { formatHostForUri } from '../util/defaults';
 import Auth from './auth';
 import { HttpPaginatedResponse, PaginatedResult } from './paginatedresource';
 import ErrorInfo from '../types/errorinfo';
@@ -205,7 +205,7 @@ class BaseClient {
   }
 
   baseUri(host: string) {
-    return Defaults.getHttpScheme(this.options) + host + ':' + Defaults.getPort(this.options, false);
+    return Defaults.getHttpScheme(this.options) + formatHostForUri(host) + ':' + Defaults.getPort(this.options, false);
   }
 
   async stats(params?: RequestParams): Promise<PaginatedResult<Stats>> {

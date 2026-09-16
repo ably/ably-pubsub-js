@@ -115,6 +115,17 @@ export function getHttpScheme(options: ClientOptions): string {
 }
 
 /**
+ * REC1b2 / RFC 3986 §3.2.2: an IPv6 literal used as a URI host must be enclosed in '[' and ']'.
+ * Host identity is stored unbracketed; this is applied only when concatenating a URI.
+ */
+export function formatHostForUri(host: string): string {
+  if (host.includes(':') && !host.startsWith('[')) {
+    return '[' + host + ']';
+  }
+  return host;
+}
+
+/**
  * REC1b2
  */
 function isFqdnIpOrLocalhost(endpoint: string): boolean {

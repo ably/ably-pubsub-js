@@ -26,3 +26,18 @@ source <(ably-env secrets print-aws)
 
 See [AWS Access](https://ably.atlassian.net/wiki/spaces/ENG/pages/665190401/AWS+Access)
 for more information about gaining access to AWS.
+
+### checkDocLinks.ts
+
+Verifies every `ably.com/docs` URL referenced from `ably.d.ts`, `modular.d.ts` and `src/`:
+that the page still resolves, and that a URL carrying a fragment still matches an element
+id on the page it resolves to. A stale fragment is the failure worth catching, since a
+browser given an unknown fragment silently leaves the reader at the top of the page.
+
+Run with `npm run check-doc-links`. It takes about a minute: the docs site rate-limits
+bursts, so pages are fetched one at a time.
+
+A URL that is known to be broken and cannot be fixed immediately can be listed in the
+script's `KNOWN_BROKEN` map, so that the check gates new breakage rather than blocking on a
+backlog. Fixing one means deleting its entry — a listed URL that starts working is reported
+as a failure telling you to remove it. The map is currently empty.

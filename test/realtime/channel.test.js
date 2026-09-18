@@ -2119,6 +2119,158 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
       }, realtime);
     });
 
+    describe('channels.release()', function () {
+      /**
+       * Releasing a channel that needs no detach drops it from the collection
+       * and resolves without waiting on the connection.
+       *
+       * @spec RSN4a
+       */
+      it('resolves immediately for a channel in a releasable state', async function () {
+        const helper = this.test.helper;
+        const realtime = helper.AblyRealtime();
+
+        await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
+          const name = 'release_initialized_' + Helper.randomString();
+          const channel = realtime.channels.get(name);
+          expect(channel.state).to.equal('initialized');
+
+          await realtime.channels.release(name);
+
+          expect(realtime.channels.all).to.not.have.property(name);
+          expect(realtime.channels.get(name)).to.not.equal(channel);
+        }, realtime);
+      });
+
+      /**
+       * Releasing an attached channel detaches it first. The promise resolves
+       * only once that detach has completed and the channel has been dropped,
+       * so a get() after the await returns a new channel rather than the one
+       * that was on its way out.
+       *
+       * @specpartial RSN4a - the spec does not state when the release completes; this covers the promise resolving after the detach
+       */
+      it('resolves once an attached channel has detached and been dropped', async function () {
+        const helper = this.test.helper;
+        const realtime = helper.AblyRealtime();
+
+        await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
+          const name = 'release_attached_' + Helper.randomString();
+          const channel = realtime.channels.get(name);
+          await channel.attach();
+
+          const releasePromise = realtime.channels.release(name);
+          expect(channel.state).to.equal('detaching');
+          expect(realtime.channels.all).to.have.property(name);
+
+          await releasePromise;
+
+          expect(channel.state).to.equal('detached');
+          expect(realtime.channels.all).to.not.have.property(name);
+          expect(realtime.channels.get(name)).to.not.equal(channel);
+        }, realtime);
+      });
+
+      /**
+       * Two releases of one name share a single detach, and both resolve.
+       *
+       * @nospec
+       */
+      it('shares one detach between concurrent releases of the same name', async function () {
+        const helper = this.test.helper;
+        const realtime = helper.AblyRealtime();
+
+        await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
+          const name = 'release_concurrent_' + Helper.randomString();
+          const channel = realtime.channels.get(name);
+          await channel.attach();
+
+          await Promise.all([realtime.channels.release(name), realtime.channels.release(name)]);
+
+          expect(channel.state).to.equal('detached');
+          expect(realtime.channels.all).to.not.have.property(name);
+        }, realtime);
+      });
+
+      /**
+       * A get() while a release is waiting on the detach hands back the channel
+       * being released, so the release must leave it in the collection: a
+       * channel absent from there receives no message for its name, which would
+       * leave the caller holding a channel that can never deliver again.
+       *
+       * @nospec
+       */
+      it('keeps a channel handed back out by get() during the detach', async function () {
+        const helper = this.test.helper;
+        const realtime = helper.AblyRealtime();
+        const publisher = helper.AblyRealtime();
+
+        await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
+          const name = 'release_get_during_detach_' + Helper.randomString();
+          const channel = realtime.channels.get(name);
+          await channel.attach();
+
+          const releasePromise = realtime.channels.release(name);
+          const reclaimed = realtime.channels.get(name);
+          expect(reclaimed).to.equal(channel);
+
+          await releasePromise;
+
+          expect(realtime.channels.all[name]).to.equal(channel);
+
+          // the kept channel is still routed: re-attach it and a publish arrives
+          const received = new Promise(function (resolve) {
+            reclaimed.subscribe(resolve);
+          });
+          await reclaimed.attach();
+          await publisher.channels.get(name).publish('event', 'data');
+          const message = await received;
+          expect(message.data).to.equal('data');
+
+          await helper.closeAndFinishAsync(publisher);
+        }, realtime);
+      });
+
+      /**
+       * Releasing again after a get() during the detach removes the channel:
+       * the second call is a fresh request for it to go.
+       *
+       * @nospec
+       */
+      it('removes the channel when released again after a get() during the detach', async function () {
+        const helper = this.test.helper;
+        const realtime = helper.AblyRealtime();
+
+        await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
+          const name = 'release_rerelease_' + Helper.randomString();
+          const channel = realtime.channels.get(name);
+          await channel.attach();
+
+          const releasePromise = realtime.channels.release(name);
+          realtime.channels.get(name);
+
+          await realtime.channels.release(name);
+          await releasePromise;
+
+          expect(realtime.channels.all).to.not.have.property(name);
+        }, realtime);
+      });
+
+      /**
+       * Releasing a name the client holds no channel for is a no-op.
+       *
+       * @spec RSN4b
+       */
+      it('resolves for a name with no channel', async function () {
+        const helper = this.test.helper;
+        const realtime = helper.AblyRealtime();
+
+        await helper.monitorConnectionThenCloseAndFinishAsync(async () => {
+          await realtime.channels.release('release_absent_' + Helper.randomString());
+        }, realtime);
+      });
+    });
+
     describe('subscribe() without subscribe mode', function () {
       /**
        * Subscribe on a channel attached without the subscribe mode, with strictMode enabled.

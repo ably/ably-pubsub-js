@@ -5,8 +5,8 @@ import { glob } from 'glob';
 import { exit } from 'process';
 
 const ABLY_FEATURES_SPEC_URL = 'https://raw.githubusercontent.com/ably/specification/main/specifications/features.md';
-const PATHS_TO_LOOK_FOR_TESTS = ['./test', './src/platform/react-hooks'];
-const PATHS_TO_IGNORE_FOR_TESTS = ['./test/common/ably-common'];
+const PATHS_TO_LOOK_FOR_TESTS = ['./packages/core/test', './packages/core/src/platform/react-hooks'];
+const PATHS_TO_IGNORE_FOR_TESTS = ['./packages/core/test/common/ably-common'];
 
 enum SpecCoverageType {
   spec = 'spec',

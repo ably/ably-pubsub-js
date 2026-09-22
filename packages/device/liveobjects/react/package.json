@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/liveobjects-react.js",
+  "module": "../../dist/liveobjects-react.mjs",
+  "types": "./index.d.ts"
+}

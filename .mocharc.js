@@ -1,7 +1,15 @@
+// The core's test suite lives in packages/core, but mocha runs from this monorepo root so that
+// one node_modules and one set of dev dependencies serve every package.
+const core = 'packages/core';
+
 const config = {
-  require: ['source-map-support/register', 'test/support/modules_helper.js', 'test/support/test_helper.js'],
-  file: ['test/support/root_hooks.js'],
-  reporter: 'test/support/mocha_reporter.js',
+  require: [
+    'source-map-support/register',
+    `${core}/test/support/modules_helper.js`,
+    `${core}/test/support/test_helper.js`,
+  ],
+  file: [`${core}/test/support/root_hooks.js`],
+  reporter: `${core}/test/support/mocha_reporter.js`,
 };
 
 // mocha has a ridiculous issue (https://github.com/mochajs/mocha/issues/4100) that command line
@@ -9,7 +17,7 @@ const config = {
 // if you've defined specs in your config. therefore we work around it by only adding specs to the
 // config if none are passed as arguments
 if (!process.argv.slice(2).some(isTestFile)) {
-  config.spec = ['test/realtime/*.test.js', 'test/rest/*.test.js', 'test/unit/*.test.js'];
+  config.spec = [`${core}/test/realtime/*.test.js`, `${core}/test/rest/*.test.js`, `${core}/test/unit/*.test.js`];
 }
 
 function isTestFile(arg) {

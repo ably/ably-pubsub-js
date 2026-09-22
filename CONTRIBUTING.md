@@ -7,30 +7,37 @@
 3. Create your feature branch (`git checkout -b my-new-feature`)
 4. Commit your changes (`git commit -am 'Add some feature'`)
 5. Ensure you have added suitable tests and the test suite is passing(`npm test`)
-6. Ensure the [type definitions](https://github.com/ably/ably-pubsub-js/blob/main/ably.d.ts) have been updated if the public API has changed
+6. Ensure the [type definitions](https://github.com/ably/ably-pubsub-js/blob/main/packages/core/ably.d.ts) have been updated if the public API has changed
 7. Push the branch (`git push origin my-new-feature`)
 8. Create a new Pull Request
 
 ## Release Process
 
+The three packages (`@ably/pubsub-core`, `@ably/pubsub-device`, `@ably/pubsub-server`) always release together on the same version — see [Per-side packages](#per-side-packages) below. `scripts/release.js` owns the lockstep mechanics: `npm run check:versions` verifies every version site agrees (CI runs this on every PR), `npm run release:bump` moves them all at once, and `npm run release:publish` publishes all three, in dependency order, resumably.
+
 1. Make sure the tests are passing in CI for the branch you're building
 2. Create a new branch for the release, for example `release/1.2.3`
 3. Update the CHANGELOG.md with any customer-affecting changes since the last release and add this to the git index
-4. Run `npm version <VERSION_NUMBER> --no-git-tag-version` with the new version and add the changes to the git index
-5. Update the version number to the new version in `src/platform/react-hooks/src/AblyReactHooks.ts`
-6. Create a PR for the release branch
-7. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
-8. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
-9. Run `npm publish .` (should require OTP) - publishes to NPM
-10. Run the GitHub action "Publish to CDN" with the new tag name
-11. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
-12. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
+4. Run `npm run release:bump <VERSION_NUMBER>` with the new version and add the changes to the git index (this moves every version site together: the root and workspace `package.json` files, the wrappers' exact `@ably/pubsub-core` peer pins, the react-hooks version constant, and the lockfile)
+5. Create a PR for the release branch
+6. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
+7. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
+8. Run `npm run release:publish` (should require OTP) - publishes `@ably/pubsub-core`, `@ably/pubsub-device` and `@ably/pubsub-server` to NPM in that order. It refuses to start unless every version site agrees and the build artifacts exist, dry-run packs everything first, and if it fails partway, re-running it publishes only the remainder (`npm run release:publish -- --dry-run` previews without publishing)
+9. Run the GitHub action "Publish to CDN" with the new tag name
+10. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
+11. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
+
+### Per-side packages
+
+`packages/device` and `packages/server` are thin wrappers over the core in `packages/core`, published as `@ably/pubsub-device` and `@ably/pubsub-server` alongside the core's own `@ably/pubsub-core`. They exist so that a client can declare which side of the connection it is on, which is what determines whether its traffic counts toward an account's monthly active users.
+
+`npm run build:packages` builds them. All three packages are npm workspaces of this repo, so `node_modules/@ably/pubsub-core` is a symlink to `packages/core` and their bundles resolve the core in the working tree rather than a published one — tests exercise a single copy of it, and `instanceof` holds across the boundary exactly as it does for a consumer who installed both.
 
 ## Building the library
 
 To build the library, simply run `npm run build`. Building the library currently requires NodeJS >= v16.
 
-Since webpack builds are slow, commands are also available to only build the output for specific platforms (eg `npm run build:node`), see [package.json](./package.json) for the full list of available commands
+Since webpack builds are slow, commands are also available to only build the output for specific platforms (eg `npm run build:node`), see [package.json](./package.json) for the full list of available commands. Build output for the core lands in `packages/core/build`, and for the wrapper packages in `packages/device/dist` and `packages/server/dist`.
 
 ## Coding conventions
 
@@ -50,7 +57,7 @@ Run the Mocha test suite
 
 You can pass any Mocha CLI arguments and flags to the test:node script after the `--` separator, for example running one test file:
 
-    npm run test:node -- test/realtime/auth.test.js
+    npm run test:node -- packages/core/test/realtime/auth.test.js
 
 Or run just one test
 
@@ -58,7 +65,7 @@ Or run just one test
 
 Or run test skipping the build
 
-    npm run test:node:skip-build -- test/rest/status.test.js --grep=test_name_here
+    npm run test:node:skip-build -- packages/core/test/rest/status.test.js --grep=test_name_here
 
 ### Tests alignment with the Ably features specification
 
@@ -119,7 +126,7 @@ Run the following command to launch tests with the debugger enabled. The tests w
 
 Alternatively you can also run the tests for single file
 
-    node --inspect-brk=9229 node_modules/.bin/mocha test/realtime/auth.test.js
+    node --inspect-brk=9229 node_modules/.bin/mocha packages/core/test/realtime/auth.test.js
 
 The included vscode launch config allows you to launch and attach the debugger in one step, simply open the test
 file you want to run and start debugging. Note that breakpoint setting for realtime code will be within the
@@ -173,17 +180,17 @@ helper.recordPrivateApi('replace.channel.send');
 channel.send = function () {};
 ```
 
-The current list of private API usage identifiers can be found in [`test/common/modules/private_api_recorder.js`](test/common/modules/private_api_recorder.js); add new ones there as necessary.
+The current list of private API usage identifiers can be found in [`packages/core/test/common/modules/private_api_recorder.js`](packages/core/test/common/modules/private_api_recorder.js); add new ones there as necessary.
 
 The following test files do not utilise private API annotations, and you don’t need to add them:
 
-- [`test/realtime/transports.test.js`](test/realtime/transports.test.js)
-- [`test/browser/simple.test.js`](test/browser/simple.test.js)
-- [`test/browser/http.test.js`](test/browser/http.test.js)
-- [`test/browser/connection.test.js`](test/browser/connection.test.js)
-- [`test/browser/modular.test.js`](test/browser/modular.test.js)
-- [`test/browser/push.test.js`](test/browser/push.test.js)
-- [`test/rest/bufferutils.test.js`](test/rest/bufferutils.test.js)
+- [`packages/core/test/realtime/transports.test.js`](packages/core/test/realtime/transports.test.js)
+- [`packages/core/test/browser/simple.test.js`](packages/core/test/browser/simple.test.js)
+- [`packages/core/test/browser/http.test.js`](packages/core/test/browser/http.test.js)
+- [`packages/core/test/browser/connection.test.js`](packages/core/test/browser/connection.test.js)
+- [`packages/core/test/browser/modular.test.js`](packages/core/test/browser/modular.test.js)
+- [`packages/core/test/browser/push.test.js`](packages/core/test/browser/push.test.js)
+- [`packages/core/test/rest/bufferutils.test.js`](packages/core/test/rest/bufferutils.test.js)
 
 ## React hooks
 
@@ -195,7 +202,7 @@ You can run the dev server from the terminal using:
 npm run start:react
 ```
 
-You'll need to provide an API key for the sample to work (or you'll just get a white page and some errors in the console). To do this, create the file `./src/platform/react-hooks/sample-app/.env` and add the following line:
+You'll need to provide an API key for the sample to work (or you'll just get a white page and some errors in the console). To do this, create the file `./packages/core/src/platform/react-hooks/sample-app/.env` and add the following line:
 
 ```.env
 VITE_ABLY_API_KEY=<your-api-key>

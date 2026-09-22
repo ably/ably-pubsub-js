@@ -1,0 +1,4 @@
+{
+  "module": "../dist/modular.mjs",
+  "types": "./index.d.ts"
+}

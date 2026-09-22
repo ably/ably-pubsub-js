@@ -1,5 +1,5 @@
 ![Ably Chat Header](/images/JavaScriptSDK-github.png)
-[![npm version](https://img.shields.io/npm/v/ably.svg?style=flat)](https://img.shields.io/npm/v/ably.svg?style=flat)
+[![npm version](https://img.shields.io/npm/v/@ably/pubsub-device.svg?style=flat)](https://www.npmjs.com/package/@ably/pubsub-device)
 [![License](https://badgen.net/github/license/ably/ably-pubsub-js)](https://github.com/ably/ably-pubsub-js/blob/main/LICENSE)
 
 ---
@@ -53,26 +53,40 @@ The following platforms are supported:
 
 ## Installation
 
-The JavaScript SDK is available as an [NPM module](https://www.npmjs.com/package/ably). To get started with your project, install the package:
+The SDK ships as two packages. Which one you install depends on **where your code runs**, not on which features you need — both give you the same API.
+
+| Your code runs on                                                                | Install                                                                    |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| An end user's device: a browser, React Native, Electron, a mobile or desktop app | [`@ably/pubsub-device`](https://www.npmjs.com/package/@ably/pubsub-device) |
+| Infrastructure you operate: a Node.js server, a container, a serverless function | [`@ably/pubsub-server`](https://www.npmjs.com/package/@ably/pubsub-server) |
 
 ```sh
-npm install ably
+npm install @ably/pubsub-device    # in an app that runs on your users' devices
+npm install @ably/pubsub-server    # in a backend service that you operate
 ```
 
-You can also source it directly in your HTML. (This url will point to the latest version of v2 of the SDK, the current major version, avoiding breaking changes per semver)
+Choosing between them tells Ably which side of the connection a client is on. That matters for more than tidiness: traffic declared as a device counts toward your account's monthly active users and is subject to the per-client-ID concurrency limit, while traffic declared as a server is exempt from both. Choose by who owns the runtime, never by which side is cheaper to declare — declaring the server side from a device claims an exemption it is not entitled to.
+
+The rest of this README uses `@ably/pubsub-device` in its examples. Every one of them works identically with `@ably/pubsub-server`; only the import changes.
+
+You can also source the SDK directly in your HTML. (This url will point to the latest version of v2 of the SDK, the current major version, avoiding breaking changes per semver.)
 
 ```html
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 ```
+
+> [!NOTE]
+> The CDN bundle is the shared core, and so declares no side. Clients created from it are classified by Ably's default rules. Install one of the packages above if you want to declare a side explicitly.
 
 ## Usage
 
 The following code connects to Ably's realtime messaging service, subscribes to a channel to receive messages, and publishes a test message to that same channel.
 
 ```javascript
-// Initialize Ably Realtime client
-// (for the REST client use new Ably.Rest({...}) instead)
-const realtimeClient = new Ably.Realtime({ key: 'your-ably-api-key', clientId: 'me' });
+import { createClient } from '@ably/pubsub-device';
+
+// Initialize an Ably Realtime client that declares the device side
+const realtimeClient = createClient({ key: 'your-ably-api-key', clientId: 'me' });
 
 // Wait for connection to be established
 await realtimeClient.connection.once('connected');
@@ -90,6 +104,14 @@ await channel.subscribe((message) => {
 await channel.publish('test-event', 'hello world');
 ```
 
+For a stateless REST client, construct `Rest` directly — `createClient` is realtime-only, and there is no HTTP-only factory:
+
+```javascript
+import { Rest } from '@ably/pubsub-device';
+
+const restClient = new Rest({ key: 'your-ably-api-key', clientId: 'me' });
+```
+
 ## Modular variant
 
 The Pub/Sub SDK has a modular (tree-shakable) variant to build with a small bundle sizes.
@@ -101,15 +123,16 @@ Aimed at those who are concerned about their app's bundle size, the modular vari
 
 The modular variant of the library provides:
 
-- A `BaseRealtime` class;
+- A `createClient` factory, which builds a `BaseRealtime` declaring the device side;
+- the `BaseRealtime` class itself, if you would rather construct it directly and declare no side;
 - various plugins that add functionality to a `BaseRealtime` instance, such as `Rest`, `RealtimePresence`, etc.
 
-To use this variant of the library, import the `BaseRealtime` class from `ably/modular`, along with the plugins that you wish to use. Then, pass these plugins to the `BaseRealtime` constructor as shown in the example below:
+To use this variant of the library, import `createClient` from `@ably/pubsub-device/modular`, along with the plugins that you wish to use. Then, pass these plugins in the client options as shown in the example below:
 
 ```javascript
-import { BaseRealtime, WebSocketTransport, FetchRequest, RealtimePresence } from 'ably/modular';
+import { createClient, WebSocketTransport, FetchRequest, RealtimePresence } from '@ably/pubsub-device/modular';
 
-const client = new BaseRealtime({
+const client = createClient({
   key: 'YOUR_ABLY_API_KEY', // Replace with a real key from the Ably dashboard
   plugins: {
     WebSocketTransport,
@@ -119,12 +142,14 @@ const client = new BaseRealtime({
 });
 ```
 
+The modular subpath is ESM only, so it cannot be `require`d. It declares the device side exactly as the root `createClient` does; unlike the root factory it takes only an options object, because a modular client is unusable without the plugins that `plugins` carries.
+
 You must provide:
 
 - At least one HTTP request implementation; that is, one of `FetchRequest` or `XHRRequest`;
 - At least one realtime transport implementation; that is, one of `WebSocketTransport` or `XHRPolling`.
 
-`BaseRealtime` offers the same API as the `Realtime` class described in the rest of this `README`. This means that you can develop an application using the default variant of the SDK and switch to the modular version when you wish to optimize your bundle size.
+The client `createClient` returns here is a `BaseRealtime`, which offers the same API as the `Realtime` class described in the rest of this `README`. This means that you can develop an application using the default variant of the SDK and switch to the modular version when you wish to optimize your bundle size.
 
 In order to further reduce bundle size, the modular variant of the SDK performs less logging than the default variant. It only logs:
 
@@ -188,12 +213,12 @@ To ensure compatibility, add the following to your `manifest.json`:
 
 ### "Connection limit exceeded" errors during development
 
-If you're hitting a "connection limit exceeded" error and see rising connection counts in your Ably dashboard, it's likely due to multiple `Ably.Realtime` instances being created during development.
+If you're hitting a "connection limit exceeded" error and see rising connection counts in your Ably dashboard, it's likely due to multiple realtime clients being created during development.
 
 <details>
 <summary>"Connection limit exceeded" support details.</summary>
 
-Even for `use client` components, Next.js may execute them on the server during pre-rendering. This can create unintended `Ably.Realtime` connections from Node.js that remain open until you restart the development server.
+Even for `use client` components, Next.js may execute them on the server during pre-rendering. This can create unintended realtime connections from Node.js that remain open until you restart the development server.
 
 To prevent server-side connections, create the Ably client inside a `useEffect` hook so it only runs in the browser:
 
@@ -201,14 +226,14 @@ To prevent server-side connections, create the Ably client inside a `useEffect` 
 'use client';
 
 import { useEffect, useState } from 'react';
-import * as Ably from 'ably';
-import { AblyProvider } from 'ably/react';
+import { createClient } from '@ably/pubsub-device';
+import { AblyProvider } from '@ably/pubsub-device/react';
 
 export default function AblyClientProvider({ children }) {
   const [client, setClient] = useState(null);
 
   useEffect(() => {
-    const ably = new Ably.Realtime({ authUrl: '/token', authMethod: 'POST', clientId: 'demo' });
+    const ably = createClient({ authUrl: '/token', authMethod: 'POST', clientId: 'demo' });
     setClient(ably);
     return () => {
       ably.close();
@@ -223,24 +248,24 @@ export default function AblyClientProvider({ children }) {
 
 Avoid creating the client inside [React](https://github.com/ably/ably-pubsub-js/blob/main/docs/react.md#Usage) component bodies, as this leads to a new connection on every render. Use the `useEffect` + `useState` pattern shown above, or move the client to a shared provider at the layout level.
 
-In development environments that use Hot Module Replacement (HMR), such as React, Vite, or Next.js, saving a file can recreate the Ably.Realtime client, while previous instances remain connected. Over time, this leads to a growing number of active connections with each code edit. To fix: Move the client to a separate file (e.g., `ably-client.js`) and import it. This ensures the client is recreated only when that file changes.
+In development environments that use Hot Module Replacement (HMR), such as React, Vite, or Next.js, saving a file can recreate the realtime client, while previous instances remain connected. Over time, this leads to a growing number of active connections with each code edit. To fix: Move the client to a separate file (e.g., `ably-client.js`) and import it. This ensures the client is recreated only when that file changes.
 
 </details>
 
 ### Next.js with App Router and Turbopack
 
-If you encounter a `Failed to compile Module not found` error or warnings related to `keyv` when using Ably Pub/Sub JavaScript SDK with [Next.js](https://nextjs.org/docs/app/api-reference/next-config-js/serverComponentsExternalPackages), add `ably` to the `serverComponentsExternalPackages` list in `next.config.js`.
+If you encounter a `Failed to compile Module not found` error or warnings related to `keyv` when using Ably Pub/Sub JavaScript SDK with [Next.js](https://nextjs.org/docs/app/api-reference/next-config-js/serverComponentsExternalPackages), add the SDK to the `serverComponentsExternalPackages` list in `next.config.js`.
 
 <details>
 <summary>Next.js with App Router and Turbopack support details.</summary>
 
-The following example adds `ably` to the `serverComponentsExternalPackages` list in `next.config.js`:
+The following example does so in `next.config.js`. List whichever package your Route Handlers and Server Components load — `@ably/pubsub-server` in a backend route, `@ably/pubsub-device` if a client component is being pre-rendered — together with the shared core they both load:
 
 ```javascript
 const nextConfig = {
   // ...
   experimental: {
-    serverComponentsExternalPackages: ['ably'],
+    serverComponentsExternalPackages: ['@ably/pubsub-server', '@ably/pubsub-core'],
   },
 };
 ```
@@ -269,13 +294,13 @@ Create the Ably client inside a `useEffect` hook to prevent it from connecting w
 'use client';
 
 import { useEffect, useState } from 'react';
-import * as Ably from 'ably';
+import { createClient } from '@ably/pubsub-device';
 
 export default function MyComponent() {
   const [client, setClient] = useState(null);
 
   useEffect(() => {
-    const ably = new Ably.Realtime({ authUrl: '/token', authMethod: 'POST', clientId: 'demo' });
+    const ably = createClient({ authUrl: '/token', authMethod: 'POST', clientId: 'demo' });
     setClient(ably);
     return () => {
       ably.close();
@@ -294,6 +319,6 @@ Avoid creating the client inside React component bodies, as this creates a new c
 
 #### Hot module replacement (HMR)
 
-To avoid duplicate client instances caused by hot reloads, move the new `Ably.Realtime()` call into a separate file, for example, `ably.js` and export the client from there. This ensures a single shared instance is reused during development.
+To avoid duplicate client instances caused by hot reloads, move the `createClient()` call into a separate file, for example, `ably.js` and export the client from there. This ensures a single shared instance is reused during development.
 
 </details>

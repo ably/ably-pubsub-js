@@ -2,15 +2,12 @@
   "compilerOptions": {
     "target": "ES2017",
     "module": "commonjs",
-    "lib": ["ES2017", "DOM", "DOM.Iterable", "webworker"],
+    "lib": ["ES2017", "DOM"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "importHelpers": true,
-    "baseUrl": "./src"
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*", "test/**/*", "scripts/**/*", "ably.d.ts", "modular.d.ts"],
-  "exclude": ["src/platform/react-hooks", "test/package"]
+  "include": ["scripts/**/*"]
 }

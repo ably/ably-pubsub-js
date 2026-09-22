@@ -1,3 +1,3 @@
 [submodule "spec/common/ably-common"]
-	path = test/common/ably-common
+	path = packages/core/test/common/ably-common
 	url = https://github.com/ably/ably-common.git

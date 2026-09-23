@@ -2,6 +2,20 @@
 
 This contains only the most important and/or user-facing changes; for a full changelog, see the commit history.
 
+## [2.29.0](https://github.com/ably/ably-pubsub-js/tree/2.29.0) (2026-09-23)
+
+[Full Changelog](https://github.com/ably/ably-pubsub-js/compare/2.28.0...2.29.0)
+
+### What's Changed
+
+- Add `PresenceMessage.memberKey`, the key that uniquely identifies a presence member by its `connectionId` and `clientId` [#2302](https://github.com/ably/ably-pubsub-js/pull/2302)
+- Respond to server `PING` protocol messages with a `PONG`, and request `heartbeats=bounce` in browsers, React Native and NativeScript. Liveness is now confirmed by the SDK itself rather than by the underlying WebSocket, which can keep answering ping frames while the app is suspended [#2307](https://github.com/ably/ably-pubsub-js/pull/2307)
+- Fix IPv6 hosts missing their square brackets in constructed URIs [#2300](https://github.com/ably/ably-pubsub-js/pull/2300)
+- Reject annotation publish and delete calls that are missing a `type` [#2299](https://github.com/ably/ably-pubsub-js/pull/2299)
+- LiveObjects: fail a pending `get()` sync wait when the channel enters `DETACHED`, `SUSPENDED` or `FAILED`, rather than waiting indefinitely [#2284](https://github.com/ably/ably-pubsub-js/pull/2284)
+- LiveObjects: suppress update events for no-op diffs, and skip the sync wait when resolving an empty synthetic list [#2288](https://github.com/ably/ably-pubsub-js/pull/2288)
+- LiveObjects: report error 92000 with HTTP status 400 rather than 500 [#2290](https://github.com/ably/ably-pubsub-js/pull/2290)
+
 ## [2.28.0](https://github.com/ably/ably-js/tree/2.28.0) (2026-08-21)
 
 [Full Changelog](https://github.com/ably/ably-js/compare/2.27.0...2.28.0)

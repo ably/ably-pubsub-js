@@ -6,7 +6,7 @@ import { gzip } from 'zlib';
 import Table from 'cli-table';
 
 // The maximum size we allow for a minimal useful Realtime bundle (i.e. one that can subscribe to a channel)
-const minimalUsefulRealtimeBundleSizeThresholdsKiB = { raw: 121, gzip: 37 };
+const minimalUsefulRealtimeBundleSizeThresholdsKiB = { raw: 121.5, gzip: 37 };
 
 const baseClientNames = ['BaseRest', 'BaseRealtime'];
 

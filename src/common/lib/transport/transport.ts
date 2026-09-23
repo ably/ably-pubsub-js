@@ -61,7 +61,7 @@ abstract class Transport extends EventEmitter {
     super(connectionManager.logger);
     if (forceJsonProtocol) {
       params.format = undefined;
-      params.heartbeats = true;
+      params.heartbeats = 'true';
     }
     this.connectionManager = connectionManager;
     this.auth = auth;
@@ -177,7 +177,7 @@ abstract class Transport extends EventEmitter {
         );
         break;
       case actions.PONG:
-        // for now we never send PINGs, so an inbound PONG is unsolicited; ignore
+        // we never send PINGs, so an inbound PONG is unsolicited; ignore
         break;
       case actions.ACTIVATE:
         // Ignored.

@@ -5,17 +5,22 @@
  * Source: uts/test/realtime/unit/connection/heartbeat_test.md
  *
  * ably-js Node.js uses WebSocket ping frames (RTN23b) since the `ws` library
- * exposes them. It sends `heartbeats=false` in the connection URL; the browser
- * and React Native platforms send `heartbeats=bounce` (RTN23c).
+ * exposes them. It sends `heartbeats=false` in the connection URL; the browser,
+ * React Native and NativeScript platforms send `heartbeats=bounce` (RTN23c).
  * The idle timer threshold is: maxIdleInterval + realtimeRequestTimeout.
  *
  * Both RTN23a (HEARTBEAT protocol messages) and RTN23b (ping frames)
  * are tested since the idle timer logic is the same — any activity resets it.
+ *
+ * Tests beyond the UTS spec (ably-js-specific):
+ * - RTN23c - transportParams.heartbeats overrides the bounce default
+ * - RTN23c1 - an unsolicited PONG is ignored
  */
 
 import { expect } from 'chai';
 import { MockWebSocket } from '../../../mock_websocket';
 import { MockHttpClient } from '../../../mock_http';
+import { actions } from '../../../../../src/common/lib/types/protocolmessagecommon';
 import {
   Ably,
   Platform,
@@ -42,14 +47,14 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
   // --- RTN23a: URL parameter ---
 
   /**
-   * RTN23b - heartbeats=true when ping frames not observable
+   * RTN23a - heartbeats=true when ping frames not observable
    *
    * When the platform cannot observe WebSocket ping frames and cannot have its
    * code suspended while the socket stays alive, the client sends
    * heartbeats=true to request HEARTBEAT protocol messages.
    */
   // UTS: realtime/unit/RTN23a/heartbeats-true-query-param-0
-  it('RTN23b - heartbeats=true in connection URL when ping frames not observable', function (done) {
+  it('RTN23a - heartbeats=true in connection URL when ping frames not observable', function (done) {
     const saved = Platform.Config.websocketHeartbeatsParam;
     Platform.Config.websocketHeartbeatsParam = 'true';
 
@@ -111,7 +116,7 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
    * RTC1f1 - a user-supplied transportParams.heartbeats wins over the
    * platform default, including over 'bounce'.
    */
-  // UTS: realtime/unit/RTN23c/heartbeats-bounce-user-override-0
+  // ably-js-specific: not in the UTS spec
   it('RTN23c - transportParams.heartbeats overrides the bounce default', function (done) {
     const saved = Platform.Config.websocketHeartbeatsParam;
     Platform.Config.websocketHeartbeatsParam = 'bounce';
@@ -900,16 +905,18 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
     expect(client.connection.state).to.equal('connected');
     client.close();
   });
+
   // --- RTN23c1/c2: PING/PONG ---
 
   /**
-   * RTN23c1/RTN23c2 - a PING with an id is answered with a PONG echoing it
+   * RTN23c1/RTN23c2 - a PING is answered with a PONG echoing its id
    *
-   * The PONG must go out on the transport the PING arrived on, and must not
-   * carry a msgSerial (it is not an acked message).
+   * A PING with an id gets a PONG with the same id; a PING without one gets a
+   * PONG without one. The PONG goes out on the transport the PING arrived on,
+   * carries nothing else, and has no msgSerial since it is not acked (RTN7b).
    */
-  // UTS: realtime/unit/RTN23c1/ping-answered-with-pong-0
-  it('RTN23c1 - PING with an id is answered with a PONG with the same id', async function () {
+  // UTS: realtime/unit/RTN23c1/ping-pong-echo-id-0
+  it('RTN23c1 - PING is answered with a PONG echoing its id', async function () {
     const fromClient: any[] = [];
 
     const mock = new MockWebSocket({
@@ -931,49 +938,27 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
     client.connect();
     await new Promise((resolve) => client.connection.once('connected', resolve));
 
-    mock.active_connection!.send_to_client({ action: 22, id: 'ping-id-1' });
+    mock.active_connection!.send_to_client({ action: actions.PING, id: 'ping-1' });
+    await flushAsync();
+    mock.active_connection!.send_to_client({ action: actions.PING });
     await flushAsync();
 
-    const pongs = fromClient.filter((m) => m.action === 23);
-    expect(pongs).to.have.lengthOf(1);
-    expect(pongs[0].id).to.equal('ping-id-1');
-    expect(pongs[0].msgSerial).to.be.undefined;
+    // The client sent nothing but the two PONGs (e.g. no HEARTBEAT)
+    expect(fromClient).to.have.lengthOf(2);
+    const [pongWithId, pongWithoutId] = fromClient;
 
-    client.close();
-  });
+    expect(pongWithId.action).to.equal(actions.PONG);
+    expect(pongWithId.id).to.equal('ping-1');
 
-  /**
-   * RTN23c2 - a PING with no id is answered with a PONG with no id
-   */
-  // UTS: realtime/unit/RTN23c2/ping-without-id-1
-  it('RTN23c2 - PING without an id is answered with a PONG without an id', async function () {
-    const fromClient: any[] = [];
+    expect(pongWithoutId.action).to.equal(actions.PONG);
+    expect(pongWithoutId).to.not.have.property('id');
 
-    const mock = new MockWebSocket({
-      onConnectionAttempt: (conn) => {
-        mock.active_connection = conn;
-        conn.respond_with_connected();
-      },
-      onMessageFromClient: (msg) => fromClient.push(msg),
-    });
-    installMockWebSocket(mock.constructorFn);
-
-    const client = new Ably.Realtime({
-      key: 'appId.keyId:keySecret',
-      autoConnect: false,
-      useBinaryProtocol: false,
-    });
-    trackClient(client);
-
-    client.connect();
-    await new Promise((resolve) => client.connection.once('connected', resolve));
-
-    mock.active_connection!.send_to_client({ action: 22 });
-    await flushAsync();
-
-    const pongs = fromClient.filter((m) => m.action === 23);
-    expect(pongs).to.have.lengthOf(1);
-    expect(pongs[0]).to.not.have.property('id');
+    for (const pong of fromClient) {
+      expect(pong.msgSerial).to.be.undefined;
+      expect(pong.channel).to.be.undefined;
+      expect(pong.messages).to.be.undefined;
+      expect(pong.presence).to.be.undefined;
+    }
 
     client.close();
   });
@@ -981,7 +966,7 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
   /**
    * RTN23c1 - the client answers a PING whatever heartbeats param it sent
    */
-  // UTS: realtime/unit/RTN23c1/ping-answered-regardless-of-param-2
+  // UTS: realtime/unit/RTN23c1/pong-regardless-of-heartbeats-param-1
   it('RTN23c1 - PING is answered even when heartbeats=false was sent', async function () {
     const fromClient: any[] = [];
 
@@ -1006,10 +991,10 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
     client.connect();
     await new Promise((resolve) => client.connection.once('connected', resolve));
 
-    mock.active_connection!.send_to_client({ action: 22, id: 'ping-id-2' });
+    mock.active_connection!.send_to_client({ action: actions.PING, id: 'ping-id-2' });
     await flushAsync();
 
-    expect(fromClient.filter((m) => m.action === 23).map((m) => m.id)).to.deep.equal(['ping-id-2']);
+    expect(fromClient.filter((m) => m.action === actions.PONG).map((m) => m.id)).to.deep.equal(['ping-id-2']);
 
     client.close();
   });
@@ -1017,8 +1002,8 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
   /**
    * RTN23a - a PING counts as activity and resets the idle timer
    */
-  // UTS: realtime/unit/RTN23c/ping-resets-idle-timer-3
-  it('RTN23c - PING resets the idle timer', async function () {
+  // UTS: realtime/unit/RTN23a/ping-resets-timer-6
+  it('RTN23a - PING resets the idle timer', async function () {
     let connectionAttemptCount = 0;
 
     const mock = new MockWebSocket({
@@ -1062,7 +1047,7 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
     await clock.tickAsync(2000);
     await pumpTimers(clock);
 
-    mock.active_connection!.send_to_client({ action: 22, id: 'ping-id-3' });
+    mock.active_connection!.send_to_client({ action: actions.PING, id: 'ping-id-3' });
     await pumpTimers(clock);
 
     // 2000ms since the PING, still within the threshold if it reset the timer
@@ -1083,7 +1068,7 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
   /**
    * RTN23c1 - an unsolicited PONG is ignored
    */
-  // UTS: realtime/unit/RTN23c1/unsolicited-pong-ignored-4
+  // ably-js-specific: not in the UTS spec
   it('RTN23c1 - an unsolicited PONG is ignored', async function () {
     const stateChanges: string[] = [];
 
@@ -1106,7 +1091,7 @@ describe('uts/realtime/unit/connection/heartbeat', function () {
     await new Promise((resolve) => client.connection.once('connected', resolve));
     client.connection.on((change: any) => stateChanges.push(change.current));
 
-    mock.active_connection!.send_to_client({ action: 23, id: 'stray-pong' });
+    mock.active_connection!.send_to_client({ action: actions.PONG, id: 'stray-pong' });
     await flushAsync();
     await flushAsync();
 

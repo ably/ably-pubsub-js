@@ -49,7 +49,7 @@ export class TransportParams {
   format?: Utils.Format;
   connectionKey?: string;
   stream?: any;
-  heartbeats?: boolean | string;
+  heartbeats?: 'true' | 'false' | 'bounce';
 
   constructor(options: NormalisedClientOptions, host: string | null, mode: string, connectionKey?: string) {
     this.options = options;

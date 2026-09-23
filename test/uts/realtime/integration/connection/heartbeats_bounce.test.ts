@@ -13,6 +13,9 @@
  * Skips itself against a server that does not implement bounce mode: such a
  * server falls back to HEARTBEATs, which this test would have nothing to say
  * about.
+ *
+ * This test is ably-js-specific: the UTS spec has no integration test for
+ * RTN23c.
  */
 
 import { expect } from 'chai';
@@ -25,6 +28,7 @@ import {
   trackClient,
   closeAndWait,
 } from '../sandbox';
+import { actions } from '../../../../../src/common/lib/types/protocolmessagecommon';
 
 /* Server-side minimum for the heartbeatInterval param; a lower value is
  * clamped up to it. */
@@ -42,7 +46,7 @@ describe('uts/realtime/integration/connection/heartbeats_bounce', function () {
     await teardownSandbox();
   });
 
-  // UTS: realtime/integration/RTN23c/pongs-keep-connection-alive-0
+  // ably-js-specific: not in the UTS spec
   it('RTN23c/RTN23c1/RTN23c2 - our PONGs keep a bounce-mode connection alive', async function () {
     const pingIds: (string | undefined)[] = [];
     const pongIds: (string | undefined)[] = [];
@@ -61,12 +65,12 @@ describe('uts/realtime/integration/connection/heartbeats_bounce', function () {
     connectionManager.on('transport.active', (transport: any) => {
       const onProtocolMessage = transport.onProtocolMessage.bind(transport);
       transport.onProtocolMessage = (message: any) => {
-        if (message.action === 22) pingIds.push(message.id);
+        if (message.action === actions.PING) pingIds.push(message.id);
         return onProtocolMessage(message);
       };
       const send = transport.send.bind(transport);
       transport.send = (message: any) => {
-        if (message.action === 23) pongIds.push(message.id);
+        if (message.action === actions.PONG) pongIds.push(message.id);
         return send(message);
       };
     });

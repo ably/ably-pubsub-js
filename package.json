@@ -1,7 +1,7 @@
 {
   "name": "ably",
   "description": "Realtime client library for Ably, the realtime messaging service",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/ably/ably-pubsub-js/issues",

@@ -61,7 +61,7 @@ abstract class Transport extends EventEmitter {
     super(connectionManager.logger);
     if (forceJsonProtocol) {
       params.format = undefined;
-      params.heartbeats = true;
+      params.heartbeats = 'true';
     }
     this.connectionManager = connectionManager;
     this.auth = auth;
@@ -168,6 +168,16 @@ abstract class Transport extends EventEmitter {
         break;
       case actions.SYNC:
         this.connectionManager.onChannelMessage(message, this);
+        break;
+      case actions.PING:
+        // RTN23c1 requires the PONG on the transport the PING arrived on, so
+        // send it here rather than via the connection
+        this.send(
+          protocolMessageFromValues(message.id ? { action: actions.PONG, id: message.id } : { action: actions.PONG }),
+        );
+        break;
+      case actions.PONG:
+        // we never send PINGs, so an inbound PONG is unsolicited; ignore
         break;
       case actions.ACTIVATE:
         // Ignored.

@@ -49,7 +49,9 @@ const Config: IPlatformConfig = {
   fetchSupported: !!globalObject.fetch,
   xhrSupported: globalObject.XMLHttpRequest && 'withCredentials' in new XMLHttpRequest(),
   allowComet: allowComet(),
-  useProtocolHeartbeats: true,
+  // A browser may freeze a background tab while its websocket goes on answering
+  // ping frames on its behalf, so ping frames alone can't show we're alive — RTN23c.
+  websocketHeartbeatsParam: 'bounce',
   supportsBinary: !!globalObject.TextDecoder,
   /* Per Paddy (https://ably-real-time.slack.com/archives/CURL4U2FP/p1705674537763479) web intentionally prefers JSON to MessagePack:
    *

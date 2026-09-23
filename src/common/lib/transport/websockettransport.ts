@@ -27,8 +27,7 @@ class WebSocketTransport extends Transport {
 
   constructor(connectionManager: ConnectionManager, auth: Auth, params: TransportParams) {
     super(connectionManager, auth, params);
-    /* If is a browser, can't detect pings, so request protocol heartbeats */
-    params.heartbeats = Platform.Config.useProtocolHeartbeats;
+    params.heartbeats = Platform.Config.websocketHeartbeatsParam;
     this.wsHost = params.host as string;
   }
 

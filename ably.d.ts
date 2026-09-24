@@ -667,7 +667,7 @@ export interface AuthOptions {
      * @param tokenRequestOrDetails - A valid `TokenRequest`, `TokenDetails` or Ably JWT to be used for authentication.
      */
     callback: (
-      error: ErrorInfo | string | null,
+      error: Error | string | null,
       tokenRequestOrDetails: TokenDetails | TokenRequest | string | null,
     ) => void,
   ): void;

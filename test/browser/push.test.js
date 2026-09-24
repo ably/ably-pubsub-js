@@ -13,7 +13,7 @@ define(['ably', 'shared_helper', 'chai', 'push'], function (Ably, Helper, chai, 
     activationState: 'ably.push.activationState',
   };
 
-  const messageChannel = new MessageChannel();
+  let messageChannel;
 
   /**
    * These tests don't work in CI for various reasons (below) but should work when running locally via `npm run test:webserver`, provided
@@ -31,6 +31,7 @@ define(['ably', 'shared_helper', 'chai', 'push'], function (Ably, Helper, chai, 
         helper.setupApp(function () {
           rest = helper.AblyRest({
             pushServiceWorkerUrl: swUrl,
+            clientId: 'browser_push_test_client_id',
             plugins: { Push: PushPlugin },
           });
           done();
@@ -41,6 +42,8 @@ define(['ably', 'shared_helper', 'chai', 'push'], function (Ably, Helper, chai, 
         Object.values(persistKeys).forEach((key) => {
           Ably.Realtime.Platform.Config.push.storage.remove(key);
         });
+
+        messageChannel = new MessageChannel();
 
         const worker = await navigator.serviceWorker.getRegistration(swUrl);
 
@@ -68,7 +71,7 @@ define(['ably', 'shared_helper', 'chai', 'push'], function (Ably, Helper, chai, 
         };
 
         const pushPayload = {
-          notification: { title: 'Test message', body: 'Test message body' },
+          notification: { title: 'Test message', body: 'direct_publish_device_id' },
           data: { foo: 'bar' },
         };
 
@@ -87,6 +90,97 @@ define(['ably', 'shared_helper', 'chai', 'push'], function (Ably, Helper, chai, 
         expect(receivedPushPayload.data).to.deep.equal(pushPayload.data);
         expect(receivedPushPayload.notification.title).to.equal(pushPayload.notification.title);
         expect(receivedPushPayload.notification.body).to.equal(pushPayload.notification.body);
+      });
+
+      it('direct_publish_client_id', async function () {
+        await rest.push.activate();
+
+        const pushRecipient = {
+          clientId: rest.auth.clientId,
+        };
+
+        const pushPayload = {
+          notification: { title: 'Test message', body: 'direct_publish_client_id' },
+          data: { foo: 'bar' },
+        };
+
+        const sw = await navigator.serviceWorker.getRegistration(swUrl);
+
+        sw.active.postMessage({ type: 'INIT_PORT' }, [messageChannel.port2]);
+
+        const receivedPushPayload = await new Promise((resolve, reject) => {
+          messageChannel.port1.onmessage = function (event) {
+            resolve(event.data.payload);
+          };
+
+          rest.push.admin.publish(pushRecipient, pushPayload).catch(reject);
+        });
+
+        expect(receivedPushPayload.data).to.deep.equal(pushPayload.data);
+        expect(receivedPushPayload.notification.title).to.equal(pushPayload.notification.title);
+        expect(receivedPushPayload.notification.body).to.equal(pushPayload.notification.body);
+      });
+
+      it('batch_publish', async function () {
+        await rest.push.activate();
+
+        const batchPayload = [
+          {
+            recipient: {
+              deviceId: rest.device().id,
+            },
+            payload: {
+              notification: { title: 'SingleRecipient', body: 'batch_publish_1' },
+            },
+          },
+          {
+            recipient: [
+              {
+                clientId: rest.auth.clientId,
+              },
+              {
+                deviceId: rest.device().id,
+              },
+            ],
+            payload: {
+              notification: { title: 'MultipleRecipients', body: 'batch_publish_2' },
+            },
+          },
+        ];
+
+        const sw = await navigator.serviceWorker.getRegistration(swUrl);
+
+        sw.active.postMessage({ type: 'INIT_PORT' }, [messageChannel.port2]);
+
+        const receivedPayloads = await new Promise((resolve, reject) => {
+          let receivedPayloads = [];
+          messageChannel.port1.onmessage = function (event) {
+            receivedPayloads.push(event.data.payload);
+            if (receivedPayloads.length === 3) {
+              resolve(receivedPayloads);
+            }
+          };
+
+          rest
+            .request('POST', '/push/batch/publish', 3, null, batchPayload)
+            .then((res) => {
+              if (!res.success) {
+                reject(new Error('Batch publish received error: ' + res.errorMessage));
+              }
+            })
+            .catch(reject);
+        });
+
+        expect(receivedPayloads.length).to.equal(3);
+        for (const receivedPushPayload of receivedPayloads) {
+          if (receivedPushPayload.notification.title === 'SingleRecipient') {
+            expect(receivedPushPayload.data).to.deep.equal(batchPayload[0].payload.data);
+          } else if (receivedPushPayload.notification.title === 'MultipleRecipients') {
+            expect(receivedPushPayload.data).to.deep.equal(batchPayload[1].payload.data);
+          } else {
+            expect.fail('Unexpected payload received');
+          }
+        }
       });
 
       /** @nospec */

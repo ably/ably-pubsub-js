@@ -38,18 +38,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### channel_publish: RTL6i3 / RSL1e - null fields included in wire JSON
-
-**Spec (RTL6i3/RSL1e)**: Null values should be omitted from wire JSON.
-
-**ably-js behavior**: Includes `"data": null` instead of omitting the key. Similarly for `name`.
-
-**Tests**: `RTL6i3 - null name/data fields handled correctly` (realtime), `RSL1e - null name omitted from body`, `RSL1e - null data omitted from body` (REST).
-
-**Issue**: [#2199](https://github.com/ably/ably-js/issues/2199)
-
----
-
 ### connection_ping: RTN13d - ping does not defer in non-connected states
 
 **Spec (RTN13d)**: Ping should be deferred until the connection reaches a resolvable state.

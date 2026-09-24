@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*", "ably.d.ts", "modular.d.ts"]
+}

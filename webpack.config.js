@@ -5,6 +5,12 @@ const banner = require('./src/fragments/license');
 // This is needed for baseUrl to resolve correctly from tsconfig
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
+// The published bundles are compiled from src alone. tsconfig.json also covers
+// test/, which reads fixtures from the ably-common git submodule, so type
+// checking against it fails anywhere the submodule is absent — an install of
+// this package straight from a git ref, where only the tracked tree is present.
+const buildTsconfig = path.resolve(__dirname, 'tsconfig.build.json');
+
 const baseConfig = {
   mode: 'production',
   entry: {
@@ -12,7 +18,7 @@ const baseConfig = {
   },
   resolve: {
     extensions: ['.js', '.ts'],
-    plugins: [new TsconfigPathsPlugin()],
+    plugins: [new TsconfigPathsPlugin({ configFile: buildTsconfig })],
   },
   output: {
     path: path.resolve(__dirname, 'build'),
@@ -23,7 +29,7 @@ const baseConfig = {
   module: {
     rules: [
       // all files with a `.ts` or `.tsx` extension will be handled by `ts-loader`
-      { test: /\.ts$/, loader: 'ts-loader' },
+      { test: /\.ts$/, loader: 'ts-loader', options: { configFile: buildTsconfig } },
     ],
   },
   target: ['web', 'es2017'],

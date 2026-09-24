@@ -4060,7 +4060,7 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
         {
           description: 'LiveMap.set throws on invalid input',
           action: async (ctx) => {
-            const { objectsHelper, channelName, entryInstance } = ctx;
+            const { objectsHelper, channelName, entryInstance, entryPathObject } = ctx;
 
             const mapCreatedPromise = waitForMapKeyUpdate(entryInstance, 'map');
             await objectsHelper.createAndSetOnMap(channelName, {
@@ -4086,6 +4086,12 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             await expectToThrowAsync(async () => map.set('key', null), 'Map value data type is unsupported');
             await expectToThrowAsync(async () => map.set('key', BigInt(1)), 'Map value data type is unsupported');
             await expectToThrowAsync(async () => map.set('key', Symbol()), 'Map value data type is unsupported');
+
+            // RTLMV4c1 - references to existing objects (Instance or PathObject) are not valid
+            // map values; only LiveMap.create()/LiveCounter.create() value types can assign objects
+            await expectToThrowAsync(async () => map.set('key', map), 'Map value data type is unsupported');
+            await expectToThrowAsync(async () => map.set('key', entryInstance), 'Map value data type is unsupported');
+            await expectToThrowAsync(async () => map.set('key', entryPathObject), 'Map value data type is unsupported');
           },
         },
 

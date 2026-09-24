@@ -174,20 +174,41 @@ class Channels extends EventEmitter {
   /* Connection interruptions (ie when the connection will no longer queue
    * events) imply connection state changes for any channel which is either
    * attached, pending, or will attempt to become attached in the future */
-  propogateConnectionInterruption(connectionState: string, reason: ErrorInfo) {
-    const connectionStateToChannelState: Record<string, API.ChannelState> = {
-      closing: 'detached',
-      closed: 'detached',
-      failed: 'failed',
-      suspended: 'suspended',
-    };
-    const fromChannelStates = ['attaching', 'attached', 'detaching', 'suspended'];
-    const toChannelState = connectionStateToChannelState[connectionState];
-
+  propagateConnectionInterruption(connectionState: string, reason: ErrorInfo) {
     for (const channelId in this.all) {
       const channel = this.all[channelId];
-      if (fromChannelStates.includes(channel.state)) {
-        channel.notifyState(toChannelState, reason);
+
+      let toChannelState: API.ChannelState | null = null;
+      let channelErrorReason: ErrorInfo | null = reason;
+
+      switch (connectionState) {
+        case 'failed':
+          if (['attaching', 'attached', 'detaching'].includes(channel.state)) {
+            // RTL3a, RTL3g
+            toChannelState = 'failed';
+          }
+          break;
+        case 'closed':
+          if (['attaching', 'attached', 'detaching'].includes(channel.state)) {
+            // RTL3b, RTL3h
+            toChannelState = 'detached';
+          }
+          break;
+        case 'suspended':
+          if (['attaching', 'attached'].includes(channel.state)) {
+            // RTL3c
+            toChannelState = 'suspended';
+          } else if (channel.state === 'detaching') {
+            // RTL3h
+            toChannelState = 'detached';
+            // Don't propagate the error
+            channelErrorReason = null;
+          }
+          break;
+      }
+
+      if (toChannelState !== null) {
+        channel.notifyState(toChannelState, channelErrorReason);
       }
     }
   }

@@ -768,7 +768,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
     });
 
     /**
-     * Check state change reason is propogated during a disconnect
+     * Check state change reason is propagated during a disconnect
      * (when connecting with a token that expires while connected)
      *
      * @spec RSA4b1

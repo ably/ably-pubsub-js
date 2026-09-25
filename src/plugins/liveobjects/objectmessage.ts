@@ -897,7 +897,7 @@ export class WireObjectMessage {
     let size = 0;
 
     // OM3a
-    size += this.clientId?.length ?? 0; // OM3f
+    size += this.clientId ? this._utils.dataSizeBytes(this.clientId) : 0; // OM3f (UTF-8 byte length)
     if (this.operation) {
       size += this._getObjectOperationSize(this.operation); // OM3b
     }
@@ -962,7 +962,7 @@ export class WireObjectMessage {
 
     // OMP4a
     Object.entries(map.entries ?? {}).forEach(([key, entry]) => {
-      size += key?.length ?? 0; // OMP4a1
+      size += key ? this._utils.dataSizeBytes(key) : 0; // OMP4a1 (UTF-8 byte length)
       if (entry) {
         size += this._getMapEntrySize(entry); // OMP4a2
       }
@@ -1000,7 +1000,7 @@ export class WireObjectMessage {
 
     // MCR3a
     Object.entries(mapCreate.entries ?? {}).forEach(([key, entry]) => {
-      size += key?.length ?? 0; // MCR3a1
+      size += key ? this._utils.dataSizeBytes(key) : 0; // MCR3a1 (UTF-8 byte length)
       if (entry) {
         size += this._getMapEntrySize(entry); // MCR3a2
       }
@@ -1013,7 +1013,7 @@ export class WireObjectMessage {
   private _getMapSetSize(mapSet: MapSet<WireObjectData>): number {
     let size = 0;
 
-    size += mapSet.key?.length ?? 0; // MST3c
+    size += mapSet.key ? this._utils.dataSizeBytes(mapSet.key) : 0; // MST3c (UTF-8 byte length)
     if (mapSet.value) {
       size += this._getObjectDataSize(mapSet.value); // MST3b
     }
@@ -1023,7 +1023,7 @@ export class WireObjectMessage {
 
   /** @spec MRM3 */
   private _getMapRemoveSize(mapRemove: MapRemove): number {
-    return mapRemove.key.length ?? 0; // MRM3a
+    return mapRemove.key ? this._utils.dataSizeBytes(mapRemove.key) : 0; // MRM3a (UTF-8 byte length)
   }
 
   /** @spec CCR3 */

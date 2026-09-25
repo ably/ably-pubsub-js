@@ -282,7 +282,10 @@ class Channels {
 
   /* Included to support certain niche use-cases; most users should ignore this.
    * Please do not use this unless you know what you're doing */
-  release(name: string) {
+  release(name: string): Promise<void> {
     delete this.all[String(name)];
+    /* A REST channel holds nothing to tear down, so the promise the Channels
+     * contract returns is already resolved here. */
+    return Promise.resolve();
   }
 }

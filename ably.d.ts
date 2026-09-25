@@ -3454,9 +3454,12 @@ export declare interface Channels<T> {
   /**
    * Releases all SDK-held references to a {@link Channel} or {@link RealtimeChannel} object, enabling it to be garbage collected. Warning: this method has no guardrails; using a channel reference after it has been released is undefined behaviour. It can be useful for applications that work with a continually changing set of channels on a single client and need to avoid unbounded memory growth; if this does not describe you, don't call it. Realtime channels not already in the `INITIALIZED`, `DETACHED`, or `FAILED` state are detached before release.
    *
+   * Await the returned promise before calling {@link get} for the same name again: until it resolves the channel is still in {@link all}, so `get()` returns the channel being released rather than a fresh one. Calling `get()` for a name whose release is still in flight keeps that channel, and the release leaves it in place. The promise resolves once the channel has been detached and dropped, and does not reject: a detach that fails is logged and the channel dropped regardless. For a REST channel there is nothing to detach and it is already resolved.
+   *
    * @param name - The channel name.
+   * @returns A promise which resolves once the channel has been released.
    */
-  release(name: string): void;
+  release(name: string): Promise<void>;
   /**
    * All of the channels that exist in this `Channels` object.
    *

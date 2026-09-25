@@ -96,15 +96,29 @@ class BaseRealtime extends BaseClient {
   }
 }
 
+/**
+ * A release that is waiting on a detach, so that concurrent releases of one
+ * name share a single detach and a `get()` during one can keep the channel.
+ */
+interface PendingRelease {
+  promise: Promise<void>;
+  /* Set when the channel is handed back out by get() before the detach has
+   * completed, so the release leaves it in `all` rather than removing a
+   * channel the caller is now holding. */
+  keep: boolean;
+}
+
 class Channels extends EventEmitter {
   realtime: BaseRealtime;
   // RSN2
   all: Record<string, RealtimeChannel>;
+  private _pendingReleases: Record<string, PendingRelease>;
 
   constructor(realtime: BaseRealtime) {
     super(realtime.logger);
     this.realtime = realtime;
     this.all = Object.create(null);
+    this._pendingReleases = Object.create(null);
     realtime.connection.connectionManager.on('transport.active', () => {
       this.onTransportActive();
     });
@@ -197,7 +211,19 @@ class Channels extends EventEmitter {
     let channel = this.all[name];
     if (!channel) {
       channel = this.all[name] = new RealtimeChannel(this.realtime, name, channelOptions);
-    } else if (channelOptions) {
+      return channel;
+    }
+
+    /* Handing an existing channel back out cancels the removal that a release()
+     * waiting on its detach would otherwise perform: dropping it from `all`
+     * would stop every message for the name reaching the channel the caller is
+     * now holding. */
+    const pendingRelease = this._pendingReleases[name];
+    if (pendingRelease) {
+      pendingRelease.keep = true;
+    }
+
+    if (channelOptions) {
       if (channel._shouldReattachToSetOptions(channelOptions, channel.channelOptions)) {
         throw new ErrorInfo({
           message:
@@ -224,31 +250,56 @@ class Channels extends EventEmitter {
 
   /* Included to support certain niche use-cases; most users should ignore this.
    * Please do not use this unless you know what you're doing */
-  release(name: string) {
+  release(name: string): Promise<void> {
     name = String(name);
     Logger.logAction(this.logger, Logger.LOG_MAJOR, 'Channels.release()', 'Releasing references to channel ' + name);
+
+    const pendingRelease = this._pendingReleases[name];
+    if (pendingRelease) {
+      /* A release after a get() during this detach re-arms the removal: the
+       * caller has asked for the channel to go a second time. */
+      pendingRelease.keep = false;
+      return pendingRelease.promise;
+    }
+
     const channel = this.all[name];
     if (!channel) {
-      return;
+      return Promise.resolve();
     }
-    const s = channel.state;
-    if (s === 'initialized' || s === 'detached' || s === 'failed') {
+    if (channel.getReleaseErr() === null) {
       delete this.all[name];
-      return;
+      return Promise.resolve();
     }
-    channel
-      .detach()
-      .catch((err) => {
-        Logger.logAction(
-          this.logger,
-          Logger.LOG_ERROR,
-          'Channels.release()',
-          'Error detaching channel ' + name + ' prior to release: ' + Utils.inspectError(err),
-        );
-      })
-      .then(() => {
-        delete this.all[name];
-      });
+
+    /* The channel stays in `all` until the detach has completed, since its
+     * DETACHED comes back over the connection and is routed by name. */
+    const entry: PendingRelease = { promise: Promise.resolve(), keep: false };
+    this._pendingReleases[name] = entry;
+    entry.promise = this._detachAndRemove(name, channel, entry);
+    return entry.promise;
+  }
+
+  /**
+   * Detach a channel and drop it from `all`, unless a get() has handed it back
+   * out in the meantime. Never rejects: a failed detach is logged and the
+   * channel dropped anyway, since a caller of release() has already said it
+   * wants no more to do with the channel.
+   */
+  private async _detachAndRemove(name: string, channel: RealtimeChannel, entry: PendingRelease): Promise<void> {
+    try {
+      await channel.detach();
+    } catch (err) {
+      Logger.logAction(
+        this.logger,
+        Logger.LOG_ERROR,
+        'Channels.release()',
+        'Error detaching channel ' + name + ' prior to release: ' + Utils.inspectError(err),
+      );
+    }
+    delete this._pendingReleases[name];
+    if (!entry.keep && this.all[name] === channel) {
+      delete this.all[name];
+    }
   }
 }
 

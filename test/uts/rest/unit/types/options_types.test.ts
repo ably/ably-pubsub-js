@@ -93,6 +93,36 @@ describe('uts/rest/unit/types/options_types', function () {
   });
 
   /**
+   * TO3 / RSC17 — unidentified clientId.
+   * Explicit `undefined` (the TypeScript-idiomatic omit) and `null` (the
+   * runtime-documented unidentified value) must both construct successfully.
+   *
+   * @specpartial TO3 - null and undefined clientId represent an unidentified client
+   * @specpartial RSC17
+   */
+  it('TO3 - clientId undefined is accepted as unidentified', function () {
+    installMockHttp(simpleMock());
+    const client = new Ably.Rest({
+      key: 'appId.keyId:keySecret',
+      clientId: undefined,
+    });
+    expect(client.auth.clientId).to.satisfy((v: unknown) => v === null || v === undefined);
+  });
+
+  /**
+   * @specpartial TO3 - null and undefined clientId represent an unidentified client
+   * @specpartial RSC17
+   */
+  it('TO3 - clientId null is accepted as unidentified', function () {
+    installMockHttp(simpleMock());
+    const client = new Ably.Rest({
+      key: 'appId.keyId:keySecret',
+      clientId: null,
+    });
+    expect(client.auth.clientId).to.satisfy((v: unknown) => v === null || v === undefined);
+  });
+
+  /**
    * TO3 - ClientOptions: key is parsed into keyName and keySecret
    */
   // UTS: rest/unit/TO3/client-options-attributes-0.1

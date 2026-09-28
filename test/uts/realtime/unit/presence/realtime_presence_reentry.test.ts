@@ -493,7 +493,6 @@ describe('uts/realtime/unit/presence/realtime_presence_reentry', function () {
    */
   // UTS: realtime/unit/RTP17e/failed-reentry-emits-update-error-0
   it('RTP17e - failed re-entry emits UPDATE with error', async function () {
-    if (!process.env.RUN_DEVIATIONS) this.skip(); // ably-js error message doesn't include clientId
     const channelName = `test-RTP17e-${Date.now()}`;
     let connectionCount = 0;
 

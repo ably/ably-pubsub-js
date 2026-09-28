@@ -28,16 +28,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### presence_reentry: RTP17e - re-entry error message missing clientId
-
-**Spec (RTP17e)**: Failed re-entry should emit UPDATE with error code 91004 and message indicating the failure and clientId.
-
-**ably-js behavior**: The error message is `'Presence auto re-enter failed'` without including the clientId.
-
-**Test**: `RTP17e - failed re-entry emits UPDATE with error` — asserts `message.includes('my-client')` per spec.
-
----
-
 ### channel_publish: RTL6i3 / RSL1e - null fields included in wire JSON
 
 **Spec (RTL6i3/RSL1e)**: Null values should be omitted from wire JSON.

@@ -477,7 +477,7 @@ class RealtimePresence extends EventEmitter {
       const id = entry.connectionId === connId ? entry.id : undefined;
       this._enterOrUpdateClient(id, entry.clientId, entry.data, 'enter').catch((err) => {
         const wrappedErr = new ErrorInfo({
-          message: 'Presence auto re-enter failed',
+          message: 'Presence auto re-enter failed for clientId "' + entry.clientId + '"',
           code: 91004,
           statusCode: 400,
           cause: err,

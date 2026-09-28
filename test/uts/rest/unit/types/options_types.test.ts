@@ -136,8 +136,6 @@ describe('uts/rest/unit/types/options_types', function () {
    */
   // UTS: rest/unit/AO2/auth-options-attributes-0.1
   it('AO2 - authMethod defaults to GET', function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     installMockHttp(simpleMock());
     const client = new Ably.Rest({
       authUrl: 'https://auth.example.com/token',

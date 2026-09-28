@@ -1074,8 +1074,8 @@ class Auth {
   }
 
   /* User-set: check types, '*' is disallowed, throw any errors */
-  _userSetClientId(clientId: string | undefined) {
-    if (!(typeof clientId === 'string' || clientId === null)) {
+  _userSetClientId(clientId: string | null | undefined) {
+    if (!(typeof clientId === 'string' || clientId === null || clientId === undefined)) {
       throw new ErrorInfo({
         message: 'clientId must be either a string or null',
         code: 40012,
@@ -1099,7 +1099,7 @@ class Auth {
   }
 
   /* Ably-set: no typechecking, '*' is allowed but not set on this.clientId), return errors to the caller */
-  _uncheckedSetClientId(clientId: string | undefined) {
+  _uncheckedSetClientId(clientId: string | null | undefined) {
     if (this._tokenClientIdMismatch(clientId)) {
       /* Should never happen in normal circumstances as realtime should
        * recognise mismatch and return an error */
@@ -1116,7 +1116,8 @@ class Auth {
     } else {
       /* RSA7a4: if options.clientId is provided and is not
        * null, it overrides defaultTokenParams.clientId */
-      this.clientId = this.tokenParams.clientId = clientId;
+      this.clientId = clientId;
+      this.tokenParams.clientId = clientId ?? undefined;
       return null;
     }
   }

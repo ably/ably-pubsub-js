@@ -91,7 +91,13 @@ class BaseClient {
     }
 
     if ('clientId' in normalOptions) {
-      if (!(typeof normalOptions.clientId === 'string' || normalOptions.clientId === null)) {
+      if (
+        !(
+          typeof normalOptions.clientId === 'string' ||
+          normalOptions.clientId === null ||
+          normalOptions.clientId === undefined
+        )
+      ) {
         throw new ErrorInfo({
           message: 'clientId must be either a string or null',
           code: 40012,

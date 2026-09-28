@@ -104,6 +104,12 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       expect(function () {
         var rest = helper.AblyRest({ clientId: false });
       }, 'Check can’t init library with a boolean clientId').to.throw;
+      expect(function () {
+        helper.AblyRest({ clientId: null });
+      }, 'Check can init library with a null clientId').to.not.throw;
+      expect(function () {
+        helper.AblyRest({ clientId: undefined });
+      }, 'Check can init library with an undefined clientId').to.not.throw;
     });
   });
 });

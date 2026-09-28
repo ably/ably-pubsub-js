@@ -995,6 +995,11 @@ class Auth {
         this._userSetClientId(authOptions.clientId);
       }
 
+      /* AO2: authMethod defaults to GET and is stored on the options object */
+      if (!('authMethod' in authOptions)) {
+        authOptions.authMethod = 'GET';
+      }
+
       this.authOptions = authOptions;
     }
   }

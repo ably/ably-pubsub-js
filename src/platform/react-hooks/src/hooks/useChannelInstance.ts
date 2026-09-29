@@ -4,7 +4,15 @@ import { AblyContext, ChannelContextProps } from '../AblyContext.js';
 export type ResolvedChannelContextProps = ChannelContextProps & { channelName: string };
 
 export function useChannelInstance(ablyId = 'default', channelName?: string): ResolvedChannelContextProps {
-  const { _channelNameToChannelContext, _nearestChannelName } = React.useContext(AblyContext)[ablyId];
+  const ablyContext = React.useContext(AblyContext)[ablyId];
+
+  if (!ablyContext) {
+    throw new Error(
+      'Could not find ably client in context. ' + 'Make sure your ably hooks are called inside an <AblyProvider>',
+    );
+  }
+
+  const { _channelNameToChannelContext, _nearestChannelName } = ablyContext;
 
   // When no channel name is provided, resolve to the channel named by the
   // closest enclosing `ChannelProvider`.

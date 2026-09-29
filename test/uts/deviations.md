@@ -18,16 +18,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### channel_detach: RTL5k - ATTACHED while detached does not send DETACH
-
-**Spec (RTL5k)**: If the channel receives an ATTACHED message while in the DETACHED state, it should send a new DETACH message.
-
-**ably-js behavior**: ably-js re-enters 'attached' state instead of sending DETACH when ATTACHED is received while detached.
-
-**Test**: `RTL5k - ATTACHED while detached sends DETACH` — asserts `detachMessageCount == 2` and `channel.state == 'detached'` per spec.
-
----
-
 ### presence_reentry: RTP17e - re-entry error message missing clientId
 
 **Spec (RTP17e)**: Failed re-entry should emit UPDATE with error code 91004 and message indicating the failure and clientId.

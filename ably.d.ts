@@ -372,7 +372,7 @@ export interface ChannelMetrics {
    */
   publishers: number;
   /**
-   * The number of realtime attachments receiving messages on the channel. This requires the `subscribe` capability and for a client to not have specified a {@link ChannelMode} flag that excludes {@link ChannelModes.SUBSCRIBE}.
+   * The number of realtime attachments receiving messages on the channel. This requires the `subscribe` capability and for a client to not have specified a {@link ChannelMode} flag that excludes {@link ChannelModes.MESSAGE_SUBSCRIBE}.
    */
   subscribers: number;
 }
@@ -888,6 +888,10 @@ declare namespace ChannelModes {
   /**
    * The client will receive messages.
    */
+  type MESSAGE_SUBSCRIBE = 'MESSAGE_SUBSCRIBE' | 'message_subscribe';
+  /**
+   * The client will receive messages. Synonymous with {@link ChannelModes.MESSAGE_SUBSCRIBE}, which should be preferred; retained for backwards compatibility.
+   */
   type SUBSCRIBE = 'SUBSCRIBE' | 'subscribe';
   /**
    * The client can enter the presence set.
@@ -922,6 +926,7 @@ declare namespace ChannelModes {
  */
 export type ChannelMode =
   | ChannelModes.PUBLISH
+  | ChannelModes.MESSAGE_SUBSCRIBE
   | ChannelModes.SUBSCRIBE
   | ChannelModes.PRESENCE
   | ChannelModes.PRESENCE_SUBSCRIBE
@@ -941,7 +946,7 @@ declare namespace ResolvedChannelModes {
   /**
    * The client will receive messages.
    */
-  type SUBSCRIBE = 'subscribe';
+  type MESSAGE_SUBSCRIBE = 'message_subscribe';
   /**
    * The client can enter the presence set.
    */
@@ -971,13 +976,13 @@ declare namespace ResolvedChannelModes {
 /**
  * Describes the configuration that a {@link RealtimeChannel} is using, as returned by {@link RealtimeChannel.modes}.
  *
- * This type is the same as the {@link ChannelMode} type but with all of the values lowercased.
+ * This type is the same as the {@link ChannelMode} type but with all of the values lowercased. A granted {@link ChannelModes.SUBSCRIBE} mode is reported as `message_subscribe`.
  *
  * **Note:** This type exists for reasons of backwards compatibility. In the next major release of this SDK, it will be merged with {@link ChannelMode}; see [this GitHub issue](https://github.com/ably/ably-js/issues/1954).
  */
 export type ResolvedChannelMode =
   | ResolvedChannelModes.PUBLISH
-  | ResolvedChannelModes.SUBSCRIBE
+  | ResolvedChannelModes.MESSAGE_SUBSCRIBE
   | ResolvedChannelModes.PRESENCE
   | ResolvedChannelModes.PRESENCE_SUBSCRIBE
   | ResolvedChannelModes.OBJECT_PUBLISH

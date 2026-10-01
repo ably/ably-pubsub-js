@@ -46,7 +46,7 @@ export const flags: { [key: string]: number } = {
   /* Channel mode flags */
   PRESENCE: 1 << 16,
   PUBLISH: 1 << 17,
-  SUBSCRIBE: 1 << 18,
+  MESSAGE_SUBSCRIBE: 1 << 18,
   PRESENCE_SUBSCRIBE: 1 << 19,
   ANNOTATION_PUBLISH: 1 << 21,
   ANNOTATION_SUBSCRIBE: 1 << 22,
@@ -56,10 +56,13 @@ export const flags: { [key: string]: number } = {
 
 export const flagNames = Object.keys(flags);
 
+// TR3s: retained for backwards compatibility; added after flagNames so it isn't logged twice
+flags.SUBSCRIBE = flags.MESSAGE_SUBSCRIBE;
+
 flags.MODE_ALL =
   flags.PRESENCE |
   flags.PUBLISH |
-  flags.SUBSCRIBE |
+  flags.MESSAGE_SUBSCRIBE |
   flags.PRESENCE_SUBSCRIBE |
   flags.ANNOTATION_PUBLISH |
   flags.ANNOTATION_SUBSCRIBE |
@@ -69,6 +72,7 @@ flags.MODE_ALL =
 export const channelModes = [
   'PRESENCE',
   'PUBLISH',
+  'MESSAGE_SUBSCRIBE',
   'SUBSCRIBE',
   'PRESENCE_SUBSCRIBE',
   'ANNOTATION_PUBLISH',
@@ -76,3 +80,5 @@ export const channelModes = [
   'OBJECT_SUBSCRIBE',
   'OBJECT_PUBLISH',
 ];
+
+export const resolvedChannelModes = channelModes.filter((mode) => mode !== 'SUBSCRIBE');

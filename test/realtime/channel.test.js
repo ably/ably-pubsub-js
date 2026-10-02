@@ -564,7 +564,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
                 helper.recordPrivateApi('read.channel.channelOptions');
                 expect(channel.channelOptions).to.deep.equal(channelOptions, 'Check requested channel options');
                 expect(channel.params).to.deep.equal(params, 'Check result params');
-                expect(channel.modes).to.deep.equal(['subscribe'], 'Check result modes');
+                expect(channel.modes).to.deep.equal(['message_subscribe'], 'Check result modes');
               } catch (err) {
                 helper.closeAndFinish(done, realtime, err);
                 return;
@@ -627,7 +627,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
               helper.recordPrivateApi('read.channel.channelOptions');
               expect(channel.channelOptions).to.deep.equal(channelOptions, 'Check requested channel options');
               expect(channel.params).to.deep.equal(params, 'Check result params');
-              expect(channel.modes).to.deep.equal(['subscribe'], 'Check result modes');
+              expect(channel.modes).to.deep.equal(['message_subscribe'], 'Check result modes');
 
               var testRealtime = helper.AblyRealtime();
               testRealtime.connection.on('connected', function () {
@@ -843,7 +843,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
                   helper.recordPrivateApi('read.channel.channelOptions');
                   expect(channel.channelOptions).to.deep.equal(channelOptions, 'Check requested channel options');
                   expect(channel.params).to.deep.equal(params, 'Check result params');
-                  expect(channel.modes).to.deep.equal(paramsModes, 'Check result modes');
+                  expect(channel.modes).to.deep.equal(['presence', 'message_subscribe'], 'Check result modes');
                 } catch (err) {
                   helper.closeAndFinish(done, realtime, err);
                   return;
@@ -949,7 +949,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
         try {
           var realtime = helper.AblyRealtime(realtimeOpts);
           realtime.connection.on('connected', function () {
-            var modes = ['publish', 'subscribe', 'presence_subscribe'];
+            var modes = ['publish', 'message_subscribe', 'presence_subscribe'];
             var channelOptions = {
               modes: modes,
               params: { delta: 'vcdiff' },
@@ -1003,7 +1003,7 @@ define(['ably', 'shared_helper', 'async', 'chai'], function (Ably, Helper, async
     it('attachWithInvalidChannelParams', function (done) {
       const helper = this.test.helper;
       var testName = 'attachWithInvalidChannelParams';
-      var defaultChannelModes = 'presence,publish,subscribe,presence_subscribe,annotation_publish';
+      var defaultChannelModes = 'presence,publish,message_subscribe,presence_subscribe,annotation_publish';
       try {
         var realtime = helper.AblyRealtime();
         realtime.connection.on('connected', function () {

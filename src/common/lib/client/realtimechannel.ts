@@ -47,7 +47,7 @@ function validateChannelOptions(options?: API.ChannelOptions) {
         message: 'options.modes must be an array',
         code: 40000,
         statusCode: 400,
-        remediation: 'Pass an array of ChannelMode strings, e.g. { modes: ["publish", "subscribe"] }.',
+        remediation: 'Pass an array of ChannelMode strings, e.g. { modes: ["publish", "message_subscribe"] }.',
       });
       return err;
     }
@@ -514,14 +514,14 @@ class RealtimeChannel extends EventEmitter {
 
     // Whether or not we attached on subscribe, if the channel ended up attached without the
     // subscribe mode the server will never deliver messages to this listener.
-    if (this.state === 'attached' && (this._mode & flags.SUBSCRIBE) === 0) {
+    if (this.state === 'attached' && (this._mode & flags.MESSAGE_SUBSCRIBE) === 0) {
       const err = new ErrorInfo({
         message:
-          'The channel was attached without the subscribe mode, so the server will not deliver messages to this listener.',
+          'The channel was attached without the message_subscribe mode, so the server will not deliver messages to this listener.',
         code: 90009,
         statusCode: 400,
         remediation:
-          'Include "subscribe" in the channel modes: realtime.channels.get(name, { modes: ["subscribe", ...] }), or call channel.setOptions({ modes: [...] }) on an existing channel to trigger a reattach. Alternatively, omit modes entirely and ensure your token/API-key capability permits subscribe on this channel. If you have the Ably CLI installed, `ably auth keys list` shows your key\'s capabilities.',
+          'Include "message_subscribe" in the channel modes: realtime.channels.get(name, { modes: ["message_subscribe", ...] }), or call channel.setOptions({ modes: [...] }) on an existing channel to trigger a reattach. Alternatively, omit modes entirely and ensure your token/API-key capability permits subscribe on this channel. If you have the Ably CLI installed, `ably auth keys list` shows your key\'s capabilities.',
       });
       if (this.client.options.strictMode === true) {
         // The listener stays registered despite the throw, matching subscribe()'s existing

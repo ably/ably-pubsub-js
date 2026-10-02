@@ -95,7 +95,6 @@ describe('uts/realtime/unit/client/realtime_client', function () {
    */
   // UTS: realtime/unit/RTC1a/echo-messages-option-0
   it('RTC1a - echoMessages default sends echo=true', async function () {
-    if (!process.env.RUN_DEVIATIONS) this.skip(); // ably-js omits echo param when true
     let echoParam: string | null = null;
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {

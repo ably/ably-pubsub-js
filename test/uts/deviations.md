@@ -8,16 +8,6 @@ Tests marked with `if (!process.env.RUN_DEVIATIONS) this.skip()` are skipped by 
 
 These tests assert spec behavior but are skipped by default because they are known to fail. Run with `RUN_DEVIATIONS=1` to execute them.
 
-### realtime_client: RTC1a - echoMessages default does not send echo=true
-
-**Spec (RTC1a)**: The `echoMessages` option (default true) should be sent as `echo=true` query parameter.
-
-**ably-js behavior**: ably-js only sends `echo=false` when `echoMessages` is explicitly false. When `echoMessages` is true (default), no `echo` parameter is sent — the server defaults to echoing.
-
-**Test**: `RTC1a - echoMessages default sends echo=true` — asserts `echo=true` per spec.
-
----
-
 ### channel_detach: RTL5k - ATTACHED while detached does not send DETACH
 
 **Spec (RTL5k)**: If the channel receives an ATTACHED message while in the DETACHED state, it should send a new DETACH message.

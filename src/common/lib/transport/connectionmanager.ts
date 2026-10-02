@@ -78,9 +78,7 @@ export class TransportParams {
     if (options.clientId !== undefined) {
       params.clientId = options.clientId;
     }
-    if (options.echoMessages === false) {
-      params.echo = 'false';
-    }
+    params.echo = options.echoMessages === false ? 'false' : 'true';
     if (this.format !== undefined) {
       params.format = this.format;
     }

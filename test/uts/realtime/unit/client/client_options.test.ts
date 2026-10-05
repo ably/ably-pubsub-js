@@ -110,4 +110,51 @@ describe('uts/realtime/unit/client/client_options', function () {
     expect(client.options.tls).to.equal(true);
     expect(client.options.idempotentRestPublishing).to.equal(true);
   });
+
+  /**
+   * TO3 / RSC17 — unidentified clientId.
+   * An explicit `undefined` is the TypeScript-idiomatic form of omitting clientId
+   * (`user.id ?? undefined`) and must not throw. `null` is the runtime-documented
+   * unidentified value and must also be accepted.
+   *
+   * @specpartial TO3 - null and undefined clientId represent an unidentified client
+   * @specpartial RSC17
+   */
+  it('TO3 - clientId undefined is accepted as unidentified', function () {
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      clientId: undefined,
+      autoConnect: false,
+    });
+    trackClient(client);
+    expect(client.auth.clientId).to.satisfy((v: unknown) => v === null || v === undefined);
+  });
+
+  /**
+   * @specpartial TO3 - null and undefined clientId represent an unidentified client
+   * @specpartial RSC17
+   */
+  it('TO3 - clientId null is accepted as unidentified', function () {
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      clientId: null,
+      autoConnect: false,
+    });
+    trackClient(client);
+    expect(client.auth.clientId).to.satisfy((v: unknown) => v === null || v === undefined);
+  });
+
+  /**
+   * @specpartial TO3 - non-string, non-null clientId is rejected
+   * @specpartial RSC17
+   */
+  it('TO3 - clientId boolean is rejected', function () {
+    try {
+      new Ably.Realtime({ key: 'appId.keyId:keySecret', clientId: false as any, autoConnect: false });
+      expect.fail('Expected constructor to throw');
+    } catch (e: any) {
+      expect(e.code).to.equal(40012);
+      expect(e.message).to.include('clientId must be either a string or null');
+    }
+  });
 });

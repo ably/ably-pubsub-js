@@ -700,7 +700,7 @@ describe('uts/realtime/unit/channels/channel_attach', function () {
   // UTS: realtime/unit/RTL4m/modes-from-attached-0
   it('RTL4m - modes populated from ATTACHED flags', async function () {
     const PUBLISH = 131072; // 1 << 17
-    const SUBSCRIBE = 262144; // 1 << 18
+    const MESSAGE_SUBSCRIBE = 262144; // 1 << 18
 
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {
@@ -713,7 +713,7 @@ describe('uts/realtime/unit/channels/channel_attach', function () {
           mock.active_connection!.send_to_client({
             action: 11, // ATTACHED
             channel: msg.channel,
-            flags: PUBLISH | SUBSCRIBE,
+            flags: PUBLISH | MESSAGE_SUBSCRIBE,
           });
         }
       },
@@ -738,7 +738,7 @@ describe('uts/realtime/unit/channels/channel_attach', function () {
     expect(channel.modes).to.not.be.undefined;
     const modes = channel.modes!.map((m: string) => m.toUpperCase());
     expect(modes).to.include('PUBLISH');
-    expect(modes).to.include('SUBSCRIBE');
+    expect(modes).to.include('MESSAGE_SUBSCRIBE');
   });
 
   /**

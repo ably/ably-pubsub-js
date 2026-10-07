@@ -9,7 +9,7 @@ import PresenceMessage, { WirePresenceMessage } from './presencemessage';
 import Annotation, { WireAnnotation } from './annotation';
 import RealtimeAnnotations from '../client/realtimeannotations';
 import RestAnnotations from '../client/restannotations';
-import { flags, flagNames, channelModes, ActionName } from './protocolmessagecommon';
+import { flags, flagNames, resolvedChannelModes, ActionName } from './protocolmessagecommon';
 import type { Properties } from '../util/utils';
 import type * as LiveObjectsPlugin from 'plugins/liveobjects';
 import { MessageEncoding } from './basemessage';
@@ -195,7 +195,7 @@ class ProtocolMessage {
 
   decodeModesFromFlags(): string[] | undefined {
     const modes: string[] = [];
-    channelModes.forEach((mode) => {
+    resolvedChannelModes.forEach((mode) => {
       if (this.hasFlag(mode)) {
         modes.push(mode);
       }

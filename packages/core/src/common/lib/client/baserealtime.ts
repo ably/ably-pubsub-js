@@ -231,24 +231,13 @@ class Channels extends EventEmitter {
     if (!channel) {
       return;
     }
-    const s = channel.state;
-    if (s === 'initialized' || s === 'detached' || s === 'failed') {
-      delete this.all[name];
-      return;
+    // RTS4e
+    const err = channel.getReleaseErr();
+    if (err) {
+      throw err;
     }
-    channel
-      .detach()
-      .catch((err) => {
-        Logger.logAction(
-          this.logger,
-          Logger.LOG_ERROR,
-          'Channels.release()',
-          'Error detaching channel ' + name + ' prior to release: ' + Utils.inspectError(err),
-        );
-      })
-      .then(() => {
-        delete this.all[name];
-      });
+    // RTS4d
+    delete this.all[name];
   }
 }
 

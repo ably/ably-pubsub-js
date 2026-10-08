@@ -231,11 +231,16 @@ class Channels extends EventEmitter {
     if (!channel) {
       return;
     }
-    const s = channel.state;
-    if (s === 'initialized' || s === 'detached' || s === 'failed') {
+    if (channel.getReleaseErr() === null) {
       delete this.all[name];
       return;
     }
+    // RTS4b
+    this.logger.deprecationWarning(
+      '`channels.release()` on a channel in the ' +
+        channel.state +
+        ' state is deprecated and will throw in the next major version; call detach() and wait for it to complete first.',
+    );
     channel
       .detach()
       .catch((err) => {

@@ -110,18 +110,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### options_types: AO2 - authMethod default not stored
-
-**Spec (AO2)**: `authMethod` should default to `'GET'` and be stored in auth options.
-
-**ably-js behavior**: Default `authMethod` is not stored.
-
-**Test**: `AO2 - authMethod defaults to GET`.
-
-**Issue**: [#2205](https://github.com/ably/ably-js/issues/2205)
-
----
-
 ### channels: RTL4c - errorReason not cleared on successful re-attach
 
 **Spec (RTL4c, proposed)**: When a confirmation ATTACHED is received, the channel's errorReason should be set to null.

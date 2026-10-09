@@ -115,8 +115,6 @@ describe('uts/rest/unit/channel/publish', function () {
    */
   // UTS: rest/unit/RSL1e/null-name-and-data-0.1
   it('RSL1e - null name omitted from body', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     const mock = new MockHttpClient({
       onConnectionAttempt: (conn) => conn.respond_with_success(),
@@ -146,8 +144,6 @@ describe('uts/rest/unit/channel/publish', function () {
    */
   // UTS: rest/unit/RSL1e/null-name-and-data-0.2
   it('RSL1e - null data omitted from body', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     const mock = new MockHttpClient({
       onConnectionAttempt: (conn) => conn.respond_with_success(),

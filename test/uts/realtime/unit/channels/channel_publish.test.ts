@@ -159,7 +159,6 @@ describe('uts/realtime/unit/channels/channel_publish', function () {
    */
   // UTS: realtime/unit/RTL6i3/null-fields-json-0
   it('RTL6i3 - null name/data fields handled correctly', async function () {
-    if (!process.env.RUN_DEVIATIONS) this.skip(); // ably-js includes null fields in wire JSON; see #2199
     const rawFrames: string[] = [];
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {

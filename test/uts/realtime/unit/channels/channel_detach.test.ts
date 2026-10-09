@@ -720,7 +720,6 @@ describe('uts/realtime/unit/channels/channel_detach', function () {
    */
   // UTS: realtime/unit/RTL5k/attached-while-detached-1
   it('RTL5k - ATTACHED while detached sends DETACH', async function () {
-    if (!process.env.RUN_DEVIATIONS) this.skip(); // ably-js doesn't send DETACH for unsolicited ATTACHED in detached state
     let detachMessageCount = 0;
 
     const mock = new MockWebSocket({

@@ -688,6 +688,11 @@ class RealtimeChannel extends EventEmitter {
         } else if (this.state === 'detaching') {
           /* RTL5i: re-send DETACH and remain in the 'detaching' state */
           this.checkPendingState();
+        } else if (this.state === 'detached') {
+          /* RTL5k: ATTACHED received while detached; send a new DETACH and remain in the 'detached' state */
+          if (this.connectionManager.state.sendEvents) {
+            this.detachImpl();
+          }
         } else {
           this.notifyState('attached', message.error, resumed, hasPresence, hasBacklog, hasObjects);
         }

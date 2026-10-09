@@ -1142,7 +1142,7 @@ class RealtimeChannel extends EventEmitter {
       message:
         'Can only release a channel in a state where there is no possibility of further updates from the server being received (initialized, detached, or failed). The current state is ' +
         s,
-      code: 90001,
+      code: 90011,
       statusCode: 400,
       remediation:
         'Call channel.detach() and wait for the channel to reach "detached" before calling channels.release(name).',

@@ -1,7 +1,7 @@
 /**
  * UTS: Channels Collection Tests
  *
- * Spec points: RTS1, RTS2, RTS3a, RTS4a
+ * Spec points: RTS1, RTS2, RTS3a, RTS4c, RTS4d, RTS4e
  * Source: uts/test/realtime/unit/channels/channels_collection.md
  *
  * Tests the RealtimeChannels collection: get, release, existence checks,
@@ -13,7 +13,7 @@
 
 import { expect } from 'chai';
 import { MockWebSocket } from '../../../mock_websocket';
-import { Ably, installMockWebSocket, restoreAll, trackClient, flushAsync } from '../../../helpers';
+import { Ably, installMockWebSocket, restoreAll, trackClient } from '../../../helpers';
 
 describe('uts/realtime/unit/channels/channels_collection', function () {
   afterEach(function () {
@@ -134,10 +134,10 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
   });
 
   /**
-   * RTS4a - Release removes channel from collection
+   * RTS4c - Release on non-existent channel is no-op
    */
-  // UTS: realtime/unit/RTS4a/release-detaches-attached-2
-  it('RTS4a - release removes channel', function () {
+  // UTS: realtime/unit/RTS4c/release-nonexistent-noop-0
+  it('RTS4c - release non-existent channel is no-op', function () {
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
       autoConnect: false,
@@ -145,41 +145,34 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
     });
     trackClient(client);
 
-    client.channels.get('test-RTS4a');
-    expect('test-RTS4a' in client.channels.all).to.be.true;
-
-    // Channel is in 'initialized' state, so release succeeds
-    client.channels.release('test-RTS4a');
-    expect('test-RTS4a' in client.channels.all).to.be.false;
-    client.close();
-  });
-
-  /**
-   * RTS4a - Release on non-existent channel is no-op
-   */
-  // UTS: realtime/unit/RTS4a/release-nonexistent-noop-1
-  it('RTS4a - release non-existent channel is no-op', function () {
-    const client = new Ably.Realtime({
-      key: 'appId.keyId:keySecret',
-      autoConnect: false,
-      useBinaryProtocol: false,
-    });
-    trackClient(client);
-
-    // Should not throw
     client.channels.release('does-not-exist');
     expect('does-not-exist' in client.channels.all).to.be.false;
     client.close();
   });
 
   /**
-   * RTS4a - Release detaches and removes attached channel
-   *
-   * Per spec: "Detaches the channel and then releases the channel resource
-   * i.e. it's deleted and can then be garbage collected"
+   * RTS4d - Release removes an initialized channel
    */
-  // UTS: realtime/unit/RTS4a/release-removes-channel-0
-  it('RTS4a - release detaches and removes attached channel', async function () {
+  // UTS: realtime/unit/RTS4d/release-removes-channel-0
+  it('RTS4d - release removes initialized channel', function () {
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    const channel = client.channels.get('test-RTS4d');
+    expect(channel.state).to.equal('initialized');
+    expect('test-RTS4d' in client.channels.all).to.be.true;
+
+    client.channels.release('test-RTS4d');
+    expect('test-RTS4d' in client.channels.all).to.be.false;
+    client.close();
+  });
+
+  function setupAttachDetachMock() {
+    const detachMessages: any[] = [];
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {
         mock.active_connection = conn;
@@ -195,6 +188,7 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
           });
         } else if (msg.action === 12) {
           // DETACH
+          detachMessages.push(msg);
           mock.active_connection!.send_to_client({
             action: 13,
             channel: msg.channel,
@@ -203,6 +197,15 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
       },
     });
     installMockWebSocket(mock.constructorFn);
+    return { detachMessages };
+  }
+
+  /**
+   * RTS4d - Release removes a channel once detached
+   */
+  // UTS: realtime/unit/RTS4d/release-after-detach-1
+  it('RTS4d - release removes channel once detached', async function () {
+    setupAttachDetachMock();
 
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
@@ -214,19 +217,51 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
     client.connect();
     await new Promise<void>((resolve) => client.connection.once('connected', resolve));
 
-    const channel = client.channels.get('test-RTS4a-attached');
+    const channel = client.channels.get('test-RTS4d-detached');
+    await channel.attach();
+    await channel.detach();
+    expect(channel.state).to.equal('detached');
+
+    client.channels.release('test-RTS4d-detached');
+    expect('test-RTS4d-detached' in client.channels.all).to.be.false;
+    client.close();
+  });
+
+  /**
+   * RTS4e - Release of an attached channel fails
+   */
+  // UTS: realtime/unit/RTS4e/release-attached-fails-0
+  it('RTS4e - release of attached channel fails', async function () {
+    const { detachMessages } = setupAttachDetachMock();
+
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    client.connect();
+    await new Promise<void>((resolve) => client.connection.once('connected', resolve));
+
+    const channel = client.channels.get('test-RTS4e-attached');
     await channel.attach();
     expect(channel.state).to.equal('attached');
 
-    client.channels.release('test-RTS4a-attached');
+    let error: any;
+    try {
+      client.channels.release('test-RTS4e-attached');
+    } catch (err) {
+      error = err;
+    }
 
-    // release() detaches asynchronously then removes via .then() after detach resolves
-    await new Promise<void>((resolve) => channel.once('detached', resolve));
-    // The delete happens in .then() after the detach promise resolves — yield to let it execute
-    await flushAsync();
-
-    // Channel should be removed from the collection
-    expect('test-RTS4a-attached' in client.channels.all).to.be.false;
+    expect(error).to.exist;
+    expect(error.code).to.equal(90011);
+    expect(error.statusCode).to.equal(400);
+    expect(channel.state).to.equal('attached');
+    expect('test-RTS4e-attached' in client.channels.all).to.be.true;
+    expect(client.channels.get('test-RTS4e-attached')).to.equal(channel);
+    expect(detachMessages).to.be.empty;
     client.close();
   });
 

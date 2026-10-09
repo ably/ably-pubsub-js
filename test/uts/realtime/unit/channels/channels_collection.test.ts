@@ -1,7 +1,7 @@
 /**
  * UTS: Channels Collection Tests
  *
- * Spec points: RTS1, RTS2, RTS3a, RTS4a
+ * Spec points: RTS1, RTS2, RTS3a, RTS4b, RTS4c, RTS4d
  * Source: uts/test/realtime/unit/channels/channels_collection.md
  *
  * Tests the RealtimeChannels collection: get, release, existence checks,
@@ -134,10 +134,10 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
   });
 
   /**
-   * RTS4a - Release removes channel from collection
+   * RTS4c - Release on non-existent channel is no-op
    */
-  // UTS: realtime/unit/RTS4a/release-detaches-attached-2
-  it('RTS4a - release removes channel', function () {
+  // UTS: realtime/unit/RTS4c/release-nonexistent-noop-0
+  it('RTS4c - release non-existent channel is no-op', function () {
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
       autoConnect: false,
@@ -145,41 +145,33 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
     });
     trackClient(client);
 
-    client.channels.get('test-RTS4a');
-    expect('test-RTS4a' in client.channels.all).to.be.true;
-
-    // Channel is in 'initialized' state, so release succeeds
-    client.channels.release('test-RTS4a');
-    expect('test-RTS4a' in client.channels.all).to.be.false;
-    client.close();
-  });
-
-  /**
-   * RTS4a - Release on non-existent channel is no-op
-   */
-  // UTS: realtime/unit/RTS4a/release-nonexistent-noop-1
-  it('RTS4a - release non-existent channel is no-op', function () {
-    const client = new Ably.Realtime({
-      key: 'appId.keyId:keySecret',
-      autoConnect: false,
-      useBinaryProtocol: false,
-    });
-    trackClient(client);
-
-    // Should not throw
     client.channels.release('does-not-exist');
     expect('does-not-exist' in client.channels.all).to.be.false;
     client.close();
   });
 
   /**
-   * RTS4a - Release detaches and removes attached channel
-   *
-   * Per spec: "Detaches the channel and then releases the channel resource
-   * i.e. it's deleted and can then be garbage collected"
+   * RTS4d - Release removes an initialized channel
    */
-  // UTS: realtime/unit/RTS4a/release-removes-channel-0
-  it('RTS4a - release detaches and removes attached channel', async function () {
+  // UTS: realtime/unit/RTS4d/release-removes-channel-0
+  it('RTS4d - release removes initialized channel', function () {
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+    });
+    trackClient(client);
+
+    const channel = client.channels.get('test-RTS4d');
+    expect(channel.state).to.equal('initialized');
+    expect('test-RTS4d' in client.channels.all).to.be.true;
+
+    client.channels.release('test-RTS4d');
+    expect('test-RTS4d' in client.channels.all).to.be.false;
+    client.close();
+  });
+
+  function setupAttachDetachMock() {
     const mock = new MockWebSocket({
       onConnectionAttempt: (conn) => {
         mock.active_connection = conn;
@@ -203,30 +195,81 @@ describe('uts/realtime/unit/channels/channels_collection', function () {
       },
     });
     installMockWebSocket(mock.constructorFn);
+    return mock;
+  }
 
+  /**
+   * RTS4d - Release removes a channel once detached
+   */
+  // UTS: realtime/unit/RTS4d/release-after-detach-1
+  it('RTS4d - release removes channel once detached', async function () {
+    setupAttachDetachMock();
+
+    const deprecationWarnings: string[] = [];
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
       autoConnect: false,
       useBinaryProtocol: false,
+      logHandler: (msg: string) => {
+        if (msg.includes('Deprecation warning')) deprecationWarnings.push(msg);
+      },
     });
     trackClient(client);
 
     client.connect();
     await new Promise<void>((resolve) => client.connection.once('connected', resolve));
 
-    const channel = client.channels.get('test-RTS4a-attached');
+    const channel = client.channels.get('test-RTS4d-detached');
+    await channel.attach();
+    await channel.detach();
+    expect(channel.state).to.equal('detached');
+
+    client.channels.release('test-RTS4d-detached');
+    expect('test-RTS4d-detached' in client.channels.all).to.be.false;
+    expect(deprecationWarnings).to.be.empty;
+    client.close();
+  });
+
+  /**
+   * RTS4b - Releasing an attached channel detaches and removes it, and logs a
+   * deprecation warning
+   *
+   * Not in the UTS: ably-js retains the pre-6.3.0 behaviour per RTS4b until its
+   * next major version, in place of RTS4e (which the UTS covers).
+   */
+  it('RTS4b - release detaches and removes attached channel, with deprecation warning', async function () {
+    setupAttachDetachMock();
+
+    const deprecationWarnings: string[] = [];
+    const client = new Ably.Realtime({
+      key: 'appId.keyId:keySecret',
+      autoConnect: false,
+      useBinaryProtocol: false,
+      logHandler: (msg: string) => {
+        if (msg.includes('Deprecation warning')) deprecationWarnings.push(msg);
+      },
+    });
+    trackClient(client);
+
+    client.connect();
+    await new Promise<void>((resolve) => client.connection.once('connected', resolve));
+
+    const channel = client.channels.get('test-RTS4b-attached');
     await channel.attach();
     expect(channel.state).to.equal('attached');
 
-    client.channels.release('test-RTS4a-attached');
+    client.channels.release('test-RTS4b-attached');
+
+    expect(deprecationWarnings).to.have.length(1);
+    expect(deprecationWarnings[0]).to.include('channels.release()');
+    expect(deprecationWarnings[0]).to.include('attached');
 
     // release() detaches asynchronously then removes via .then() after detach resolves
     await new Promise<void>((resolve) => channel.once('detached', resolve));
     // The delete happens in .then() after the detach promise resolves — yield to let it execute
     await flushAsync();
 
-    // Channel should be removed from the collection
-    expect('test-RTS4a-attached' in client.channels.all).to.be.false;
+    expect('test-RTS4b-attached' in client.channels.all).to.be.false;
     client.close();
   });
 

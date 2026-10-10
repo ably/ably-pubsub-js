@@ -143,6 +143,7 @@ class Auth {
   key?: string;
   basicKey?: string;
   clientId?: string | null;
+  private _userClientId?: string | null;
 
   constructor(client: BaseClient, options: ClientOptions) {
     this.client = client;
@@ -1068,9 +1069,17 @@ class Auth {
       multicaster?.rejectAll(caughtError);
       return promise;
     }
+    this._updateRestClientId(tokenResponse!);
     multicaster?.resolveAll((this.tokenDetails = tokenResponse!));
 
     return promise;
+  }
+
+  // REST has no CONNECTED message to establish the identity from token details.
+  _updateRestClientId(token: API.TokenDetails) {
+    if (!isRealtime(this.client) && this._userClientId === undefined) {
+      this.clientId = token.clientId;
+    }
   }
 
   /* User-set: check types, '*' is disallowed, throw any errors */
@@ -1095,6 +1104,7 @@ class Auth {
     } else {
       const err = this._uncheckedSetClientId(clientId);
       if (err) throw err;
+      this._userClientId = clientId;
     }
   }
 
@@ -1123,13 +1133,8 @@ class Auth {
   }
 
   _tokenClientIdMismatch(tokenClientId?: string | null): boolean {
-    return !!(
-      this.clientId &&
-      this.clientId !== '*' &&
-      tokenClientId &&
-      tokenClientId !== '*' &&
-      this.clientId !== tokenClientId
-    );
+    const clientId = isRealtime(this.client) ? this.clientId : this._userClientId;
+    return !!(clientId && clientId !== '*' && tokenClientId && tokenClientId !== '*' && clientId !== tokenClientId);
   }
 
   static isTokenErr(error: IPartialErrorInfo) {

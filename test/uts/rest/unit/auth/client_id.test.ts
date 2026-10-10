@@ -518,4 +518,21 @@ describe('uts/rest/unit/auth/client_id', function () {
       expect(caught?.message).to.match(/without client ID/);
     }
   });
+  /** RSA7b - authorize may accept TokenDetails without making a token request. */
+  it('RSA7b - authorize derives and replaces clientId from supplied TokenDetails', async function () {
+    const client = new Ably.Rest({ token: 'initial-token', logLevel: 0 });
+    expect(client.auth.clientId).to.equal(undefined);
+    for (const clientId of ['first-client', 'second-client', '*', undefined]) {
+      await client.auth.authorize(null, {
+        tokenDetails: {
+          token: 'supplied-token',
+          clientId,
+          capability: '{}',
+          issued: Date.now(),
+          expires: Date.now() + 3600000,
+        },
+      });
+      expect(client.auth.clientId).to.equal(clientId);
+    }
+  });
 });

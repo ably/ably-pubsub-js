@@ -1027,6 +1027,7 @@ class Auth {
           'Auth.getToken()',
           'using cached token; expires = ' + token.expires,
         );
+        this._updateRestClientId(token);
         return token;
       }
       /* expired, so remove and fallthrough to getting a new one */

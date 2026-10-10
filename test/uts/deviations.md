@@ -62,18 +62,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### client_id: RSA7b - auth.clientId not derived from TokenDetails (REST)
-
-**Spec (RSA7b)**: The clientId attribute of the Auth object should be derived from tokenDetails returned from auth requests.
-
-**ably-js behavior**: `auth.clientId` is only set from `ClientOptions.clientId`, not extracted from tokenDetails.
-
-**Tests**: `RSA7b - clientId from TokenDetails`, `RSA7b - clientId from authCallback TokenDetails`, `RSA7 - clientId updated after authorize()`, `RSA12 - Wildcard clientId`, `RSA7 - case 5: clientId inherited from token`.
-
-**Issue**: [#2192](https://github.com/ably/ably-js/issues/2192)
-
----
-
 ### annotations: RSAN1c4 / RSC22d - idempotent IDs not generated
 
 **Spec (RSAN1c4)**: Annotations with empty `id` should get a generated idempotent ID. **Spec (RSC22d)**: Same for batch publish.

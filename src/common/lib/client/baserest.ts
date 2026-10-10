@@ -20,5 +20,6 @@ export class BaseRest extends BaseClient {
    */
   constructor(options?: ClientOptions | string) {
     super(Defaults.objectifyOptions(options, false, 'BaseRest', Logger.defaultLogger, { Rest }));
+    if (this.auth.tokenDetails) this.auth._updateRestClientId(this.auth.tokenDetails);
   }
 }

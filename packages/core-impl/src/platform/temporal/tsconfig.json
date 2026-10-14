@@ -1,0 +1,28 @@
+{
+  // Type-checks the Temporal plugin and emits the declarations of its two entry points into
+  // @ably/pubsub-server, whose temporal/index.d.ts and temporal/workflow/index.d.ts re-export them.
+  // esbuild bundles the JavaScript (grunt/esbuild/build.js), so tsc emits declarations only.
+  //
+  // The core's root declarations are listed because the LiveObjects declarations add `object` to
+  // `HttpChannel` by augmenting `@ably/pubsub-core`, which takes effect only when that module is in
+  // the program, and the plugin imports only `@ably/pubsub-core/api` and `@ably/pubsub-core/liveobjects`.
+  "include": ["./src/**/*.ts", "../../../../core/index.d.ts"],
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "../../../../server/dist/temporal-types",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "@ably/pubsub-core": ["../../../../core"],
+      "@ably/pubsub-core/api": ["../../../../core/api.d.ts"],
+      "@ably/pubsub-core/liveobjects": ["../../../../core/liveobjects.d.ts"]
+    }
+  }
+}

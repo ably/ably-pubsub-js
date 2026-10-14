@@ -1,0 +1,5 @@
+{
+  "main": "../../dist/temporal-workflow.js",
+  "module": "../../dist/temporal-workflow.mjs",
+  "types": "./index.d.ts"
+}

@@ -1,0 +1,51 @@
+name: Test (Temporal plugin)
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test-temporal:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.x, 24.x]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+        with:
+          submodules: 'recursive'
+          persist-credentials: false
+      - name: Reconfigure git to use HTTP authentication
+        run: >
+          git config --global url."https://github.com/".insteadOf
+          ssh://git@github.com/
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@f1f314fca9dfce2769ece7d933488f076716723e # v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      # --ignore-scripts skips the root `prepare` script, which runs the full build, and the dependency
+      # install scripts. The test scripts below build only the packages (`npm run build:packages`). None of the
+      # dependency install scripts is needed on this path: @swc/core, esbuild and protobufjs only validate or
+      # warn, and the native binaries come from optional dependencies, which are still installed.
+      - run: npm ci --ignore-scripts
+      - name: Type-check the plugin and its tests
+        run: npm run typecheck:temporal
+      - name: Run unit tests
+        run: npm run test:temporal:unit
+        env:
+          CI: true
+      - name: Run workflow tests
+        run: npm run test:temporal:workflow
+        env:
+          CI: true
+      - name: Run integration tests
+        run: npm run test:temporal:integration
+        env:
+          CI: true

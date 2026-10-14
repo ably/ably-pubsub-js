@@ -39,6 +39,26 @@
         "types": "./liveobjects/index.d.mts",
         "default": "./dist/liveobjects.mjs"
       }
+    },
+    "./temporal": {
+      "require": {
+        "types": "./temporal/index.d.ts",
+        "default": "./dist/temporal.js"
+      },
+      "import": {
+        "types": "./temporal/index.d.mts",
+        "default": "./dist/temporal.mjs"
+      }
+    },
+    "./temporal/workflow": {
+      "require": {
+        "types": "./temporal/workflow/index.d.ts",
+        "default": "./dist/temporal-workflow.js"
+      },
+      "import": {
+        "types": "./temporal/workflow/index.d.mts",
+        "default": "./dist/temporal-workflow.mjs"
+      }
     }
   },
   "files": [
@@ -46,6 +66,7 @@
     "index.d.ts",
     "index.d.mts",
     "liveobjects/**",
+    "temporal/**",
     "README.md"
   ],
   "dependencies": {
@@ -53,6 +74,26 @@
     "dequal": "^2.0.3",
     "got": "^11.8.5",
     "ws": "^8.17.1"
+  },
+  "peerDependencies": {
+    "@temporalio/activity": "1.x",
+    "@temporalio/common": "1.x",
+    "@temporalio/plugin": "1.x",
+    "@temporalio/workflow": "1.x"
+  },
+  "peerDependenciesMeta": {
+    "@temporalio/activity": {
+      "optional": true
+    },
+    "@temporalio/common": {
+      "optional": true
+    },
+    "@temporalio/plugin": {
+      "optional": true
+    },
+    "@temporalio/workflow": {
+      "optional": true
+    }
   },
   "repository": {
     "type": "git",

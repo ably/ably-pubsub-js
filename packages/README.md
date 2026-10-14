@@ -77,8 +77,12 @@ Built by `grunt build:packages:cdn` into `dist/cdn/`, as UMD bundles. Unlike the
 
 Built by `grunt build:packages`, with esbuild. Every log is kept, and MessagePack is always included.
 
-| File                         | Export          | Condition          | Runtime                                      |
-| ---------------------------- | --------------- | ------------------ | -------------------------------------------- |
-| `dist/node.js`/`.mjs`        | `.`             | `node`             | Node.js                                      |
-| `dist/index.js`/`.mjs`       | `.`             | `require`/`import` | Any other runtime, on the web implementation |
-| `dist/liveobjects.js`/`.mjs` | `./liveobjects` | `require`/`import` | Every runtime                                |
+| File                               | Export                | Condition          | Runtime                                      |
+| ---------------------------------- | --------------------- | ------------------ | -------------------------------------------- |
+| `dist/node.js`/`.mjs`              | `.`                   | `node`             | Node.js                                      |
+| `dist/index.js`/`.mjs`             | `.`                   | `require`/`import` | Any other runtime, on the web implementation |
+| `dist/liveobjects.js`/`.mjs`       | `./liveobjects`       | `require`/`import` | Every runtime                                |
+| `dist/temporal.js`/`.mjs`          | `./temporal`          | `require`/`import` | Node.js, in a Temporal worker                |
+| `dist/temporal-workflow.js`/`.mjs` | `./temporal/workflow` | `require`/`import` | Temporal's workflow sandbox                  |
+
+The two Temporal bundles leave the `@temporalio/*` packages external, as optional peer dependencies, and contain nothing of the Pub/Sub implementation: the plugin's worker side imports `createHttpClient` from the package's root, and its workflow side runs each operation as an activity on the worker. Their declarations are emitted from the plugin's source by `tsc` into `dist/temporal-types/`, which `temporal/index.d.ts` and `temporal/workflow/index.d.ts` re-export.

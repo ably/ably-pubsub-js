@@ -45,17 +45,6 @@ export interface TemporalRestOptions {
    * @defaultValue `true`
    */
   idempotentPublishing?: boolean;
-  /**
-   * Whether Temporal retries the push admin calls that send a notification or create an APNs broadcast channel:
-   * `publish()`, `createApnsBroadcast()` and `liveActivity.start()`, `update()` and `end()`. Ably does not
-   * deduplicate these calls, so a retry sends the notification again.
-   *
-   * When `false`, these calls run with a single attempt, whatever the retry policy in `activityOptions` or
-   * `localActivityOptions`. When `true`, they use that retry policy.
-   *
-   * @defaultValue `false`
-   */
-  retryPushNotifications?: boolean;
 }
 
 /**
@@ -92,8 +81,7 @@ export class TemporalRest {
   private readonly invoker: ActivityInvoker;
 
   /**
-   * @param options - Options for the activities that run Ably operations, for idempotent publishing, and for
-   * retrying push notifications.
+   * @param options - Options for the activities that run Ably operations, and for idempotent publishing.
    * @throws `TypeError` if both `activityOptions` and `localActivityOptions` are set.
    */
   constructor(options: TemporalRestOptions = {}) {
@@ -106,7 +94,6 @@ export class TemporalRest {
       activityOptions: options.activityOptions,
       localActivityOptions: options.localActivityOptions,
       idempotentPublishing: options.idempotentPublishing ?? true,
-      retryPushNotifications: options.retryPushNotifications ?? false,
     });
     this.channels = new TemporalRestChannels(this.invoker);
     this.push = new TemporalRestPush(this.invoker);

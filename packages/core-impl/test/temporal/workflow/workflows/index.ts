@@ -326,12 +326,11 @@ export async function pushAdmin(): Promise<unknown> {
   };
 }
 
-export async function pushRetries(variant: 'default' | 'custom' | 'opt-in'): Promise<void> {
-  const retry = { maximumAttempts: 5 };
+export async function pushRetries(variant: 'default' | 'custom'): Promise<void> {
   const rest =
     variant === 'default'
       ? new TemporalRest()
-      : new TemporalRest({ activityOptions: { retry }, retryPushNotifications: variant === 'opt-in' });
+      : new TemporalRest({ activityOptions: { retry: { maximumAttempts: 5 } } });
   const admin = rest.push.admin;
   await admin.publish({ clientId: 'user-1' }, { notification: { title: 'Hello' } });
   await admin.createApnsBroadcast({ messageStoragePolicy: 0 });
@@ -343,10 +342,9 @@ export async function pushRetries(variant: 'default' | 'custom' | 'opt-in'): Pro
 }
 
 /** Publishes a push notification whose activity fails retryably, as a local activity. */
-export async function pushLocalFailure(retryPushNotifications: boolean): Promise<unknown> {
+export async function pushLocalFailure(): Promise<unknown> {
   const rest = new TemporalRest({
     localActivityOptions: { startToCloseTimeout: '5 seconds', retry: { maximumAttempts: 3, initialInterval: '10ms' } },
-    retryPushNotifications,
   });
   return captureError(() => rest.push.admin.publish({ clientId: 'retryable-failure' }, { notification: {} }));
 }

@@ -16,7 +16,7 @@
 // - that it deduplicates a retried `updateMessage` or `deleteMessage` by `idempotencyKey`, and a retried annotation by
 //   its ID;
 // - that it accepts the plugin's operation metadata;
-// - and that the push admin calls work from a workflow, with push notifications sent with a single attempt.
+// - and that the push admin calls work from a workflow, with the workflow's retry policy.
 //
 // Run `npm run build:node && npm run build:liveobjects && npm run build:temporal` first. Needs network access to the
 // Ably sandbox.
@@ -790,7 +790,7 @@ describe('temporal sandbox integration', function () {
       });
     });
 
-    it('publishes a push notification from a workflow with a single attempt', async function () {
+    it('publishes a push notification from a workflow with the retry policy', async function () {
       const channel = `pushenabled:temporal-${randomUUID()}`;
       const key = keyWithCapability({ '*': ['*'] });
       const realtime = Ably.createRealtimeClient({ key, endpoint: SANDBOX_ENDPOINT });
@@ -811,7 +811,7 @@ describe('temporal sandbox integration', function () {
         const { events } = await execute(TASK_QUEUE, 'sandboxPushPublish', recipient, payload);
 
         const [scheduled] = eventsOfType(events, EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED);
-        expect(scheduled.activityTaskScheduledEventAttributes!.retryPolicy?.maximumAttempts).to.equal(1);
+        expect(scheduled.activityTaskScheduledEventAttributes!.retryPolicy?.maximumAttempts).to.equal(3);
         await pollUntil(async () => (received.length > 0 ? received : null), { interval: 200, timeout: 15_000 });
         const data = typeof received[0].data === 'string' ? JSON.parse(received[0].data) : received[0].data;
         expect(data.data).to.deep.equal({ step: 'done' });

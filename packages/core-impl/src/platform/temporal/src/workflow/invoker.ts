@@ -6,7 +6,6 @@ import {
   type LocalActivityOptions,
 } from '@temporalio/workflow';
 import type { AblyActivities, ActivityName } from '../common/activities.js';
-import { ActivityNames } from '../common/activities.js';
 import { decodeFromWire, encodeForWire } from '../common/wire.js';
 
 /** The activity options applied beneath the caller's own options. */
@@ -14,19 +13,6 @@ export const DEFAULT_ACTIVITY_OPTIONS = { startToCloseTimeout: '30 seconds' } as
 
 /** The name of the random stream that message IDs and idempotency keys are drawn from. */
 const MESSAGE_ID_STREAM = 'ably.temporal.messageIds';
-
-/**
- * The activities that send a push notification or create an APNs broadcast channel. Ably does not deduplicate
- * them, so a retry sends the notification again, and they run with a single attempt unless the caller opts in to
- * retries with `TemporalRestOptions.retryPushNotifications`.
- */
-const SINGLE_ATTEMPT_ACTIVITIES: ReadonlySet<ActivityName> = new Set([
-  ActivityNames.pushPublish,
-  ActivityNames.pushCreateApnsBroadcast,
-  ActivityNames.pushLiveActivityStart,
-  ActivityNames.pushLiveActivityUpdate,
-  ActivityNames.pushLiveActivityEnd,
-]);
 
 /**
  * Returns the random stream that message IDs and idempotency keys are drawn from. Named random streams were added
@@ -50,7 +36,6 @@ export interface ActivityInvokerOptions {
   activityOptions?: ActivityOptions;
   localActivityOptions?: LocalActivityOptions;
   idempotentPublishing: boolean;
-  retryPushNotifications: boolean;
 }
 
 /**
@@ -68,9 +53,7 @@ export class ActivityInvoker {
    * @param summary - The summary shown for the activity in the Temporal UI, unless the caller set their own.
    */
   async invoke<N extends ActivityName>(name: N, summary: string, ...args: ActivityArgs<N>): Promise<ActivityResult<N>> {
-    const activity = this.proxy(summary, SINGLE_ATTEMPT_ACTIVITIES.has(name))[name] as unknown as (
-      ...args: unknown[]
-    ) => Promise<unknown>;
+    const activity = this.proxy(summary)[name] as unknown as (...args: unknown[]) => Promise<unknown>;
     const result = await activity(...args.map(encodeForWire));
     return decodeFromWire(result) as ActivityResult<N>;
   }
@@ -104,18 +87,11 @@ export class ActivityInvoker {
     return { ...options, idempotencyKey: messageIdStream().uuid4() } as unknown as T;
   }
 
-  private proxy(summary: string, singleAttempt: boolean) {
-    const { activityOptions, localActivityOptions, retryPushNotifications } = this.options;
-    const limitAttempts = singleAttempt && !retryPushNotifications;
+  private proxy(summary: string) {
+    const { activityOptions, localActivityOptions } = this.options;
     if (localActivityOptions) {
-      const options: LocalActivityOptions = { ...DEFAULT_ACTIVITY_OPTIONS, summary, ...localActivityOptions };
-      return proxyLocalActivities<AblyActivities>(limitAttempts ? withSingleAttempt(options) : options);
+      return proxyLocalActivities<AblyActivities>({ ...DEFAULT_ACTIVITY_OPTIONS, summary, ...localActivityOptions });
     }
-    const options: ActivityOptions = { ...DEFAULT_ACTIVITY_OPTIONS, summary, ...activityOptions };
-    return proxyActivities<AblyActivities>(limitAttempts ? withSingleAttempt(options) : options);
+    return proxyActivities<AblyActivities>({ ...DEFAULT_ACTIVITY_OPTIONS, summary, ...activityOptions });
   }
-}
-
-function withSingleAttempt<T extends ActivityOptions | LocalActivityOptions>(options: T): T {
-  return { ...options, retry: { ...options.retry, maximumAttempts: 1 } };
 }

@@ -239,12 +239,11 @@ const userIsOnline = members.items.length > 0;
 
 `TemporalRest` takes these options:
 
-| Option                   | Default                                                                  | Description                                                                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activityOptions`        | `startToCloseTimeout` of 30 seconds, and Temporal's default retry policy | The `ActivityOptions` for the Ably activities. They are applied on top of the defaults.                                                                                                     |
-| `localActivityOptions`   | Not set                                                                  | When set, Ably operations run as local activities with these `LocalActivityOptions`, applied on top of a default `startToCloseTimeout` of 30 seconds. Cannot be set with `activityOptions`. |
-| `idempotentPublishing`   | `true`                                                                   | Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried call. See [Retries and idempotency](#retries-and-idempotency).                  |
-| `retryPushNotifications` | `false`                                                                  | Whether Temporal retries the push admin calls that send a notification. When `false`, they run with a single attempt. See [Push notifications](#push-notifications).                        |
+| Option                 | Default                                                                  | Description                                                                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `activityOptions`      | `startToCloseTimeout` of 30 seconds, and Temporal's default retry policy | The `ActivityOptions` for the Ably activities. They are applied on top of the defaults.                                                                                                     |
+| `localActivityOptions` | Not set                                                                  | When set, Ably operations run as local activities with these `LocalActivityOptions`, applied on top of a default `startToCloseTimeout` of 30 seconds. Cannot be set with `activityOptions`. |
+| `idempotentPublishing` | `true`                                                                   | Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried call. See [Retries and idempotency](#retries-and-idempotency).                  |
 
 Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried publish within 2 minutes of the first attempt. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
 
@@ -377,18 +376,28 @@ If the activity for a create at a `path` fails with code 92007, read the path wi
 
 ### Push notifications
 
-Ably does not deduplicate push notifications, so a retried `push.admin.publish()` sends the notification again. The same applies to `createApnsBroadcast()`, which creates another broadcast channel, and to `liveActivity.start()`, `update()` and `end()`. These calls therefore run with a single attempt, whatever the retry policy in your options. If one fails with a timeout or a retryable error, the notification may or may not have been sent. To include an ID that the app can use to drop a duplicate, put it in the notification's `data`.
+Ably does not deduplicate the push admin calls that send a notification or create a broadcast channel. They use your retry policy, so if an attempt reached Ably before it failed, the retry repeats the call:
 
-To retry these calls with your retry policy instead, set `retryPushNotifications`:
+| Call                    | What a retry does                                                                                                                                                                                                                                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `publish()`             | Sends the notification again. To let the app drop a duplicate, include an ID in the notification's `data`.                                                                                                                                                                                                                                   |
+| `createApnsBroadcast()` | Creates another APNs broadcast channel. Ably has no call to list or delete the channel that the first attempt created, and Apple allows 10,000 per app in each environment.                                                                                                                                                                  |
+| `liveActivity.start()`  | Sends the push-to-start notification again, so each device shows a second Live Activity.                                                                                                                                                                                                                                                     |
+| `liveActivity.update()` | Sends the update again. If the workflow sets `aps.timestamp` in workflow code, for example to `Math.floor(Date.now() / 1000)`, and the payload has no `alert`, the device shows the same state after a repeated update. A payload with an `alert` alerts again, and a repeated update counts against Apple's budget for priority 10 updates. |
+
+To pass a failure to the workflow instead of retrying it, make these calls from a separate `TemporalRest` with a single attempt:
 
 ```typescript
 const pushAbly = new TemporalRest({
-  activityOptions: { retry: { maximumAttempts: 3 } },
-  retryPushNotifications: true,
+  activityOptions: { retry: { maximumAttempts: 1 } },
 });
 ```
 
-The other push admin calls use your retry policy. A device registration is saved by its device ID, and a channel subscription by its channel and device or client, so a retried save has the same effect as one attempt.
+Within an attempt, the worker's Ably client can still send the request again to a fallback host after a timeout, a connection error or a 500 to 504 response, so a single attempt can still repeat a call. If a call fails with a timeout or a retryable error, it may or may not have reached Ably.
+
+Keep `startToCloseTimeout` longer than a request can take, which is about 25 seconds across fallback hosts with the default client options, so that Temporal does not retry an attempt that is still in progress. The default of 30 seconds allows for this.
+
+`liveActivity.end()` is safe to retry, because Ably accepts a repeated end for a broadcast channel that it has already deleted. A device registration is saved by its device ID, and a channel subscription by its channel and device or client, so a retried save has the same effect as one attempt.
 
 ### Turning off idempotent publishing
 

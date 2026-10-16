@@ -628,38 +628,26 @@ describe('temporal/workflow proxy', function () {
       ]);
     }
 
-    it('runs the calls that send a notification with a single attempt, whatever the retry policy', async function () {
+    it('applies the retry policy to every push admin call', async function () {
       for (const variant of ['default', 'custom']) {
+        const retryPolicy = variant === 'default' ? 0 : 5;
         expect(await retryPolicies(variant), variant).to.deep.equal([
-          ['push.admin.publish', 1],
-          ['push.admin.createApnsBroadcast', 1],
-          ['push.admin.liveActivity.start', 1],
-          ['push.admin.liveActivity.update', 1],
-          ['push.admin.liveActivity.end', 1],
-          ['push.admin.deviceRegistrations.get', variant === 'default' ? 0 : 5],
-          ['push.admin.channelSubscriptions.removeWhere', variant === 'default' ? 0 : 5],
+          ['push.admin.publish', retryPolicy],
+          ['push.admin.createApnsBroadcast', retryPolicy],
+          ['push.admin.liveActivity.start', retryPolicy],
+          ['push.admin.liveActivity.update', retryPolicy],
+          ['push.admin.liveActivity.end', retryPolicy],
+          ['push.admin.deviceRegistrations.get', retryPolicy],
+          ['push.admin.channelSubscriptions.removeWhere', retryPolicy],
         ]);
       }
     });
 
-    it('applies the retry policy to every call when retryPushNotifications is set', async function () {
-      const policies = await retryPolicies('opt-in');
-      expect(policies).to.have.length(7);
-      for (const [summary, maximumAttempts] of policies) {
-        expect(maximumAttempts, summary).to.equal(5);
-      }
-    });
-
-    it('runs a local push notification activity with a single attempt unless retryPushNotifications is set', async function () {
+    it('retries a local push notification activity with the retry policy', async function () {
       // A failed local activity throws its cause in the workflow, rather than an ActivityFailure.
-      const failure = { isApplicationFailure: true, type: 'AblyError', message: 'Service unavailable' };
-      const once = await execute('pushLocalFailure', false);
-      expect(once.result).to.include(failure);
-      expect(callsFor(once.workflowId)).to.have.length(1);
-
-      const retried = await execute('pushLocalFailure', true);
-      expect(retried.result).to.include(failure);
-      expect(callsFor(retried.workflowId)).to.have.length(3);
+      const { result, workflowId } = await execute('pushLocalFailure');
+      expect(result).to.include({ isApplicationFailure: true, type: 'AblyError', message: 'Service unavailable' });
+      expect(callsFor(workflowId)).to.have.length(3);
     });
   });
 

@@ -22,10 +22,12 @@ export class TemporalRestPush {
  * Manages device registrations and channel subscriptions, and publishes push notifications, from workflow code. It
  * mirrors the Ably `PushAdmin`, and is obtained from `TemporalRest.push.admin`.
  *
- * Each method runs as a Temporal activity. Ably does not deduplicate the calls that send a notification or create an
- * APNs broadcast channel, so `publish()`, `createApnsBroadcast()` and the `liveActivity` methods run with a single
- * attempt unless `TemporalRestOptions.retryPushNotifications` is set. If one of them fails with a timeout or a
- * retryable error, the notification may or may not have been sent.
+ * Each method runs as a Temporal activity with the retry policy in `TemporalRestOptions`. Ably does not deduplicate
+ * the calls that send a notification or create an APNs broadcast channel, so a retry of `publish()`,
+ * `createApnsBroadcast()`, `liveActivity.start()` or `liveActivity.update()` repeats the call. To run them with a
+ * single attempt, call them from a separate `TemporalRest` whose retry policy sets `maximumAttempts` to 1. Within an
+ * attempt, the worker's Ably client can still send the request again to a fallback host after a timeout, a
+ * connection error or a 500 to 504 response.
  */
 export class TemporalRestPushAdmin {
   /** Registers, retrieves and removes the devices that receive push notifications. */
@@ -49,7 +51,8 @@ export class TemporalRestPushAdmin {
 
   /**
    * Sends a push notification directly to a device, or a group of devices sharing the same `clientId`. Runs as a
-   * Temporal activity with a single attempt, unless `TemporalRestOptions.retryPushNotifications` is set.
+   * Temporal activity. A retry sends the notification again, so include an ID in the payload's `data` if the app
+   * needs to drop a duplicate.
    *
    * @param recipient - The recipient details, using `clientId`, `deviceId` or the underlying notifications service.
    * @param payload - The push notification payload.
@@ -62,8 +65,8 @@ export class TemporalRestPushAdmin {
   }
 
   /**
-   * Creates an APNs broadcast channel for use with an iOS Live Activity. Runs as a Temporal activity with a single
-   * attempt, unless `TemporalRestOptions.retryPushNotifications` is set.
+   * Creates an APNs broadcast channel for use with an iOS Live Activity. Runs as a Temporal activity. A retry creates
+   * another broadcast channel, and Ably has no call to list or delete a channel that an earlier attempt created.
    *
    * @experimental This is a preview feature of Ably and may change in a future non-major release.
    *
@@ -93,8 +96,7 @@ const LIVE_ACTIVITY_REMEDIATION =
  * Controls the lifecycle of iOS Live Activities from workflow code. It mirrors the Ably `PushLiveActivity`, and is
  * obtained from `TemporalRest.push.admin.liveActivity`.
  *
- * Each method sends a notification, so it runs as a Temporal activity with a single attempt, unless
- * `TemporalRestOptions.retryPushNotifications` is set.
+ * Each method runs as a Temporal activity with the retry policy in `TemporalRestOptions`.
  *
  * @experimental This is a preview feature of Ably and may change in a future non-major release.
  */
@@ -103,7 +105,8 @@ export class TemporalRestPushLiveActivity {
   constructor(private readonly invoker: ActivityInvoker) {}
 
   /**
-   * Sends a push-to-start notification to the devices subscribed to the given channels, or to a single device.
+   * Sends a push-to-start notification to the devices subscribed to the given channels, or to a single device. A
+   * retry sends the notification again, and each device shows a second Live Activity.
    *
    * @param params - The recipient, the broadcast `id`, and an APNs Live Activity start payload.
    * @returns A promise which is fulfilled when Ably has accepted the notification.
@@ -122,7 +125,10 @@ export class TemporalRestPushLiveActivity {
   }
 
   /**
-   * Sends a `content-state` update to all devices with an active Live Activity on the broadcast channel.
+   * Sends a `content-state` update to all devices with an active Live Activity on the broadcast channel. Neither
+   * Ably nor APNs deduplicates the update, so a retry sends it again. If the workflow sets `aps.timestamp` in
+   * workflow code and the payload has no `alert`, the device shows the same state after a repeated update. A payload
+   * with an `alert` alerts again, and a repeated update counts against Apple's budget for priority 10 updates.
    *
    * @param params - The broadcast `id` and an APNs Live Activity update payload.
    * @returns A promise which is fulfilled when Ably has accepted the notification.
@@ -136,7 +142,8 @@ export class TemporalRestPushLiveActivity {
 
   /**
    * Ends the Live Activity on all subscribed devices and cleans up the APNs channel. After this call, the broadcast
-   * `id` is no longer valid.
+   * `id` is no longer valid. A retry is safe, because Ably accepts a repeated end for a broadcast channel that it has
+   * already deleted.
    *
    * @param params - The broadcast `id` and an APNs Live Activity end payload.
    * @returns A promise which is fulfilled when Ably has accepted the notification.

@@ -2,51 +2,51 @@ import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
 import { deviceIdArgument, requireObject } from './arguments.js';
 import type { ActivityInvoker } from './invoker.js';
-import { paginate, pageSummary, type TemporalPaginatedResult } from './paginated.js';
+import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './paginated.js';
 
 /**
  * Push notifications from workflow code. It mirrors the push functionality of the Ably HTTP client that does not
- * need a device, and is obtained from `TemporalRest.push`.
+ * need a device, and is obtained from `TemporalAblyRest.push`.
  */
-export class TemporalRestPush {
+export class TemporalAblyRestPush {
   /** Manages device registrations and channel subscriptions, and publishes push notifications. */
-  readonly admin: TemporalRestPushAdmin;
+  readonly admin: TemporalAblyRestPushAdmin;
 
   /** @internal */
   constructor(invoker: ActivityInvoker) {
-    this.admin = new TemporalRestPushAdmin(invoker);
+    this.admin = new TemporalAblyRestPushAdmin(invoker);
   }
 }
 
 /**
  * Manages device registrations and channel subscriptions, and publishes push notifications, from workflow code. It
- * mirrors the Ably `PushAdmin`, and is obtained from `TemporalRest.push.admin`.
+ * mirrors the Ably `PushAdmin`, and is obtained from `TemporalAblyRest.push.admin`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalRestOptions`. Ably does not deduplicate
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`. Ably does not deduplicate
  * the calls that send a notification or create an APNs broadcast channel, so a retry of `publish()`,
  * `createApnsBroadcast()`, `liveActivity.start()` or `liveActivity.update()` repeats the call. To run them with a
- * single attempt, call them from a separate `TemporalRest` whose retry policy sets `maximumAttempts` to 1. Within an
+ * single attempt, call them from a separate `TemporalAblyRest` whose retry policy sets `maximumAttempts` to 1. Within an
  * attempt, the worker's Ably client can still send the request again to a fallback host after a timeout, a
  * connection error or a 500 to 504 response.
  */
-export class TemporalRestPushAdmin {
+export class TemporalAblyRestPushAdmin {
   /** Registers, retrieves and removes the devices that receive push notifications. */
-  readonly deviceRegistrations: TemporalRestPushDeviceRegistrations;
+  readonly deviceRegistrations: TemporalAblyRestPushDeviceRegistrations;
   /** Subscribes devices and clients to push notifications on channels, and retrieves and removes subscriptions. */
-  readonly channelSubscriptions: TemporalRestPushChannelSubscriptions;
+  readonly channelSubscriptions: TemporalAblyRestPushChannelSubscriptions;
   /**
    * Controls the lifecycle of iOS Live Activities over an APNs broadcast channel created with
-   * {@link TemporalRestPushAdmin.createApnsBroadcast}.
+   * {@link TemporalAblyRestPushAdmin.createApnsBroadcast}.
    *
    * @experimental This is a preview feature of Ably and may change in a future non-major release.
    */
-  readonly liveActivity: TemporalRestPushLiveActivity;
+  readonly liveActivity: TemporalAblyRestPushLiveActivity;
 
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {
-    this.deviceRegistrations = new TemporalRestPushDeviceRegistrations(invoker);
-    this.channelSubscriptions = new TemporalRestPushChannelSubscriptions(invoker);
-    this.liveActivity = new TemporalRestPushLiveActivity(invoker);
+    this.deviceRegistrations = new TemporalAblyRestPushDeviceRegistrations(invoker);
+    this.channelSubscriptions = new TemporalAblyRestPushChannelSubscriptions(invoker);
+    this.liveActivity = new TemporalAblyRestPushLiveActivity(invoker);
   }
 
   /**
@@ -94,13 +94,13 @@ const LIVE_ACTIVITY_REMEDIATION =
 
 /**
  * Controls the lifecycle of iOS Live Activities from workflow code. It mirrors the Ably `PushLiveActivity`, and is
- * obtained from `TemporalRest.push.admin.liveActivity`.
+ * obtained from `TemporalAblyRest.push.admin.liveActivity`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalRestOptions`.
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`.
  *
  * @experimental This is a preview feature of Ably and may change in a future non-major release.
  */
-export class TemporalRestPushLiveActivity {
+export class TemporalAblyRestPushLiveActivity {
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
 
@@ -160,12 +160,12 @@ const PARAMS_REMEDIATION = 'Pass the filter parameters as an object, e.g. { clie
 
 /**
  * Registers, retrieves and removes push devices from workflow code. It mirrors the Ably `PushDeviceRegistrations`,
- * and is obtained from `TemporalRest.push.admin.deviceRegistrations`.
+ * and is obtained from `TemporalAblyRest.push.admin.deviceRegistrations`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalRestOptions`. A save is an upsert keyed
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`. A save is an upsert keyed
  * by the device ID, so a retried save has the same effect as one attempt.
  */
-export class TemporalRestPushDeviceRegistrations {
+export class TemporalAblyRestPushDeviceRegistrations {
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
 
@@ -205,7 +205,7 @@ export class TemporalRestPushDeviceRegistrations {
    * @param params - Restricts which devices are retrieved, such as by `clientId`.
    * @returns A promise which is fulfilled with the first page of devices.
    */
-  async list(params: Ably.DeviceRegistrationParams): Promise<TemporalPaginatedResult<Ably.DeviceDetails>> {
+  async list(params: Ably.DeviceRegistrationParams): Promise<TemporalAblyPaginatedResult<Ably.DeviceDetails>> {
     return paginate(
       (pageParams, relation) =>
         this.invoker.invoke(
@@ -250,12 +250,12 @@ const SUBSCRIPTION_REMEDIATION =
 
 /**
  * Subscribes devices and clients to push notifications on channels from workflow code. It mirrors the Ably
- * `PushChannelSubscriptions`, and is obtained from `TemporalRest.push.admin.channelSubscriptions`.
+ * `PushChannelSubscriptions`, and is obtained from `TemporalAblyRest.push.admin.channelSubscriptions`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalRestOptions`. A subscription is keyed by
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`. A subscription is keyed by
  * its channel and its device or client, so a retried save has the same effect as one attempt.
  */
-export class TemporalRestPushChannelSubscriptions {
+export class TemporalAblyRestPushChannelSubscriptions {
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
 
@@ -280,7 +280,7 @@ export class TemporalRestPushChannelSubscriptions {
    */
   async list(
     params: Ably.PushChannelSubscriptionParams,
-  ): Promise<TemporalPaginatedResult<Ably.PushChannelSubscription>> {
+  ): Promise<TemporalAblyPaginatedResult<Ably.PushChannelSubscription>> {
     return paginate(
       (pageParams, relation) =>
         this.invoker.invoke(
@@ -298,7 +298,7 @@ export class TemporalRestPushChannelSubscriptions {
    * @param params - Restrictions on the channels retrieved, such as a `limit`.
    * @returns A promise which is fulfilled with the first page of channel names.
    */
-  async listChannels(params: Ably.PushChannelsParams): Promise<TemporalPaginatedResult<string>> {
+  async listChannels(params: Ably.PushChannelsParams): Promise<TemporalAblyPaginatedResult<string>> {
     return paginate(
       (pageParams, relation) =>
         this.invoker.invoke(

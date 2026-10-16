@@ -2,24 +2,24 @@ import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
 import { requireObject, serialArgument } from './arguments.js';
 import type { ActivityInvoker } from './invoker.js';
-import { paginate, pageSummary, type TemporalPaginatedResult } from './paginated.js';
+import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './paginated.js';
 
 const ANNOTATION_REMEDIATION =
   'Pass an Annotation-shaped object as the second argument, e.g. { type: "reaction:unique.v1", name: "👍" }.';
 
 /**
  * Publishes and retrieves annotations on the messages of a channel from workflow code. It mirrors the Ably
- * `HttpAnnotations`, and is obtained from `TemporalRestChannel.annotations`.
+ * `HttpAnnotations`, and is obtained from `TemporalAblyRestChannel.annotations`.
  *
  * Each method runs as a Temporal activity. Message annotations must be enabled for the channel's namespace by a
  * rule, or the activity fails.
  *
- * When idempotent publishing is enabled (see `TemporalRestOptions.idempotentPublishing`), an annotation published
+ * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`), an annotation published
  * or deleted without an `id` is sent with an ID of the form `<base>:0`. The workflow derives the base
  * deterministically, so every attempt of the activity sends the same ID, and Ably deduplicates a retry that arrives
  * within its deduplication window. The object passed in is not modified.
  */
-export class TemporalRestAnnotations {
+export class TemporalAblyRestAnnotations {
   /** @internal */
   constructor(
     private readonly invoker: ActivityInvoker,
@@ -72,7 +72,7 @@ export class TemporalRestAnnotations {
   async get(
     messageOrSerial: Ably.Message | string,
     params: Ably.GetAnnotationsParams | null,
-  ): Promise<TemporalPaginatedResult<Ably.Annotation>> {
+  ): Promise<TemporalAblyPaginatedResult<Ably.Annotation>> {
     const serial = serialArgument('annotations.get', messageOrSerial);
     return paginate(
       (pageParams, relation) =>

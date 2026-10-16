@@ -13,12 +13,12 @@ import type { ActivityInvoker } from './invoker.js';
 
 /**
  * Reads and modifies the objects on a channel from workflow code. It mirrors the Ably `HttpObject`, and is obtained
- * from `TemporalRestChannel.object`.
+ * from `TemporalAblyRestChannel.object`.
  *
  * Each method runs as a Temporal activity, which fails unless the worker's Ably client has the LiveObjects plugin.
  * Binary values in results are returned as `Uint8Array`.
  */
-export class TemporalRestObject {
+export class TemporalAblyRestObject {
   /** @internal */
   constructor(
     private readonly invoker: ActivityInvoker,
@@ -60,7 +60,7 @@ export class TemporalRestObject {
    * Publishes one or more operations to modify objects on the channel. An array of operations is published as an
    * atomic batch. Runs as a Temporal activity.
    *
-   * Unless idempotent publishing is disabled with `TemporalRestOptions.idempotentPublishing`, and provided that no
+   * Unless idempotent publishing is disabled with `TemporalAblyRestOptions.idempotentPublishing`, and provided that no
    * operation already has an `id`, each operation is assigned an ID that is the same on every attempt of the
    * activity and every replay of the workflow. Ably uses these IDs to discard an operation that a retried activity
    * publishes again, for up to 2 minutes after the first attempt.

@@ -5,11 +5,11 @@ import { ablyFailure } from './failure.js';
  * A page of results from a paginated Ably REST query made from workflow code, such as channel history or
  * presence. It mirrors the Ably `PaginatedResult`.
  *
- * Fetching a related page with {@link TemporalPaginatedResult.next | next()}, {@link TemporalPaginatedResult.first
- * | first()} or {@link TemporalPaginatedResult.current | current()} runs the query's activity again with the
+ * Fetching a related page with {@link TemporalAblyPaginatedResult.next | next()}, {@link TemporalAblyPaginatedResult.first
+ * | first()} or {@link TemporalAblyPaginatedResult.current | current()} runs the query's activity again with the
  * parameters from that page's link.
  */
-export interface TemporalPaginatedResult<T> {
+export interface TemporalAblyPaginatedResult<T> {
   /** The items in this page of results. */
   readonly items: T[];
   /**
@@ -18,24 +18,24 @@ export interface TemporalPaginatedResult<T> {
    * @returns A promise which is fulfilled with the first page of results. It is rejected with an
    * `ApplicationFailure` of type `AblyError` if this page has no link to the first page.
    */
-  first(): Promise<TemporalPaginatedResult<T>>;
+  first(): Promise<TemporalAblyPaginatedResult<T>>;
   /**
    * Fetches the next page of results. Runs as a Temporal activity when there is a next page.
    *
    * @returns A promise which is fulfilled with the next page of results, or with `null` if this is the last page.
    */
-  next(): Promise<TemporalPaginatedResult<T> | null>;
+  next(): Promise<TemporalAblyPaginatedResult<T> | null>;
   /**
    * Fetches the current page of results again. Runs as a Temporal activity.
    *
    * @returns A promise which is fulfilled with the current page of results. It is rejected with an
    * `ApplicationFailure` of type `AblyError` if this page has no link to the current page.
    */
-  current(): Promise<TemporalPaginatedResult<T>>;
+  current(): Promise<TemporalAblyPaginatedResult<T>>;
   /**
    * Returns whether there are more pages of results after this one.
    *
-   * @returns `true` if {@link TemporalPaginatedResult.next | next()} returns another page, otherwise `false`.
+   * @returns `true` if {@link TemporalAblyPaginatedResult.next | next()} returns another page, otherwise `false`.
    */
   hasNext(): boolean;
   /**
@@ -47,12 +47,12 @@ export interface TemporalPaginatedResult<T> {
 }
 
 /**
- * A page of the response to `TemporalRest.request()`, with the details of the HTTP response. It
+ * A page of the response to `TemporalAblyRest.request()`, with the details of the HTTP response. It
  * mirrors the Ably `HttpPaginatedResponse`.
  *
  * Related pages are fetched with a `GET` request to the same path, with the same API version and headers.
  */
-export interface TemporalHttpPaginatedResponse<T = any> extends TemporalPaginatedResult<T> {
+export interface TemporalAblyHttpPaginatedResponse<T = any> extends TemporalAblyPaginatedResult<T> {
   /** The HTTP status code of the response. */
   readonly statusCode: number;
   /** Whether `statusCode` indicates success. This is equivalent to `200 <= statusCode < 300`. */
@@ -65,9 +65,9 @@ export interface TemporalHttpPaginatedResponse<T = any> extends TemporalPaginate
   readonly errorDetail?: Record<string, string>;
   /** The headers of the response. */
   readonly headers: Record<string, string | string[]>;
-  first(): Promise<TemporalHttpPaginatedResponse<T>>;
-  next(): Promise<TemporalHttpPaginatedResponse<T> | null>;
-  current(): Promise<TemporalHttpPaginatedResponse<T>>;
+  first(): Promise<TemporalAblyHttpPaginatedResponse<T>>;
+  next(): Promise<TemporalAblyHttpPaginatedResponse<T> | null>;
+  current(): Promise<TemporalAblyHttpPaginatedResponse<T>>;
 }
 
 /** Which related page of a paginated result to fetch. */
@@ -148,19 +148,19 @@ class HttpPaginatedResponseImpl<T, P> extends PaginatedResultImpl<T, P> {
   }
 }
 
-/** Creates a {@link TemporalPaginatedResult} from a page returned by an activity. */
+/** Creates a {@link TemporalAblyPaginatedResult} from a page returned by an activity. */
 export function paginatedResult<T>(
   page: WirePage<T>,
-  fetchPage: PageFetcher<TemporalPaginatedResult<T>>,
-): TemporalPaginatedResult<T> {
+  fetchPage: PageFetcher<TemporalAblyPaginatedResult<T>>,
+): TemporalAblyPaginatedResult<T> {
   return new PaginatedResultImpl(page, fetchPage);
 }
 
-/** Creates a {@link TemporalHttpPaginatedResponse} from a page returned by the request activity. */
+/** Creates a {@link TemporalAblyHttpPaginatedResponse} from a page returned by the request activity. */
 export function httpPaginatedResponse<T>(
   page: WireHttpPaginatedResponse<T>,
-  fetchPage: PageFetcher<TemporalHttpPaginatedResponse<T>>,
-): TemporalHttpPaginatedResponse<T> {
+  fetchPage: PageFetcher<TemporalAblyHttpPaginatedResponse<T>>,
+): TemporalAblyHttpPaginatedResponse<T> {
   return new HttpPaginatedResponseImpl(page, fetchPage);
 }
 
@@ -174,8 +174,8 @@ export function httpPaginatedResponse<T>(
 export async function paginate<T, P>(
   fetch: (params: P | PageParams | undefined, relation?: PageRelation) => Promise<WirePage<T>>,
   params: P | undefined,
-): Promise<TemporalPaginatedResult<T>> {
-  const fetchPage = async (pageParams: PageParams, relation: PageRelation): Promise<TemporalPaginatedResult<T>> =>
+): Promise<TemporalAblyPaginatedResult<T>> {
+  const fetchPage = async (pageParams: PageParams, relation: PageRelation): Promise<TemporalAblyPaginatedResult<T>> =>
     paginatedResult(await fetch(pageParams, relation), fetchPage);
   return paginatedResult(await fetch(params), fetchPage);
 }

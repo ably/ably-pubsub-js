@@ -186,13 +186,13 @@ const worker = await Worker.create({
 });
 ```
 
-Then use `TemporalRest` in your workflow code:
+Then use `TemporalAblyRest` in your workflow code:
 
 ```typescript
 import { workflowInfo } from '@temporalio/workflow';
-import { TemporalRest } from '@ably/pubsub-server/temporal/workflow';
+import { TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
 
-const ably = new TemporalRest();
+const ably = new TemporalAblyRest();
 
 export async function agentWorkflow(): Promise<void> {
   const channel = ably.channels.get(`chat:${workflowInfo().workflowId}`);

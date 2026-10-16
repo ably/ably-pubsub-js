@@ -22,7 +22,7 @@ const MESSAGE_ID_STREAM = 'ably.temporal.messageIds';
 function messageIdStream() {
   if (typeof getRandomStream !== 'function') {
     throw new TypeError(
-      'Idempotent publishing from workflow code requires @temporalio/workflow 1.18.0 or later. Upgrade the @temporalio packages used by your worker to 1.18.0 or later, or set TemporalRestOptions.idempotentPublishing to false.',
+      'Idempotent publishing from workflow code requires @temporalio/workflow 1.18.0 or later. Upgrade the @temporalio packages used by your worker to 1.18.0 or later, or set TemporalAblyRestOptions.idempotentPublishing to false.',
     );
   }
   return getRandomStream(MESSAGE_ID_STREAM);
@@ -31,7 +31,7 @@ function messageIdStream() {
 type ActivityArgs<N extends ActivityName> = Parameters<AblyActivities[N]>;
 type ActivityResult<N extends ActivityName> = Awaited<ReturnType<AblyActivities[N]>>;
 
-/** Options for an {@link ActivityInvoker}, from `TemporalRestOptions`. */
+/** Options for an {@link ActivityInvoker}, from `TemporalAblyRestOptions`. */
 export interface ActivityInvokerOptions {
   activityOptions?: ActivityOptions;
   localActivityOptions?: LocalActivityOptions;
@@ -39,10 +39,10 @@ export interface ActivityInvokerOptions {
 }
 
 /**
- * Runs Ably activities on behalf of a `TemporalRest` instance and the channels it creates.
+ * Runs Ably activities on behalf of a `TemporalAblyRest` instance and the channels it creates.
  *
  * The activity proxy is created on each call rather than up front, because creating one is only allowed inside a
- * workflow, and `TemporalRest` can be constructed at module scope. This also lets each call carry its own summary.
+ * workflow, and `TemporalAblyRest` can be constructed at module scope. This also lets each call carry its own summary.
  */
 export class ActivityInvoker {
   constructor(private readonly options: ActivityInvokerOptions) {}

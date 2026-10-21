@@ -7,7 +7,7 @@
 // - that it accepts the plugin's `extras.headers`;
 // - that it accepts the message IDs the plugin generates for `publish` and `batchPublish`, and the operation IDs it
 //   generates for `object.publish`;
-// - that it deduplicates a retried `publish` or `batchPublish` by message ID, even though the retry's headers differ;
+// - that it deduplicates a retried `publish` or `batchPublish` by message ID, even when the retry's headers differ;
 // - that it deduplicates a retried `object.publish` by operation ID;
 // - that it responds to a create discarded as a duplicate with an object that does not exist, which is why create
 //   operations are published without IDs;
@@ -196,12 +196,13 @@ describe('temporal sandbox integration', function () {
 
   /**
    * Runs the activity `name` with `input` as attempt 1 and then as attempt 2 of the same activity, outside a
-   * workflow, as Temporal does when the first attempt reached Ably but its result was lost. `beforeRetry` runs
-   * between the two attempts.
+   * workflow, as Temporal does when the first attempt reached Ably but its result was lost. `input` can be a function
+   * of the attempt number, for a test that sends different content on each attempt. `beforeRetry` runs between the
+   * two attempts.
    */
   async function runTwice<N extends ActivityName>(
     name: N,
-    input: Parameters<AblyActivities[N]>[0],
+    input: Parameters<AblyActivities[N]>[0] | ((attempt: number) => Parameters<AblyActivities[N]>[0]),
     beforeRetry?: () => Promise<unknown>,
   ): Promise<ActivityResult<N>[]> {
     const activity = createActivities(rest)[name] as unknown as (input: unknown) => Promise<ActivityResult<N>>;
@@ -220,7 +221,7 @@ describe('temporal sandbox integration', function () {
         await beforeRetry?.();
       }
       const activityEnv = new MockActivityEnvironment({ ...info, attempt }, { logger: new DefaultLogger('ERROR') });
-      results.push(await activityEnv.run(activity, input));
+      results.push(await activityEnv.run(activity, typeof input === 'function' ? input(attempt) : input));
     }
     return results;
   }
@@ -296,10 +297,9 @@ describe('temporal sandbox integration', function () {
     expect(Buffer.isBuffer(items[1].data)).to.equal(true);
     expect(items[1].data).to.deep.equal(Buffer.from([0, 1, 254, 255]));
 
-    // The headers come back exactly as the plugin sent them, including the numeric attempt.
-    const headers = expectedHeaders(namespace, handle.workflowId, events, activity);
-    expect(Object.keys(headers)).to.have.length(6);
-    expect(headers.temporalAttempt).to.equal(1);
+    // The headers come back exactly as the plugin sent them.
+    const headers = expectedHeaders(namespace, handle.workflowId, events);
+    expect(Object.keys(headers)).to.have.length(3);
     for (const item of items) {
       expect(item.extras).to.deep.equal({ headers });
     }
@@ -310,16 +310,18 @@ describe('temporal sandbox integration', function () {
       const channel = uniqueChannel('persisted');
       const id = `${randomUUID()}:0`;
 
-      const [first, second] = await runTwice('ably.channel.publish', {
+      // Every attempt of a plugin call sends the same content, so the test sends its own differing header to show that
+      // Ably deduplicates on the ID alone.
+      const [first, second] = await runTwice('ably.channel.publish', (attempt) => ({
         channel,
-        messages: [{ id, name: 'dedupe', data: 'payload' }],
-      });
+        messages: [{ id, name: 'dedupe', data: 'payload', extras: { headers: { testAttempt: attempt } } }],
+      }));
 
       const items = await historyBeforeSentinel(channel);
       expect(items).to.have.length(1);
       expect(items[0].id).to.equal(id);
-      expect(items[0].extras.headers.temporalAttempt).to.equal(1);
-      expect(items[0].extras.headers.temporalActivityId).to.equal('1');
+      expect(items[0].extras.headers.testAttempt).to.equal(1);
+      expect(items[0].extras.headers.temporalNamespace).to.equal('default');
       // Ably acknowledges the duplicate with the serial of the original message.
       expect(first.serials).to.deep.equal([items[0].serial]);
       expect(second.serials).to.deep.equal(first.serials);
@@ -328,11 +330,14 @@ describe('temporal sandbox integration', function () {
     it('keeps both attempts of a message without an ID', async function () {
       const channel = uniqueChannel('persisted');
 
-      await runTwice('ably.channel.publish', { channel, messages: [{ name: 'control', data: 'payload' }] });
+      await runTwice('ably.channel.publish', (attempt) => ({
+        channel,
+        messages: [{ name: 'control', data: 'payload', extras: { headers: { testAttempt: attempt } } }],
+      }));
 
       const items = await historyBeforeSentinel(channel);
       expect(items).to.have.length(2);
-      expect(items.map((item) => item.extras.headers.temporalAttempt)).to.deep.equal([1, 2]);
+      expect(items.map((item) => item.extras.headers.testAttempt)).to.deep.equal([1, 2]);
       expect(items[0].id).to.not.equal(items[1].id);
     });
   });
@@ -364,7 +369,7 @@ describe('temporal sandbox integration', function () {
 
     expect(pairedItems.map((item) => item.name)).to.deep.equal(['first', 'second']);
     expect(singleItems[0].name).to.equal('single');
-    const headers = expectedHeaders(namespace, handle.workflowId, events, activity);
+    const headers = expectedHeaders(namespace, handle.workflowId, events);
     for (const item of [...pairedItems, ...otherPairedItems, ...singleItems]) {
       expect(item.extras).to.deep.equal({ headers });
     }
@@ -394,21 +399,21 @@ describe('temporal sandbox integration', function () {
       const base = randomUUID();
       const ids = [`${base}:0`, `${base}:1`];
 
-      const [first, second] = (await runTwice('ably.batchPublish', {
+      const [first, second] = (await runTwice('ably.batchPublish', (attempt) => ({
         specs: {
           channels,
           messages: [
-            { id: ids[0], name: 'first', data: 'one' },
-            { id: ids[1], name: 'second', data: 'two' },
+            { id: ids[0], name: 'first', data: 'one', extras: { headers: { testAttempt: attempt } } },
+            { id: ids[1], name: 'second', data: 'two', extras: { headers: { testAttempt: attempt } } },
           ],
         },
-      })) as BatchPublishResult[];
+      }))) as BatchPublishResult[];
 
       expect(first).to.include({ successCount: 2, failureCount: 0 });
       for (const channel of channels) {
         const items = await historyBeforeSentinel(channel);
         expect(items.map((item) => item.id)).to.deep.equal(ids);
-        expect(items.map((item) => item.extras.headers.temporalAttempt)).to.deep.equal([1, 1]);
+        expect(items.map((item) => item.extras.headers.testAttempt)).to.deep.equal([1, 1]);
         expect(first.results.find((entry) => entry.channel === channel)).to.deep.equal({
           channel,
           messageId: base,
@@ -422,20 +427,20 @@ describe('temporal sandbox integration', function () {
     it('keeps both attempts of messages without IDs, on every channel', async function () {
       const channels = [uniqueChannel('persisted'), uniqueChannel('persisted')];
 
-      await runTwice('ably.batchPublish', {
+      await runTwice('ably.batchPublish', (attempt) => ({
         specs: {
           channels,
           messages: [
-            { name: 'first', data: 'one' },
-            { name: 'second', data: 'two' },
+            { name: 'first', data: 'one', extras: { headers: { testAttempt: attempt } } },
+            { name: 'second', data: 'two', extras: { headers: { testAttempt: attempt } } },
           ],
         },
-      });
+      }));
 
       for (const channel of channels) {
         const items = await historyBeforeSentinel(channel);
         expect(items.map((item) => item.name)).to.deep.equal(['first', 'second', 'first', 'second']);
-        expect(items.map((item) => item.extras.headers.temporalAttempt)).to.deep.equal([1, 1, 2, 2]);
+        expect(items.map((item) => item.extras.headers.testAttempt)).to.deep.equal([1, 1, 2, 2]);
         expect(new Set(items.map((item) => item.id)).size).to.equal(4);
       }
     });
@@ -643,9 +648,7 @@ describe('temporal sandbox integration', function () {
       { interval: 500, timeout: 15_000 },
     );
     expect(latest.version?.description).to.equal('append');
-    expect(latest.version?.metadata).to.deep.equal(
-      expectedOperationMetadata(namespace, handle.workflowId, events, appendActivity),
-    );
+    expect(latest.version?.metadata).to.deep.equal(expectedOperationMetadata(namespace, handle.workflowId, events));
 
     const versions = await pollUntil(
       async () => {
@@ -657,7 +660,7 @@ describe('temporal sandbox integration', function () {
     const updated = versions.find((item) => item.version?.description === 'edit')!;
     expect(updated.data).to.equal('hello, edited');
     expect(updated.version?.metadata).to.deep.equal({
-      ...expectedOperationMetadata(namespace, handle.workflowId, events, updateActivity),
+      ...expectedOperationMetadata(namespace, handle.workflowId, events),
       reason: 'typo',
     });
   });

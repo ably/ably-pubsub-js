@@ -235,7 +235,7 @@ const userIsOnline = members.items.length > 0;
 | `localActivityOptions` | Not set                                                                  | When set, Ably operations run as local activities with these `LocalActivityOptions`, applied on top of a default `startToCloseTimeout` of 30 seconds. Cannot be set with `activityOptions`. |
 | `idempotentPublishing` | `true`                                                                   | Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried call. See [Retries and idempotency](#retries-and-idempotency).                  |
 
-Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried publish within 2 minutes of the first attempt. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
+Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried call within its deduplication window, which by default is at least 130 seconds. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
 
 The options apply to every call made through a `TemporalAblyHttpClient`. To use different options for different calls, create more than one. For example, best-effort status updates can run as local activities with a few attempts, while the final reply uses durable retries:
 
@@ -311,7 +311,7 @@ The summary of `request()` does not include the `params` you pass, so their valu
 
 ## Retries and idempotency
 
-Temporal retries an activity that fails, and an activity can fail after its request has reached Ably, for example when the response is lost or the worker crashes. The plugin makes the retried call harmless where Ably supports it.
+Temporal retries an activity that fails. A retry only repeats a call when Ably accepted an earlier attempt's request but the activity did not get its response, because the response was lost, the request timed out, or the worker crashed while waiting for it. The plugin sends each call so that Ably deduplicates such a retry where Ably supports it. This section describes what a retry of each call does.
 
 ### Calls are deduplicated
 
@@ -323,9 +323,19 @@ When idempotent publishing is enabled, which is the default, the workflow derive
 - `channel.annotations.publish()` and `channel.annotations.delete()`: the annotation gets an ID of the form `<base>:0`.
 - `channel.object.publish()`: each operation gets an ID, so a retried `counterInc` is not applied twice. A call is published without IDs if any of its operations is a `mapCreate` or `counterCreate`, or has a `path` with a wildcard, such as `scores.*`. See [Retried LiveObjects operations](#retried-liveobjects-operations).
 
+Ably does not apply a retry with the same IDs or key again. A retried publish returns the serials of the first attempt.
+
+IDs are only assigned when no message in the call has an `id`. For `batchPublish()` this applies to each spec separately, and for `object.publish()` to the operations. An annotation is only assigned an ID when it has none, and an update or delete is only assigned a key when its options have no `idempotencyKey`. If you set IDs or keys yourself, the call is sent with the ones you set. Ably shares one set of IDs and keys across the publishes, updates, deletes, appends, annotations and LiveObjects operations on a channel, so an ID or key you set must be unique among them. The objects you pass in are never modified.
+
+Deduplication only holds within one channel epoch. A retry that arrives after Ably relocates the channel, or after an idle channel is disposed and later reactivated, is applied again, even within the [deduplication window](#keeping-retries-within-the-deduplication-window).
+
+On a channel whose namespace has message updates, deletes and appends enabled, a deduplicated publish is not broadcast to subscribers, but its content replaces the stored copy of the message. History then shows the retry's content under the original serial, including its `temporalAttempt` header. See [Temporal metadata](#temporal-metadata).
+
+On a namespace with server-side batching or conflation enabled, which is off by default, Ably does not deduplicate on message IDs or idempotency keys.
+
 ### Keeping retries within the deduplication window
 
-Ably discards a message whose ID or idempotency key it has already seen within about the last 2 minutes, so only a retry that arrives within that window is deduplicated. Temporal's default retry policy keeps retrying for much longer: the waits between attempts alone add up to more than 2 minutes by the eighth attempt. A retry that arrives later is published again. Subscribers can still deduplicate such messages on `message.id`, which is the same on every attempt, but a repeated LiveObjects operation is applied again.
+Ably only deduplicates a retry that arrives within its deduplication window, which by default is at least 130 seconds and up to about 150 seconds after Ably accepted the first attempt. Temporal's default retry policy keeps retrying for much longer: the waits between attempts alone add up to 127 seconds before the eighth attempt, and to 227 seconds before the ninth. A retry that arrives after the window is applied again. A message is published again with the same message IDs, an update or delete creates another version of the message, an annotation is published again, and a LiveObjects operation is applied again.
 
 To keep every attempt within the window, set `scheduleToCloseTimeout` in `activityOptions`, and leave room for the last attempt to run for its `startToCloseTimeout`:
 
@@ -335,15 +345,11 @@ const ably = new TemporalAblyHttpClient({
 });
 ```
 
-Once that time is up, the activity fails with a timeout, and the workflow cannot tell whether the last attempt reached Ably. Check the outcome before publishing again, for example by reading the channel's history or the object.
-
-IDs are only assigned when no message in the call has an `id`. For `batchPublish()` this applies to each spec separately, and for `object.publish()` to the operations. An annotation is only assigned an ID when it has none, and an update or delete is only assigned a key when its options have no `idempotencyKey`. If you set IDs or keys yourself, the call is sent with the ones you set. Ably shares one set of keys across the publishes, updates, deletes and appends on a channel, so a key you set must be unique among them. The objects you pass in are never modified.
+Once that time is up, the activity fails with a timeout, and the workflow cannot tell whether the last attempt reached Ably.
 
 ### Appends are not deduplicated
 
-A retried `appendMessage` appends its data again, even when the retry has the same `idempotencyKey` as the first attempt, so the message can end up with duplicated content. The plugin therefore sends appends without a key.
-
-If duplicated content is unacceptable, call `updateMessage` with the complete content instead of appending to it. A retried update is deduplicated, and repeating an update leaves the message with the same content.
+A retried `appendMessage` appends its data again, so the message can end up with duplicated content. This happens even when the retry has the same `idempotencyKey` as the first attempt, because Ably appends the data before it detects the duplicate. The plugin therefore sends appends without a key.
 
 ### Retried LiveObjects operations
 
@@ -362,18 +368,20 @@ These operations are published without IDs for the following reasons:
 
 The other operations in the same call are published without IDs too, because Ably needs every operation in a call to have an ID, or none. Publish create operations and wildcard operations in a call of their own, so that your other operations keep their IDs.
 
-If the activity for a create at a `path` fails with code 92007, read the path with `channel.object.get()` to find out whether the object exists. `mapCreateWithObjectId` and `counterCreateWithObjectId` operations do get IDs.
+`mapCreateWithObjectId` and `counterCreateWithObjectId` operations do get IDs.
 
 ### Push notifications
 
 Ably does not deduplicate the push admin calls that send a notification or create a broadcast channel. They use your retry policy, so if an attempt reached Ably before it failed, the retry repeats the call:
 
-| Call                    | What a retry does                                                                                                                                                                                                                                                                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `publish()`             | Sends the notification again. To let the app drop a duplicate, include an ID in the notification's `data`.                                                                                                                                                                                                                                   |
-| `createApnsBroadcast()` | Creates another APNs broadcast channel. Ably has no call to list or delete the channel that the first attempt created, and Apple allows 10,000 per app in each environment.                                                                                                                                                                  |
-| `liveActivity.start()`  | Sends the push-to-start notification again, so each device shows a second Live Activity.                                                                                                                                                                                                                                                     |
-| `liveActivity.update()` | Sends the update again. If the workflow sets `aps.timestamp` in workflow code, for example to `Math.floor(Date.now() / 1000)`, and the payload has no `alert`, the device shows the same state after a repeated update. A payload with an `alert` alerts again, and a repeated update counts against Apple's budget for priority 10 updates. |
+| Call                    | What a retry does                                                                                                                                                                                                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `publish()`             | Sends the notification again. Ably responds with success once it has queued the notification for delivery. If queuing times out, Ably responds with a 500 error, which is retried, and the notification may still be sent.                                                                                    |
+| `createApnsBroadcast()` | Creates another APNs broadcast channel, and nothing uses the channel that the first attempt created. Ably has no call to list broadcast channels. Apple's channel management API can list and delete them with your app's APNs credentials. Apple allows 10,000 channels per app in each environment.         |
+| `liveActivity.start()`  | Sends another push-to-start notification. iOS starts a new Live Activity for each push-to-start notification it receives, so the device shows a second Live Activity and alerts the user again.                                                                                                               |
+| `liveActivity.update()` | Sends the update again. A payload with an `alert` alerts again, and a repeated update counts against Apple's budget for priority 10 updates. If the payload has an `aps.timestamp`, the device shows the update with the most recent timestamp, so a retry that arrives late does not replace a newer update. |
+
+Ably's `collapseKey` sets FCM's collapse key, which only replaces a message that has not yet been delivered, and APNs' `thread-id`, which only groups notifications. Neither makes a repeated `publish()` idempotent.
 
 To pass a failure to the workflow instead of retrying it, make these calls from a separate `TemporalAblyHttpClient` with a single attempt:
 
@@ -387,7 +395,9 @@ Within an attempt, the worker's Ably client can still send the request again to 
 
 Keep `startToCloseTimeout` longer than a request can take, which is about 25 seconds across fallback hosts with the default client options, so that Temporal does not retry an attempt that is still in progress. The default of 30 seconds allows for this.
 
-`liveActivity.end()` is safe to retry, because Ably accepts a repeated end for a broadcast channel that it has already deleted. A device registration is saved by its device ID, and a channel subscription by its channel and device or client, so a retried save has the same effect as one attempt.
+`liveActivity.end()` is idempotent. Ably responds with success for a broadcast channel that it has already deleted. If deleting the channel fails, the call fails, and a retry attempts the delete again. A retry can also resend the end notification, which devices ignore.
+
+A device registration is saved by its device ID, and a channel subscription by its channel and device or client, so a retried save or remove has the same effect as one attempt. A retried `removeWhere()` removes everything that matches its filter when the retry runs, including devices or subscriptions added since the first attempt. `deviceRegistrations.removeWhere()` with a `clientId` responds before the devices are removed.
 
 ### Turning off idempotent publishing
 
@@ -418,6 +428,8 @@ For `updateMessage`, `deleteMessage` and `appendMessage`, the same keys are adde
 
 Annotations and LiveObjects operations do not carry the metadata.
 
+Each attempt of an activity sends its own `temporalAttempt`. When Ably deduplicates a retried publish, subscribers only receive the first attempt's message. On a channel whose namespace has message updates, deletes and appends enabled, history then shows the retry's headers under the original serial. On other channels, history keeps the first attempt's headers. A deduplicated update or delete keeps the first attempt's metadata.
+
 The headers add about 200 to 250 bytes to each message, and they count towards Ably's maximum message size. The limit applies to all the messages of a publish together, so a publish that is close to the limit, or one that publishes many small messages, can fail with error 40009 because of the headers. Turn the metadata off if your publishes are close to the limit.
 
 Your own values take precedence: if a message already has a header, or an operation already has a metadata entry, with one of these keys, the plugin keeps your value. A message whose `extras` or `extras.headers` is not an object is published unchanged.
@@ -440,21 +452,6 @@ const channel = realtime.channels.getDerived('chat:123', {
 });
 await channel.subscribe((message) => {
   console.log(message.extras?.headers?.temporalWorkflowId, message.data);
-});
-```
-
-To deduplicate a retried publish that Ably did not discard, keep track of the IDs you have seen:
-
-```typescript
-const seen = new Set<string>();
-await channel.subscribe((message) => {
-  if (message.action === 'message.create' && message.id) {
-    if (seen.has(message.id)) {
-      return;
-    }
-    seen.add(message.id);
-  }
-  render(message);
 });
 ```
 

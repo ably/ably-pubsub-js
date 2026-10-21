@@ -1,24 +1,15 @@
-import { createHttpClient } from '@ably/pubsub-server';
 import type * as Ably from '@ably/pubsub-core/api';
 import { SimplePlugin } from '@temporalio/plugin';
 import { createActivities } from './activities.js';
 
-/**
- * Options for {@link AblyRestPlugin}. Provide either `ably`, for the plugin to construct its own HTTP client, or
- * `client`, to use an existing one.
- */
-export type AblyRestPluginOptions = (
-  | {
-      /** The options with which the plugin constructs the `PubSubHttpClient` that its activities use. */
-      ably: Ably.ClientOptions;
-      client?: never;
-    }
-  | {
-      /** An existing Ably HTTP client for the plugin's activities to use. */
-      client: Ably.PubSubHttpClient;
-      ably?: never;
-    }
-) & {
+/** Options for {@link AblyRestPlugin}. */
+export interface AblyRestPluginOptions {
+  /**
+   * The `PubSubHttpClient` that the plugin's activities use. Create it with `createHttpClient` from
+   * `@ably/pubsub-server`. To use `channel.object` from workflows, create it with the `LiveObjects` plugin from
+   * `@ably/pubsub-server/liveobjects`.
+   */
+  client: Ably.PubSubHttpClient;
   /**
    * Whether to record the Temporal execution that performed each operation. When enabled, the
    * {@link TemporalMetadataKeys | Temporal metadata} is added to the `extras.headers` of every published message,
@@ -40,16 +31,18 @@ export type AblyRestPluginOptions = (
    * ```
    */
   channelOptions?: (name: string) => Ably.ChannelOptions | undefined;
-};
+}
 
 /**
  * A Temporal worker plugin that registers the Ably activities, which perform Ably REST operations on behalf of
  * workflows. Workflow code calls them through `TemporalAblyRest` from `@ably/pubsub-server/temporal/workflow`.
  *
  * ```ts
+ * const client = createHttpClient({ key: process.env.ABLY_API_KEY });
+ *
  * const worker = await Worker.create({
  *   // ...
- *   plugins: [new AblyRestPlugin({ ably: { key: process.env.ABLY_API_KEY } })],
+ *   plugins: [new AblyRestPlugin({ client })],
  * });
  * ```
  *
@@ -60,11 +53,11 @@ export class AblyRestPlugin extends SimplePlugin {
   readonly client: Ably.PubSubHttpClient;
 
   /**
-   * @param options - The plugin options. Exactly one of `ably` and `client` must be provided.
-   * @throws An `Error` if both or neither of `ably` and `client` are provided.
+   * @param options - The plugin options, including the Ably HTTP client that the activities use.
+   * @throws `TypeError` if `options.client` is not a `PubSubHttpClient`.
    */
   constructor(options: AblyRestPluginOptions) {
-    const client = resolveClient(options);
+    const client = validateClient(options);
     super({
       name: 'AblyRestPlugin',
       activities: createActivities(client, {
@@ -76,20 +69,24 @@ export class AblyRestPlugin extends SimplePlugin {
   }
 }
 
-function resolveClient(options: AblyRestPluginOptions | undefined): Ably.PubSubHttpClient {
-  const { ably, client } = options ?? {};
-  if (ably != null && client != null) {
-    throw new Error(
-      'AblyRestPlugin options include both `ably` and `client`. Pass `ably` with the ClientOptions for the plugin to construct an HTTP client, or `client` with an existing PubSubHttpClient, but not both.',
+/**
+ * Returns `options.client`, after checking that it is a `PubSubHttpClient`. The check is structural, because the
+ * client may come from a different copy of `@ably/pubsub-server` than the one the application imports. A realtime
+ * client from `createRealtimeClient` is rejected: it has a `connection`, and its channels publish over that
+ * connection rather than with an HTTP request.
+ */
+function validateClient(options: AblyRestPluginOptions | undefined): Ably.PubSubHttpClient {
+  const client: unknown = options?.client;
+  if (
+    typeof client !== 'object' ||
+    client === null ||
+    typeof (client as Ably.PubSubHttpClient).channels?.get !== 'function' ||
+    typeof (client as Ably.PubSubHttpClient).request !== 'function' ||
+    'connection' in client
+  ) {
+    throw new TypeError(
+      'AblyRestPlugin options do not include a PubSubHttpClient in `client`. Create the client with `createHttpClient` from `@ably/pubsub-server` and pass it as `client`, for example `new AblyRestPlugin({ client: createHttpClient({ key: process.env.ABLY_API_KEY }) })`. A realtime client from `createRealtimeClient` is not accepted.',
     );
   }
-  if (client != null) {
-    return client;
-  }
-  if (ably == null) {
-    throw new Error(
-      'AblyRestPlugin options include neither `ably` nor `client`. Pass `ably` with the ClientOptions for the plugin to construct an HTTP client, for example `{ ably: { key: process.env.ABLY_API_KEY } }`, or `client` with an existing PubSubHttpClient.',
-    );
-  }
-  return createHttpClient(ably);
+  return client as Ably.PubSubHttpClient;
 }

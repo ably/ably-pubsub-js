@@ -1,7 +1,6 @@
 // Integration tests of the built plugin against an Ably sandbox app and a local Temporal server. The workflows in
-// ./workflows.ts import the built `@ably/pubsub-server/temporal/workflow`, and run on workers with the built `AblyRestPlugin`, which
-// constructs its own HTTP client from `ClientOptions`. A separate client from the built `@ably/pubsub-server` package reads back
-// what reached Ably.
+// ./workflows.ts import the built `@ably/pubsub-server/temporal/workflow`, and run on workers with the built `AblyRestPlugin`, each
+// given an HTTP client from the built `@ably/pubsub-server` package. A separate client reads back what reached Ably.
 //
 // These tests check the assumptions the plugin makes about the Ably service:
 //
@@ -126,7 +125,9 @@ describe('temporal sandbox integration', function () {
         taskQueue,
         workflowBundle,
         plugins: [
-          new AblyRestPlugin({ ably: { key: workerKey, endpoint: SANDBOX_ENDPOINT, plugins: { LiveObjects } } }),
+          new AblyRestPlugin({
+            client: Ably.createHttpClient({ key: workerKey, endpoint: SANDBOX_ENDPOINT, plugins: { LiveObjects } }),
+          }),
         ],
       });
       workers.push(worker);

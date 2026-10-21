@@ -181,12 +181,10 @@ const pubsubPackageConfigs = [
     { name: 'index' },
     { name: 'node', source: 'index', platform: 'node', external: nodeExternals },
     { name: 'liveobjects', external: ['dequal'] },
-    // The Temporal plugin. Its worker side runs on Node.js only. It can create its own client with
-    // `createHttpClient`, which it imports from the package's root rather than bundling a second copy of the
-    // implementation. Its workflow side is bundled again by Temporal into its workflow sandbox, which rejects
-    // Node.js built-in modules, so it is built for the default platform, without the `require` shim that the
-    // Node.js ESM bundles add.
-    { name: 'temporal', platform: 'node', external: [...temporalExternals, '@ably/pubsub-server'] },
+    // The Temporal plugin. Its worker side runs on Node.js only. Its workflow side is bundled again by Temporal
+    // into its workflow sandbox, which rejects Node.js built-in modules, so it is built for the default platform,
+    // without the `require` shim that the Node.js ESM bundles add.
+    { name: 'temporal', platform: 'node', external: temporalExternals },
     { name: 'temporal-workflow', external: temporalExternals },
   ]),
 ];

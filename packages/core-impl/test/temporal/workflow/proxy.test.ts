@@ -665,7 +665,7 @@ describe('temporal/workflow proxy', function () {
         'updateMessage() expects message to be an object, but was called with null',
       );
       expect(errors.channelOptions.message).to.equal(
-        'channels.get() in workflow code does not take channel options, but was called with options for channel "invalid"',
+        'channels.get() in workflow code does not support channel options such as cipher, but was called with options for channel "invalid"',
       );
       expect(errors.liveActivityStart.message).to.equal(
         'push.admin.liveActivity.start() expects params.recipient to be an object, but was called with a value of type undefined',

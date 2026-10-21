@@ -272,20 +272,21 @@ export class TemporalAblyHttpChannels {
    * Gets the channel with the given name, creating it if it does not exist. Getting a channel does not run an
    * activity.
    *
-   * Channel options, such as a `cipher`, are configured on the worker, with `AblyHttpPluginOptions.channelOptions`.
+   * Channel options, such as a `cipher`, are not supported, so workflow code cannot use encrypted channels.
    *
    * @param name - The channel name.
    * @returns The channel.
    */
   get(name: string): TemporalAblyHttpChannel {
-    // A caller that bypasses the type of this method could pass channel options, which would otherwise be ignored.
+    // A caller that bypasses the type of this method could pass channel options. Ignoring them would publish
+    // plain text to a channel the caller meant to encrypt.
     if (arguments.length > 1 && arguments[1] !== undefined) {
       throw ablyFailure({
-        message: `channels.get() in workflow code does not take channel options, but was called with options for channel "${name}"`,
+        message: `channels.get() in workflow code does not support channel options such as cipher, but was called with options for channel "${name}"`,
         code: 40003,
         statusCode: 400,
         remediation:
-          'Call channels.get() with the channel name only. Configure channel options, such as a cipher, with the channelOptions function of AblyHttpPlugin on the worker.',
+          'Call channels.get() with the channel name only. The Temporal plugin does not support encrypted channels, so use a channel that does not need a cipher.',
       });
     }
     name = String(name);

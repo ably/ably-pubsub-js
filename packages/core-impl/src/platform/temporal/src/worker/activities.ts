@@ -18,14 +18,6 @@ export interface CreateActivitiesOptions {
    * @defaultValue `true`
    */
   temporalMetadata?: boolean;
-  /**
-   * Returns the options, such as a `cipher`, for a channel the activities use. It is called when an activity adds
-   * the channel to the client, and the options apply to every operation on the channel until the activities release
-   * it. Return `undefined` for a channel that needs no options.
-   *
-   * A channel that the application already got from the client keeps the options the application gave it.
-   */
-  channelOptions?: (name: string) => Ably.ChannelOptions | undefined;
 }
 
 /**
@@ -47,7 +39,7 @@ export interface CreateActivitiesOptions {
 export function createActivities(client: Ably.PubSubHttpClient, options: CreateActivitiesOptions = {}): AblyActivities {
   const temporalMetadata = options.temporalMetadata ?? true;
   const metadata = (): TemporalMetadata | undefined => (temporalMetadata ? getTemporalMetadata() : undefined);
-  const leases = new ChannelLeases(client, options.channelOptions);
+  const leases = new ChannelLeases(client);
   const admin = (): Ably.PushAdmin => client.push.admin;
 
   return {
@@ -306,10 +298,7 @@ interface ChannelLease {
 class ChannelLeases {
   private readonly leases = new Map<string, ChannelLease>();
 
-  constructor(
-    private readonly client: Ably.PubSubHttpClient,
-    private readonly channelOptions: ((name: string) => Ably.ChannelOptions | undefined) | undefined,
-  ) {}
+  constructor(private readonly client: Ably.PubSubHttpClient) {}
 
   /** Runs `operation` with the channel called `name`, which stays on the client until the operation settles. */
   async use<T>(name: string, operation: (channel: Ably.HttpChannel) => Promise<T>): Promise<T> {
@@ -326,8 +315,7 @@ class ChannelLeases {
     if (!lease) {
       const channels = this.client.channels;
       const added = !Object.prototype.hasOwnProperty.call(channels.all, name);
-      const channel = added ? channels.get(name, this.channelOptions?.(name)) : channels.get(name);
-      lease = { channel, count: 0, added };
+      lease = { channel: channels.get(name), count: 0, added };
       this.leases.set(name, lease);
     }
     lease.count++;

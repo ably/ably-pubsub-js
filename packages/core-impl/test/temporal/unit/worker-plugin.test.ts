@@ -67,19 +67,6 @@ describe('temporal/worker/plugin', function () {
     expect(jsonBody(requests[0])[0]).to.not.have.property('extras');
   });
 
-  it('passes channelOptions to the activities', async function () {
-    const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-    const plugin = new AblyHttpPlugin({ client, channelOptions: () => ({ cipher: { key: Buffer.alloc(32, 1) } }) });
-
-    await runActivity(
-      activityEnvironment(),
-      configuredActivities(plugin)[ActivityNames.publish],
-      toWire({ channel: 'chat', messages: [{ name: 'e', data: 'd' }] }),
-    );
-
-    expect(jsonBody(requests[0])[0].encoding).to.equal('utf-8/cipher+aes-256-cbc/base64');
-  });
-
   it('accepts a client from the built @ably/pubsub-server package', function () {
     const client = BuiltServer.createHttpClient({ key: 'appId.keyId:keySecret' });
 

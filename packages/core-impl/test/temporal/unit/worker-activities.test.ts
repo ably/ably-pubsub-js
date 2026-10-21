@@ -734,36 +734,6 @@ describe('temporal/worker/activities', function () {
 
       expect(client.channels.all['chat:1']).to.equal(own);
     });
-
-    it('gets each channel it adds with the options from channelOptions', async function () {
-      const key = Buffer.alloc(32, 1);
-      const names: string[] = [];
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s'] }));
-      const activities = createActivities(client, {
-        channelOptions: (name) => {
-          names.push(name);
-          return name.startsWith('secure:') ? { cipher: { key } } : undefined;
-        },
-      });
-      const env = activityEnvironment();
-
-      await runActivity(env, activities[ActivityNames.publish], publishInput('secure:1'));
-      await runActivity(env, activities[ActivityNames.publish], publishInput('plain:1'));
-
-      expect(names).to.deep.equal(['secure:1', 'plain:1']);
-      expect(jsonBody(requests[0])[0].encoding).to.equal('utf-8/cipher+aes-256-cbc/base64');
-      expect(jsonBody(requests[1])[0]).to.include({ data: 'd' }).and.not.have.property('encoding');
-    });
-
-    it('does not apply channelOptions to a channel that the application got from the client', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s'] }));
-      client.channels.get('secure:1');
-      const activities = createActivities(client, { channelOptions: () => ({ cipher: { key: Buffer.alloc(32, 1) } }) });
-
-      await runActivity(activityEnvironment(), activities[ActivityNames.publish], publishInput('secure:1'));
-
-      expect(jsonBody(requests[0])[0]).to.include({ data: 'd' }).and.not.have.property('encoding');
-    });
   });
 
   describe('push admin', function () {

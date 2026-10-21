@@ -21,7 +21,6 @@ The plugin ships in the `ably` package as two entry points:
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Worker setup](#worker-setup)
-  - [Channel options](#channel-options)
   - [Using LiveObjects](#using-liveobjects)
   - [Using other Temporal plugins](#using-other-temporal-plugins)
 - [Workflow usage](#workflow-usage)
@@ -114,24 +113,10 @@ The plugin registers one activity per Ably operation. Every activity name starts
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `client`           | Required. The `Ably.PubSubHttpClient` client that the activities use.                                                                    |
 | `temporalMetadata` | Whether to record the Temporal execution that performed each operation. Defaults to `true`. See [Temporal metadata](#temporal-metadata). |
-| `channelOptions`   | A function that returns the `ChannelOptions` for a channel name, or `undefined`. See [Channel options](#channel-options).                |
 
 The constructor throws a `TypeError` if `client` is not an Ably REST client. The plugin's client is available as `plugin.client`. Your own activities can use the same client.
 
 The activities get each channel from the client when they need it, and release it once no activity on the worker is using it, so the client does not keep a channel for every name the worker has ever used. A channel that your own code got from the client is never released.
-
-### Channel options
-
-Channel options, such as a `cipher`, are configured on the worker rather than in workflow code. Pass `channelOptions`, which the activities call with the name of each channel they get from the client:
-
-```typescript
-const plugin = new AblyHttpPlugin({
-  client,
-  channelOptions: (name) => (name.startsWith('secure:') ? { cipher: { key: process.env.CHANNEL_KEY } } : undefined),
-});
-```
-
-Every operation on the channel uses the same options, so two workflows cannot set conflicting options on one channel. The cipher key stays on the worker, out of the workflow history, which records activity inputs in plain text unless you have configured a payload codec. A channel that your own code got from the client keeps the options your code gave it.
 
 ### Using LiveObjects
 
@@ -303,7 +288,7 @@ The summary of `request()` does not include the `params` you pass, so their valu
 
 ### Not supported
 
-- **Channel options in workflow code.** `channels.get()` takes only a channel name, and throws if it is passed options. Configure channel options on the worker instead. See [Channel options](#channel-options).
+- **Encrypted channels.** The `cipher` channel option is not supported, and neither are other channel options. `channels.get()` in workflow code takes only a channel name, and throws if it is passed channel options.
 - **`stats()`.** It is of little use from an agent workflow. Use `request()` if you need it.
 - **`auth`.** Authentication is configured on the worker's client. Issue tokens from your application's auth server.
 - **`push.activate()` and the other device methods of `push`.** A workflow is not a device. Use `push.admin` to manage devices and publish notifications.

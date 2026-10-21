@@ -19,18 +19,6 @@ export interface AblyHttpPluginOptions {
    * @defaultValue `true`
    */
   temporalMetadata?: boolean;
-  /**
-   * Returns the options, such as a `cipher`, for a channel that workflows use. Every operation on the channel uses
-   * these options, so channel options are configured on the worker rather than in workflow code, and cipher keys
-   * stay out of the workflow history. Return `undefined` for a channel that needs no options.
-   *
-   * A channel that the application already got from `client` keeps the options the application gave it.
-   *
-   * ```ts
-   * channelOptions: (name) => (name.startsWith('secure:') ? { cipher: { key: process.env.CHANNEL_KEY } } : undefined),
-   * ```
-   */
-  channelOptions?: (name: string) => Ably.ChannelOptions | undefined;
 }
 
 /**
@@ -60,10 +48,7 @@ export class AblyHttpPlugin extends SimplePlugin {
     const client = validateClient(options);
     super({
       name: 'AblyHttpPlugin',
-      activities: createActivities(client, {
-        temporalMetadata: options.temporalMetadata,
-        channelOptions: options.channelOptions,
-      }),
+      activities: createActivities(client, { temporalMetadata: options.temporalMetadata }),
     });
     this.client = client;
   }

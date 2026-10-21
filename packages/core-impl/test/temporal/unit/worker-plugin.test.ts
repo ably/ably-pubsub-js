@@ -6,6 +6,11 @@ import { AblyRestPlugin } from '../../../src/platform/temporal/src/worker/plugin
 import { ActivityNames } from '../../../src/platform/temporal/src/common/activities';
 import { activityEnvironment, expectedHeaders, jsonBody, mockAbly, runActivity, toWire } from './worker-helpers';
 
+// createHttpClient and createRealtimeClient from the built `@ably/pubsub-server` package, as an application would
+// import them.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const BuiltServer = require('@ably/pubsub-server');
+
 function configuredActivities(plugin: AblyRestPlugin, activities: object = {}): Record<string, any> {
   const options = plugin.configureWorker({ taskQueue: 'test', activities } as WorkerOptions);
   return options.activities as Record<string, any>;
@@ -75,24 +80,27 @@ describe('temporal/worker/plugin', function () {
     expect(jsonBody(requests[0])[0].encoding).to.equal('utf-8/cipher+aes-256-cbc/base64');
   });
 
-  it('constructs a client from the ably option', function () {
-    const plugin = new AblyRestPlugin({ ably: { key: 'appId.keyId:keySecret' } });
+  it('accepts a client from the built @ably/pubsub-server package', function () {
+    const client = BuiltServer.createHttpClient({ key: 'appId.keyId:keySecret' });
 
-    expect(plugin.client.channels.get).to.be.a('function');
-    expect(plugin.client.auth.clientId).to.equal(undefined);
+    expect(new AblyRestPlugin({ client }).client).to.equal(client);
   });
 
-  it('rejects options with neither ably nor client', function () {
-    expect(() => new AblyRestPlugin({} as any)).to.throw(Error, /include neither `ably` nor `client`/);
-    expect(() => new (AblyRestPlugin as any)()).to.throw(Error, /include neither `ably` nor `client`/);
+  it('rejects options without a client', function () {
+    const message = /do not include a PubSubHttpClient in `client`/;
+    expect(() => new (AblyRestPlugin as any)()).to.throw(TypeError, message);
+    expect(() => new AblyRestPlugin({} as any)).to.throw(TypeError, message);
+    expect(() => new AblyRestPlugin({ ably: { key: 'appId.keyId:keySecret' } } as any)).to.throw(TypeError, message);
+    expect(() => new AblyRestPlugin({ client: { key: 'appId.keyId:keySecret' } } as any)).to.throw(TypeError, message);
   });
 
-  it('rejects options with both ably and client', function () {
-    const { client } = mockAbly((req) => req.respond_with(200, {}));
-    expect(() => new AblyRestPlugin({ client, ably: { key: 'appId.keyId:keySecret' } } as any)).to.throw(
-      Error,
-      /include both `ably` and `client`/,
-    );
+  it('rejects a realtime client', function () {
+    const client = BuiltServer.createRealtimeClient({ key: 'appId.keyId:keySecret', autoConnect: false });
+    try {
+      expect(() => new AblyRestPlugin({ client })).to.throw(TypeError, /do not include a PubSubHttpClient in `client`/);
+    } finally {
+      client.close();
+    }
   });
 
   it('exports the worker API from the entry point', function () {

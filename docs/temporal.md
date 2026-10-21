@@ -22,7 +22,6 @@ The plugin ships in the `ably` package as two entry points:
 - [Installation](#installation)
 - [Worker setup](#worker-setup)
   - [Channel options](#channel-options)
-  - [Using an existing client](#using-an-existing-client)
   - [Using LiveObjects](#using-liveobjects)
   - [Using other Temporal plugins](#using-other-temporal-plugins)
 - [Workflow usage](#workflow-usage)
@@ -79,26 +78,29 @@ npm install ably @temporalio/worker @temporalio/workflow @temporalio/activity @t
 
 You also need `@temporalio/client` in the application that starts your workflows.
 
-Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-server/temporal/workflow` only in workflow code. The worker entry point loads the Ably client and worker-only Temporal packages, which cannot be bundled into a workflow. Type-only imports from `ably` and `@ably/pubsub-server/liveobjects`, such as `import type { InboundMessage } from 'ably'`, are fine in workflow code.
+Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-server/temporal/workflow` only in workflow code. The worker entry point loads worker-only Temporal packages, which cannot be bundled into a workflow, and the worker constructs the Ably client, which cannot run in a workflow. Type-only imports from `ably` and `@ably/pubsub-server/liveobjects`, such as `import type { InboundMessage } from 'ably'`, are fine in workflow code.
 
 ## Worker setup
 
-Add `AblyRestPlugin` to the `plugins` of your worker. Pass `ably` with the `ClientOptions` for the plugin to construct an `Ably.PubSubHttpClient` client:
+Construct an `Ably.PubSubHttpClient` client, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)), and add an `AblyRestPlugin` with that client to the `plugins` of your worker:
 
 ```typescript
 // worker.ts
 import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
+import { createHttpClient } from '@ably/pubsub-server';
 import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
 
 const connection = await NativeConnection.connect({ address: 'localhost:7233' });
+
+const client = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   connection,
   namespace: 'default',
   taskQueue: 'agents',
   workflowsPath: fileURLToPath(new URL('./workflows.ts', import.meta.url)),
-  plugins: [new AblyRestPlugin({ ably: { key: process.env.ABLY_API_KEY } })],
+  plugins: [new AblyRestPlugin({ client })],
 });
 
 await worker.run();
@@ -110,12 +112,11 @@ The plugin registers one activity per Ably operation. Every activity name starts
 
 | Option             | Description                                                                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `ably`             | The `ClientOptions` with which the plugin constructs its `Ably.PubSubHttpClient` client.                                                 |
-| `client`           | An existing `Ably.PubSubHttpClient` client for the plugin to use instead.                                                                |
+| `client`           | Required. The `Ably.PubSubHttpClient` client that the activities use.                                                                    |
 | `temporalMetadata` | Whether to record the Temporal execution that performed each operation. Defaults to `true`. See [Temporal metadata](#temporal-metadata). |
 | `channelOptions`   | A function that returns the `ChannelOptions` for a channel name, or `undefined`. See [Channel options](#channel-options).                |
 
-Provide exactly one of `ably` and `client`. The constructor throws an `Error` if you pass both or neither.
+The constructor throws a `TypeError` if `client` is not an Ably REST client. The plugin's client is available as `plugin.client`. Your own activities can use the same client.
 
 The activities get each channel from the client when they need it, and release it once no activity on the worker is using it, so the client does not keep a channel for every name the worker has ever used. A channel that your own code got from the client is never released.
 
@@ -125,38 +126,24 @@ Channel options, such as a `cipher`, are configured on the worker rather than in
 
 ```typescript
 const plugin = new AblyRestPlugin({
-  ably: { key: process.env.ABLY_API_KEY },
+  client,
   channelOptions: (name) => (name.startsWith('secure:') ? { cipher: { key: process.env.CHANNEL_KEY } } : undefined),
 });
 ```
 
 Every operation on the channel uses the same options, so two workflows cannot set conflicting options on one channel. The cipher key stays on the worker, out of the workflow history, which records activity inputs in plain text unless you have configured a payload codec. A channel that your own code got from the client keeps the options your code gave it.
 
-### Using an existing client
+### Using LiveObjects
 
-Pass `client` to share a client with the rest of your worker, for example one that your own activities also use:
+`channel.object` needs the worker's client to have the LiveObjects plugin from `@ably/pubsub-server/liveobjects`. Construct the client with it:
 
 ```typescript
 import { createHttpClient } from '@ably/pubsub-server';
-import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
-
-const ably = createHttpClient({ key: process.env.ABLY_API_KEY });
-const plugin = new AblyRestPlugin({ client: ably });
-```
-
-The plugin's client is available as `plugin.client`, whichever option you used.
-
-### Using LiveObjects
-
-`channel.object` needs the worker's client to have the LiveObjects plugin from `@ably/pubsub-server/liveobjects`. Add it to the client options:
-
-```typescript
 import { LiveObjects } from '@ably/pubsub-server/liveobjects';
 import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
 
-const plugin = new AblyRestPlugin({
-  ably: { key: process.env.ABLY_API_KEY, plugins: { LiveObjects } },
-});
+const client = createHttpClient({ key: process.env.ABLY_API_KEY, plugins: { LiveObjects } });
+const plugin = new AblyRestPlugin({ client });
 ```
 
 Without it, the `ably.channel.object.*` activities fail with a non-retryable Ably error, code 40019.
@@ -171,9 +158,12 @@ import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
 import { AiSdkPlugin } from '@temporalio/ai-sdk';
 import { gateway } from 'ai';
+import { createHttpClient } from '@ably/pubsub-server';
 import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
 
 const connection = await NativeConnection.connect({ address: 'localhost:7233' });
+
+const client = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   connection,
@@ -184,7 +174,7 @@ const worker = await Worker.create({
     // Runs model calls as activities. Uses AI_GATEWAY_API_KEY from the worker environment.
     new AiSdkPlugin({ modelProvider: gateway }),
     // Runs Ably REST calls as activities.
-    new AblyRestPlugin({ ably: { key: process.env.ABLY_API_KEY } }),
+    new AblyRestPlugin({ client }),
   ],
 });
 
@@ -435,7 +425,7 @@ Your own values take precedence: if a message already has a header, or an operat
 To turn the metadata off, set `temporalMetadata: false`:
 
 ```typescript
-new AblyRestPlugin({ ably: { key: process.env.ABLY_API_KEY }, temporalMetadata: false });
+new AblyRestPlugin({ client, temporalMetadata: false });
 ```
 
 ### Reading the metadata in a subscriber

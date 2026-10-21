@@ -29,9 +29,6 @@ export const expectedHeaders = {
   temporalNamespace: 'agents',
   temporalWorkflowId: 'chat-123',
   temporalRunId: 'run-456',
-  temporalWorkflowType: 'agentWorkflow',
-  temporalActivityId: '7',
-  temporalAttempt: 3,
 };
 
 /** The operation metadata that the activities add for {@link workflowActivityInfo}. */
@@ -39,9 +36,6 @@ export const expectedOperationMetadata = {
   temporalNamespace: 'agents',
   temporalWorkflowId: 'chat-123',
   temporalRunId: 'run-456',
-  temporalWorkflowType: 'agentWorkflow',
-  temporalActivityId: '7',
-  temporalAttempt: '3',
 };
 
 /** An activity environment whose context has the given `Info`, and which does not log activity failures. */

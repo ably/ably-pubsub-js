@@ -75,45 +75,33 @@ export function historyActivities(events: HistoryEvent[]): HistoryActivity[] {
 }
 
 /** The fields of the `WorkflowExecutionStarted` event that the plugin's metadata is derived from. */
-export function workflowStarted(events: HistoryEvent[]): { workflowType: string; runId: string } {
+export function workflowStarted(events: HistoryEvent[]): { runId: string } {
   const attributes = events[0].workflowExecutionStartedEventAttributes!;
-  return { workflowType: attributes.workflowType!.name!, runId: attributes.originalExecutionRunId! };
+  return { runId: attributes.originalExecutionRunId! };
 }
 
 /**
- * The `extras.headers` that the plugin adds to a message published by an activity, as derived from the workflow
- * history. `activityId` and `attempt` are those of the activity attempt that made the request.
+ * The `extras.headers` that the plugin adds to a message published by an activity of the workflow, as derived from
+ * the workflow history. They are the same for every activity and every attempt of the run.
  */
-export function expectedHeaders(
-  namespace: string,
-  workflowId: string,
-  events: HistoryEvent[],
-  activity: { activityId: string; attempt: number },
-): Record<string, string | number> {
-  const { workflowType, runId } = workflowStarted(events);
+export function expectedHeaders(namespace: string, workflowId: string, events: HistoryEvent[]): Record<string, string> {
   return {
     temporalNamespace: namespace,
     temporalWorkflowId: workflowId,
-    temporalRunId: runId,
-    temporalWorkflowType: workflowType,
-    temporalActivityId: activity.activityId,
-    temporalAttempt: activity.attempt,
+    temporalRunId: workflowStarted(events).runId,
   };
 }
 
-/** The operation `metadata` that the plugin adds to an update, delete or append, which has only string values. */
+/**
+ * The operation `metadata` that the plugin adds to an update, delete or append by an activity of the workflow. It has
+ * the same entries as {@link expectedHeaders}.
+ */
 export function expectedOperationMetadata(
   namespace: string,
   workflowId: string,
   events: HistoryEvent[],
-  activity: { activityId: string; attempt: number },
 ): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(expectedHeaders(namespace, workflowId, events, activity)).map(([key, value]) => [
-      key,
-      String(value),
-    ]),
-  );
+  return expectedHeaders(namespace, workflowId, events);
 }
 
 /**

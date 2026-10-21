@@ -82,13 +82,13 @@ describe('temporal/worker/activities', function () {
         activities[ActivityNames.publish],
         toWire({
           channel: 'chat',
-          messages: [{ name: 'e', extras: { headers: { temporalAttempt: 'mine', role: 'agent' } } }],
+          messages: [{ name: 'e', extras: { headers: { temporalRunId: 'mine', role: 'agent' } } }],
         }),
       );
 
       expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({
         ...expectedHeaders,
-        temporalAttempt: 'mine',
+        temporalRunId: 'mine',
         role: 'agent',
       });
     });
@@ -165,7 +165,7 @@ describe('temporal/worker/activities', function () {
         toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
       );
 
-      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({ ...expectedHeaders, temporalAttempt: 1 });
+      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal(expectedHeaders);
     });
 
     it('omits the workflow fields for an activity not started by a workflow', async function () {
@@ -185,11 +185,7 @@ describe('temporal/worker/activities', function () {
         toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
       );
 
-      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({
-        temporalNamespace: 'agents',
-        temporalActivityId: 'standalone-1',
-        temporalAttempt: 2,
-      });
+      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({ temporalNamespace: 'agents' });
     });
   });
 
@@ -211,7 +207,7 @@ describe('temporal/worker/activities', function () {
           toWire({
             channel: 'chat',
             message: { serial: 'serial-1', data: 'edited', extras: { headers: { a: '1' } } },
-            operation: { description: 'edit', metadata: { temporalAttempt: 'mine', reason: 'typo' } },
+            operation: { description: 'edit', metadata: { temporalRunId: 'mine', reason: 'typo' } },
           }),
         );
 
@@ -223,7 +219,7 @@ describe('temporal/worker/activities', function () {
         expect(body.extras).to.deep.equal({ headers: { a: '1' } });
         expect(body.version).to.deep.equal({
           description: 'edit',
-          metadata: { ...expectedOperationMetadata, temporalAttempt: 'mine', reason: 'typo' },
+          metadata: { ...expectedOperationMetadata, temporalRunId: 'mine', reason: 'typo' },
         });
       });
     }
@@ -270,7 +266,7 @@ describe('temporal/worker/activities', function () {
           specs: [
             {
               channels: ['a', 'b'],
-              messages: [{ id: 'x:0', name: 'e', extras: { headers: { temporalAttempt: 'mine' } } }],
+              messages: [{ id: 'x:0', name: 'e', extras: { headers: { temporalRunId: 'mine' } } }],
             },
             { channels: ['c'], messages: { id: 'y:0', name: 'f' } as any },
           ],
@@ -281,7 +277,7 @@ describe('temporal/worker/activities', function () {
       expect(requests[0].path).to.equal('/messages');
       const body = jsonBody(requests[0]);
       expect(body[0].messages).to.deep.equal([
-        { id: 'x:0', name: 'e', extras: { headers: { ...expectedHeaders, temporalAttempt: 'mine' } } },
+        { id: 'x:0', name: 'e', extras: { headers: { ...expectedHeaders, temporalRunId: 'mine' } } },
       ]);
       expect(body[1].messages).to.deep.equal({ id: 'y:0', name: 'f', extras: { headers: expectedHeaders } });
     });

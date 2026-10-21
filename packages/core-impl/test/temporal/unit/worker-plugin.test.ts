@@ -105,9 +105,6 @@ describe('temporal/worker/plugin', function () {
       namespace: 'temporalNamespace',
       workflowId: 'temporalWorkflowId',
       runId: 'temporalRunId',
-      workflowType: 'temporalWorkflowType',
-      activityId: 'temporalActivityId',
-      attempt: 'temporalAttempt',
     });
   });
 });

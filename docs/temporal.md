@@ -314,7 +314,7 @@ IDs are only assigned when no message in the call has an `id`. For `batchPublish
 
 Deduplication only holds within one channel epoch. A retry that arrives after Ably relocates the channel, or after an idle channel is disposed and later reactivated, is applied again, even within the [deduplication window](#keeping-retries-within-the-deduplication-window).
 
-On a channel whose namespace has message updates, deletes and appends enabled, a deduplicated publish is not broadcast to subscribers, but its content replaces the stored copy of the message. History then shows the retry's content under the original serial, including its `temporalAttempt` header. See [Temporal metadata](#temporal-metadata).
+On a channel whose namespace has message updates, deletes and appends enabled, a deduplicated publish is not broadcast to subscribers, but its content replaces the stored copy of the message. Every attempt of a plugin call sends the same content, including its [Temporal metadata](#temporal-metadata), so a retry leaves the stored copy as it was. A publish from another workflow run that reuses an ID you set replaces the stored copy with that run's content and `temporalRunId`.
 
 On a namespace with server-side batching or conflation enabled, which is off by default, Ably does not deduplicate on message IDs or idempotency keys.
 
@@ -398,24 +398,23 @@ Retried calls are then not deduplicated. A message without an ID gets a new one 
 
 The plugin records which Temporal execution published each message, in the message's `extras.headers`:
 
-| Header                 | `TemporalMetadataKeys` | Value                                                   |
-| ---------------------- | ---------------------- | ------------------------------------------------------- |
-| `temporalNamespace`    | `namespace`            | The Temporal namespace the activity ran in.             |
-| `temporalWorkflowId`   | `workflowId`           | The ID of the workflow that scheduled the activity.     |
-| `temporalRunId`        | `runId`                | The run ID of the workflow that scheduled the activity. |
-| `temporalWorkflowType` | `workflowType`         | The workflow type, such as `agentWorkflow`.             |
-| `temporalActivityId`   | `activityId`           | The ID of the activity that published the message.      |
-| `temporalAttempt`      | `attempt`              | The attempt number of the activity, starting at 1.      |
+| Header               | `TemporalMetadataKeys` | Value                                                   |
+| -------------------- | ---------------------- | ------------------------------------------------------- |
+| `temporalNamespace`  | `namespace`            | The Temporal namespace the activity ran in.             |
+| `temporalWorkflowId` | `workflowId`           | The ID of the workflow that scheduled the activity.     |
+| `temporalRunId`      | `runId`                | The run ID of the workflow that scheduled the activity. |
 
-The headers are added to every message published with `channel.publish()` and `batchPublish()`. `temporalAttempt` is a number, and the other values are strings. The keys use camelCase so that they can be used in [subscription filters](https://ably.com/docs/channels#filter-subscribe) without quoting.
+The headers are added to every message published with `channel.publish()` and `batchPublish()`. The values are strings. The workflow ID and run ID are omitted for an activity that a workflow did not start. The keys use camelCase so that they can be used in [subscription filters](https://ably.com/docs/channels#filter-subscribe) without quoting.
 
 For `updateMessage`, `deleteMessage` and `appendMessage`, the same keys are added to the operation's `metadata` instead, with every value as a string. The message's own `extras` are left unchanged. Ably records the operation metadata with the new version of the message, in `message.version.metadata`.
 
 Annotations and LiveObjects operations do not carry the metadata.
 
-Each attempt of an activity sends its own `temporalAttempt`. When Ably deduplicates a retried publish, subscribers only receive the first attempt's message. On a channel whose namespace has message updates, deletes and appends enabled, history then shows the retry's headers under the original serial. On other channels, history keeps the first attempt's headers. A deduplicated update or delete keeps the first attempt's metadata.
+None of the values differs between attempts of an activity, so every attempt of a call sends the same headers and operation metadata. When Ably deduplicates a retried publish, subscribers only receive the first attempt's message, and history shows the same headers whichever attempt's copy it keeps. A deduplicated update or delete keeps the first attempt's metadata.
 
-The headers add about 200 to 250 bytes to each message, and they count towards Ably's maximum message size. The limit applies to all the messages of a publish together, so a publish that is close to the limit, or one that publishes many small messages, can fail with error 40009 because of the headers. Turn the metadata off if your publishes are close to the limit.
+The plugin does not record the workflow type, the activity ID or the attempt number. If your subscribers need one of them, add your own header in workflow code. Your own headers take precedence, as described below.
+
+The headers add about 115 bytes plus the lengths of the namespace and workflow ID to each message, typically 150 to 200 bytes, and they count towards Ably's maximum message size. The limit applies to all the messages of a publish together, so a publish that is close to the limit, or one that publishes many small messages, can fail with error 40009 because of the headers. Turn the metadata off if your publishes are close to the limit.
 
 Your own values take precedence: if a message already has a header, or an operation already has a metadata entry, with one of these keys, the plugin keeps your value. A message whose `extras` or `extras.headers` is not an object is published unchanged.
 
@@ -427,16 +426,16 @@ new AblyHttpPlugin({ client, temporalMetadata: false });
 
 ### Reading the metadata in a subscriber
 
-A subscriber can use the headers to correlate a message with the workflow and activity in the Temporal UI, for example by logging them, or by building a link to the workflow run from `temporalNamespace`, `temporalWorkflowId` and `temporalRunId`.
+A subscriber can use the headers to correlate a message with the workflow run that published it, for example by logging them, or by building a link to the run in the Temporal UI, `/namespaces/{temporalNamespace}/workflows/{temporalWorkflowId}/{temporalRunId}/history`.
 
-They also let a subscriber filter by workflow. For example, to receive only the messages published by `agentWorkflow` workflows with `getDerived()`, which is a preview feature:
+They also let a subscriber filter by workflow. For example, to receive only the messages published by the workflow with the ID `agent-chat-123`, across all of its runs, with `getDerived()`, which is a preview feature:
 
 ```typescript
 const channel = realtime.channels.getDerived('chat:123', {
-  filter: 'headers.temporalWorkflowType == `"agentWorkflow"`',
+  filter: 'headers.temporalWorkflowId == `"agent-chat-123"`',
 });
 await channel.subscribe((message) => {
-  console.log(message.extras?.headers?.temporalWorkflowId, message.data);
+  console.log(message.extras?.headers?.temporalRunId, message.data);
 });
 ```
 

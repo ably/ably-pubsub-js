@@ -258,9 +258,8 @@ describe('temporal end to end', function () {
       expect(activity.attempt).to.equal(1);
       expect(activity.input.messages.map((message: { id: string }) => message.id)).to.deep.equal(ids);
 
-      const headers = expectedHeaders(namespace, handle.workflowId, events, activity);
+      const headers = expectedHeaders(namespace, handle.workflowId, events);
       expect(headers[TemporalMetadataKeys.runId]).to.equal(handle.firstExecutionRunId);
-      expect(headers[TemporalMetadataKeys.workflowType]).to.equal('e2ePublish');
       expect(body).to.have.length(2);
       expect(body[0]).to.deep.include({
         id: ids[0],
@@ -273,7 +272,7 @@ describe('temporal end to end', function () {
       expect(body[1]).to.not.have.property('encoding');
     });
 
-    it('retries a 5xx error with the same message IDs and the next attempt number', async function () {
+    it('retries a 5xx error with the same message IDs and the same content', async function () {
       const channel = uniqueChannel('retry');
       responders.set(
         channel,
@@ -291,11 +290,8 @@ describe('temporal end to end', function () {
 
       const [activity] = historyActivities(events);
       expect(activity.attempt).to.equal(2);
-      expect(first.extras.headers).to.deep.equal(
-        expectedHeaders(namespace, handle.workflowId, events, { ...activity, attempt: 1 }),
-      );
-      expect(second.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events, activity));
-      expect({ ...second, extras: undefined }).to.deep.equal({ ...first, extras: undefined });
+      expect(first.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events));
+      expect(second).to.deep.equal(first);
     });
   });
 
@@ -393,8 +389,7 @@ describe('temporal end to end', function () {
       expect(Buffer.isBuffer(published.data)).to.equal(true);
       expect(published.data).to.deep.equal(Buffer.from([0, 1, 254, 255]));
       expect(published).to.not.have.property('encoding');
-      const [activity] = historyActivities(events);
-      expect(published.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events, activity));
+      expect(published.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events));
       expect(result).to.deep.equal({
         published: { serials: ['serial-0'] },
         history: [{ isUint8Array: true, bytes: [9, 8, 7] }],
@@ -447,7 +442,6 @@ describe('temporal end to end', function () {
 
       expect(result).to.deep.equal({ update: { versionSerial: 'version-1' }, append: { versionSerial: 'version-2' } });
       const [update, append] = requestsFor(channel);
-      const [updateActivity, appendActivity] = historyActivities(events);
       for (const req of [update, append]) {
         expect(req.method).to.equal('patch');
         expect(req.path).to.equal(`/channels/${channel}/messages/serial-1`);
@@ -460,7 +454,7 @@ describe('temporal end to end', function () {
         version: {
           description: 'edit',
           metadata: {
-            ...expectedOperationMetadata(namespace, handle.workflowId, events, updateActivity),
+            ...expectedOperationMetadata(namespace, handle.workflowId, events),
             reason: 'typo',
           },
         },
@@ -469,13 +463,13 @@ describe('temporal end to end', function () {
         serial: 'serial-1',
         data: ' more',
         action: 5,
-        version: { metadata: expectedOperationMetadata(namespace, handle.workflowId, events, appendActivity) },
+        version: { metadata: expectedOperationMetadata(namespace, handle.workflowId, events) },
       });
     });
   });
 
   describe('local activities', function () {
-    it('publishes from a local activity with its activity ID and attempt, retrying with the same IDs', async function () {
+    it('publishes from a local activity with the Temporal metadata, retrying with the same IDs and content', async function () {
       const channel = uniqueChannel('local');
       responders.set(
         channel,
@@ -502,11 +496,8 @@ describe('temporal end to end', function () {
       expect(requestsFor(channel)).to.have.length(2);
       expectGeneratedIds([first.id]);
       expect(second.id).to.equal(first.id);
-      const activity = { activityId: marker.activity_id, attempt: 1 };
-      expect(first.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events, activity));
-      expect(second.extras.headers).to.deep.equal(
-        expectedHeaders(namespace, handle.workflowId, events, { ...activity, attempt: 2 }),
-      );
+      expect(first.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events));
+      expect(second).to.deep.equal(first);
     });
   });
 

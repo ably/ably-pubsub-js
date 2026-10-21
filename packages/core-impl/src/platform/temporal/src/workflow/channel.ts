@@ -1,12 +1,12 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
-import { TemporalAblyRestAnnotations } from './annotations.js';
+import { TemporalAblyHttpAnnotations } from './annotations.js';
 import { requireObject, serialArgument } from './arguments.js';
 import { ablyFailure } from './failure.js';
 import type { ActivityInvoker } from './invoker.js';
-import { TemporalAblyRestObject } from './object.js';
+import { TemporalAblyHttpObject } from './object.js';
 import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './paginated.js';
-import { TemporalAblyRestPresence } from './presence.js';
+import { TemporalAblyHttpPresence } from './presence.js';
 
 const MESSAGE_REMEDIATION =
   'Pass the Message received from history() or a subscribe callback, which carries a serial, with the fields to change.';
@@ -17,21 +17,21 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * A channel used from workflow code. It mirrors the Ably REST `Channel`, and is obtained from
- * {@link TemporalAblyRestChannels.get | TemporalAblyRest.channels.get()}.
+ * {@link TemporalAblyHttpChannels.get | TemporalAblyHttpClient.channels.get()}.
  *
  * Each method runs as a Temporal activity on the worker's Ably HTTP client. If the request fails, the method
  * rejects with the activity's `ActivityFailure`. Use `getAblyErrorDetails()` to get the Ably error from it. Binary
  * message data is returned as `Uint8Array`.
  */
-export class TemporalAblyRestChannel {
+export class TemporalAblyHttpChannel {
   /** The channel name. */
   readonly name: string;
   /** Retrieves the current and historic presence set of the channel. */
-  readonly presence: TemporalAblyRestPresence;
+  readonly presence: TemporalAblyHttpPresence;
   /** Publishes and retrieves annotations on the channel's messages. */
-  readonly annotations: TemporalAblyRestAnnotations;
+  readonly annotations: TemporalAblyHttpAnnotations;
   /** Reads and modifies the objects on the channel. */
-  readonly object: TemporalAblyRestObject;
+  readonly object: TemporalAblyHttpObject;
 
   /** @internal */
   constructor(
@@ -39,15 +39,15 @@ export class TemporalAblyRestChannel {
     name: string,
   ) {
     this.name = name;
-    this.presence = new TemporalAblyRestPresence(invoker, name);
-    this.annotations = new TemporalAblyRestAnnotations(invoker, name);
-    this.object = new TemporalAblyRestObject(invoker, name);
+    this.presence = new TemporalAblyHttpPresence(invoker, name);
+    this.annotations = new TemporalAblyHttpAnnotations(invoker, name);
+    this.object = new TemporalAblyHttpObject(invoker, name);
   }
 
   /**
    * Publishes an array of messages to the channel. Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`) and none of the
+   * When idempotent publishing is enabled (see `TemporalAblyHttpClientOptions.idempotentPublishing`) and none of the
    * messages has an `id`, the messages are published with IDs of the form `<base>:<index>`. The workflow derives
    * the base deterministically, so every attempt of the activity publishes the same IDs, and Ably deduplicates a
    * retry that arrives within its idempotency window. The objects passed in are not modified.
@@ -60,7 +60,7 @@ export class TemporalAblyRestChannel {
   /**
    * Publishes a message to the channel. Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`) and the message has
+   * When idempotent publishing is enabled (see `TemporalAblyHttpClientOptions.idempotentPublishing`) and the message has
    * no `id`, it is published with an ID of the form `<base>:0`. The workflow derives the base deterministically,
    * so every attempt of the activity publishes the same ID, and Ably deduplicates a retry that arrives within its
    * idempotency window. The object passed in is not modified.
@@ -73,7 +73,7 @@ export class TemporalAblyRestChannel {
   /**
    * Publishes a message with the given event name and payload to the channel. Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`), the message is
+   * When idempotent publishing is enabled (see `TemporalAblyHttpClientOptions.idempotentPublishing`), the message is
    * published with an ID of the form `<base>:0`. The workflow derives the base deterministically, so every attempt
    * of the activity publishes the same ID, and Ably deduplicates a retry that arrives within its idempotency
    * window.
@@ -158,7 +158,7 @@ export class TemporalAblyRestChannel {
   /**
    * Publishes an update to an existing message, with patch semantics. Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`) and `options` has no
+   * When idempotent publishing is enabled (see `TemporalAblyHttpClientOptions.idempotentPublishing`) and `options` has no
    * `idempotencyKey`, the update is published with a key that the workflow derives deterministically, so every attempt
    * of the activity sends the same key. Ably returns the result of the first attempt for a retry that arrives within
    * its deduplication window. A caller-supplied `idempotencyKey` must be unique among the operations on the channel.
@@ -186,7 +186,7 @@ export class TemporalAblyRestChannel {
    * Marks a message as deleted by publishing an update with an action of `message.delete`, with patch semantics.
    * Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`) and `options` has no
+   * When idempotent publishing is enabled (see `TemporalAblyHttpClientOptions.idempotentPublishing`) and `options` has no
    * `idempotencyKey`, the delete is published with a key that the workflow derives deterministically, so every attempt
    * of the activity sends the same key. Ably returns the result of the first attempt for a retry that arrives within
    * its deduplication window. A caller-supplied `idempotencyKey` must be unique among the operations on the channel.
@@ -260,10 +260,10 @@ export class TemporalAblyRestChannel {
 }
 
 /**
- * Creates and caches the channels of a `TemporalAblyRest` instance. It mirrors the Ably REST `Channels`.
+ * Creates and caches the channels of a `TemporalAblyHttpClient` instance. It mirrors the Ably REST `Channels`.
  */
-export class TemporalAblyRestChannels {
-  private readonly all: Record<string, TemporalAblyRestChannel> = Object.create(null);
+export class TemporalAblyHttpChannels {
+  private readonly all: Record<string, TemporalAblyHttpChannel> = Object.create(null);
 
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
@@ -272,12 +272,12 @@ export class TemporalAblyRestChannels {
    * Gets the channel with the given name, creating it if it does not exist. Getting a channel does not run an
    * activity.
    *
-   * Channel options, such as a `cipher`, are configured on the worker, with `AblyRestPluginOptions.channelOptions`.
+   * Channel options, such as a `cipher`, are configured on the worker, with `AblyHttpPluginOptions.channelOptions`.
    *
    * @param name - The channel name.
    * @returns The channel.
    */
-  get(name: string): TemporalAblyRestChannel {
+  get(name: string): TemporalAblyHttpChannel {
     // A caller that bypasses the type of this method could pass channel options, which would otherwise be ignored.
     if (arguments.length > 1 && arguments[1] !== undefined) {
       throw ablyFailure({
@@ -285,10 +285,10 @@ export class TemporalAblyRestChannels {
         code: 40003,
         statusCode: 400,
         remediation:
-          'Call channels.get() with the channel name only. Configure channel options, such as a cipher, with the channelOptions function of AblyRestPlugin on the worker.',
+          'Call channels.get() with the channel name only. Configure channel options, such as a cipher, with the channelOptions function of AblyHttpPlugin on the worker.',
       });
     }
     name = String(name);
-    return (this.all[name] ??= new TemporalAblyRestChannel(this.invoker, name));
+    return (this.all[name] ??= new TemporalAblyHttpChannel(this.invoker, name));
   }
 }

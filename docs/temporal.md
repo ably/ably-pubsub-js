@@ -1,13 +1,13 @@
 # ably-js Temporal plugin
 
-Call the Ably REST API from [Temporal](https://temporal.io/) workflow code with an API that mirrors the Ably REST client.
+Call the Ably REST API from [Temporal](https://temporal.io/) workflow code with an API that mirrors the Ably REST client (`Ably.PubSubHttpClient`).
 
 Temporal workflow code must be deterministic, so any I/O, including a request to Ably, has to run in an activity. The Temporal plugin does this for you: each Ably call you make from workflow code runs as a Temporal activity on your worker, which makes the request with a real Ably REST client. You keep the familiar `channels.get(...).publish(...)` API, and Temporal records, retries and replays each call like any other activity.
 
 The plugin ships in the `ably` package as two entry points:
 
-- `@ably/pubsub-server/temporal` is the worker entry point. It provides `AblyRestPlugin`, which registers the Ably activities on a Temporal worker.
-- `@ably/pubsub-server/temporal/workflow` is the workflow entry point. It provides `TemporalAblyRest`, the client you use in workflow code.
+- `@ably/pubsub-server/temporal` is the worker entry point. It provides `AblyHttpPlugin`, which registers the Ably activities on a Temporal worker.
+- `@ably/pubsub-server/temporal/workflow` is the workflow entry point. It provides `TemporalAblyHttpClient`, the client you use in workflow code.
 
 > [!NOTE]
 > For more information about Ably and the concepts used here, see the official [Ably documentation](https://ably.com/docs/). For Temporal concepts such as workflows, activities, retry policies and plugins, see the [Temporal TypeScript SDK documentation](https://docs.temporal.io/develop/typescript).
@@ -82,14 +82,14 @@ Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-ser
 
 ## Worker setup
 
-Construct an `Ably.PubSubHttpClient` client, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)), and add an `AblyRestPlugin` with that client to the `plugins` of your worker:
+Construct an `Ably.PubSubHttpClient` client, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)), and add an `AblyHttpPlugin` with that client to the `plugins` of your worker:
 
 ```typescript
 // worker.ts
 import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
 import { createHttpClient } from '@ably/pubsub-server';
-import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
 const connection = await NativeConnection.connect({ address: 'localhost:7233' });
 
@@ -100,7 +100,7 @@ const worker = await Worker.create({
   namespace: 'default',
   taskQueue: 'agents',
   workflowsPath: fileURLToPath(new URL('./workflows.ts', import.meta.url)),
-  plugins: [new AblyRestPlugin({ client })],
+  plugins: [new AblyHttpPlugin({ client })],
 });
 
 await worker.run();
@@ -108,7 +108,7 @@ await worker.run();
 
 The plugin registers one activity per Ably operation. Every activity name starts with `ably.`, so they cannot collide with your own activities. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
 
-`AblyRestPlugin` takes these options:
+`AblyHttpPlugin` takes these options:
 
 | Option             | Description                                                                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -125,7 +125,7 @@ The activities get each channel from the client when they need it, and release i
 Channel options, such as a `cipher`, are configured on the worker rather than in workflow code. Pass `channelOptions`, which the activities call with the name of each channel they get from the client:
 
 ```typescript
-const plugin = new AblyRestPlugin({
+const plugin = new AblyHttpPlugin({
   client,
   channelOptions: (name) => (name.startsWith('secure:') ? { cipher: { key: process.env.CHANNEL_KEY } } : undefined),
 });
@@ -140,17 +140,17 @@ Every operation on the channel uses the same options, so two workflows cannot se
 ```typescript
 import { createHttpClient } from '@ably/pubsub-server';
 import { LiveObjects } from '@ably/pubsub-server/liveobjects';
-import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
 const client = createHttpClient({ key: process.env.ABLY_API_KEY, plugins: { LiveObjects } });
-const plugin = new AblyRestPlugin({ client });
+const plugin = new AblyHttpPlugin({ client });
 ```
 
 Without it, the `ably.channel.object.*` activities fail with a non-retryable Ably error, code 40019.
 
 ### Using other Temporal plugins
 
-`AblyRestPlugin` is a standard Temporal worker plugin, so it can be combined with others, such as `AiSdkPlugin` from [`@temporalio/ai-sdk`](https://www.npmjs.com/package/@temporalio/ai-sdk), which runs Vercel AI SDK model calls as activities:
+`AblyHttpPlugin` is a standard Temporal worker plugin, so it can be combined with others, such as `AiSdkPlugin` from [`@temporalio/ai-sdk`](https://www.npmjs.com/package/@temporalio/ai-sdk), which runs Vercel AI SDK model calls as activities:
 
 ```typescript
 // worker.ts
@@ -159,7 +159,7 @@ import { NativeConnection, Worker } from '@temporalio/worker';
 import { AiSdkPlugin } from '@temporalio/ai-sdk';
 import { gateway } from 'ai';
 import { createHttpClient } from '@ably/pubsub-server';
-import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
 const connection = await NativeConnection.connect({ address: 'localhost:7233' });
 
@@ -174,7 +174,7 @@ const worker = await Worker.create({
     // Runs model calls as activities. Uses AI_GATEWAY_API_KEY from the worker environment.
     new AiSdkPlugin({ modelProvider: gateway }),
     // Runs Ably REST calls as activities.
-    new AblyRestPlugin({ client }),
+    new AblyHttpPlugin({ client }),
   ],
 });
 
@@ -183,16 +183,16 @@ await worker.run();
 
 ## Workflow usage
 
-In workflow code, construct a `TemporalAblyRest` and use it as you would an Ably REST client. Constructing it does not run an activity, so you can create it at module scope:
+In workflow code, construct a `TemporalAblyHttpClient` and use it as you would an Ably REST client. Constructing it does not run an activity, so you can create it at module scope:
 
 ```typescript
 // workflows/agent.ts
 import { workflowInfo } from '@temporalio/workflow';
 import { TemporalProvider } from '@temporalio/ai-sdk/workflow';
 import { generateText, type ModelMessage } from 'ai';
-import { TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+import { TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
 
-const ably = new TemporalAblyRest();
+const ably = new TemporalAblyHttpClient();
 
 const provider = new TemporalProvider({
   languageModel: { startToCloseTimeout: '2 minutes' },
@@ -227,7 +227,7 @@ const userIsOnline = members.items.length > 0;
 
 ### Options
 
-`TemporalAblyRest` takes these options:
+`TemporalAblyHttpClient` takes these options:
 
 | Option                 | Default                                                                  | Description                                                                                                                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -237,17 +237,17 @@ const userIsOnline = members.items.length > 0;
 
 Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried publish within 2 minutes of the first attempt. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
 
-The options apply to every call made through a `TemporalAblyRest`. To use different options for different calls, create more than one. For example, best-effort status updates can run as local activities with a few attempts, while the final reply uses durable retries:
+The options apply to every call made through a `TemporalAblyHttpClient`. To use different options for different calls, create more than one. For example, best-effort status updates can run as local activities with a few attempts, while the final reply uses durable retries:
 
 ```typescript
-import { TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+import { TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
 
 // Local activities have lower latency, which suits short calls such as status updates.
-const statusAbly = new TemporalAblyRest({
+const statusAbly = new TemporalAblyHttpClient({
   localActivityOptions: { retry: { maximumAttempts: 3 } },
 });
 
-const ably = new TemporalAblyRest({
+const ably = new TemporalAblyHttpClient({
   activityOptions: { startToCloseTimeout: '10 seconds' },
 });
 ```
@@ -267,35 +267,35 @@ Each activity has a summary that names the operation, which the Temporal UI show
 | `request()`                                             | `request POST /path`                        |
 | `batchPublish()`, `batchPresence()`                     | `batchPublish (3 channels)`                 |
 
-The summary of `request()` does not include the `params` you pass, so their values do not appear in the UI. To use your own summary, set `summary` in `activityOptions` or `localActivityOptions`. It then applies to every call made through that `TemporalAblyRest`.
+The summary of `request()` does not include the `params` you pass, so their values do not appear in the UI. To use your own summary, set `summary` in `activityOptions` or `localActivityOptions`. It then applies to every call made through that `TemporalAblyHttpClient`.
 
 ## Supported API
 
-`TemporalAblyRest` and the objects it returns mirror the Ably REST client. Each method runs one activity, registered under the name below. The names are exported as `ActivityNames` from `@ably/pubsub-server/temporal`.
+`TemporalAblyHttpClient` and the objects it returns mirror the Ably REST client. Each method runs one activity, registered under the name below. The names are exported as `ActivityNames` from `@ably/pubsub-server/temporal`.
 
-| Method                                | Activity name                                                                      |
-| ------------------------------------- | ---------------------------------------------------------------------------------- |
-| `TemporalAblyRest.channels.get(name)` | None. Getting a channel does not run an activity.                                  |
-| `TemporalAblyRest.time()`             | `ably.time`                                                                        |
-| `TemporalAblyRest.request()`          | `ably.request`                                                                     |
-| `TemporalAblyRest.batchPublish()`     | `ably.batchPublish`                                                                |
-| `TemporalAblyRest.batchPresence()`    | `ably.batchPresence`                                                               |
-| `channel.publish()`                   | `ably.channel.publish`                                                             |
-| `channel.history()`                   | `ably.channel.history`                                                             |
-| `channel.status()`                    | `ably.channel.status`                                                              |
-| `channel.getMessage()`                | `ably.channel.getMessage`                                                          |
-| `channel.updateMessage()`             | `ably.channel.updateMessage`                                                       |
-| `channel.deleteMessage()`             | `ably.channel.deleteMessage`                                                       |
-| `channel.appendMessage()`             | `ably.channel.appendMessage`                                                       |
-| `channel.getMessageVersions()`        | `ably.channel.getMessageVersions`                                                  |
-| `channel.presence.get()`              | `ably.channel.presence.get`                                                        |
-| `channel.presence.history()`          | `ably.channel.presence.history`                                                    |
-| `channel.annotations.publish()`       | `ably.channel.annotations.publish`                                                 |
-| `channel.annotations.delete()`        | `ably.channel.annotations.delete`                                                  |
-| `channel.annotations.get()`           | `ably.channel.annotations.get`                                                     |
-| `channel.object.get()`                | `ably.channel.object.get`                                                          |
-| `channel.object.publish()`            | `ably.channel.object.publish`                                                      |
-| `push.admin.<method>()`               | `ably.push.admin.<method>`, for example `ably.push.admin.deviceRegistrations.save` |
+| Method                                      | Activity name                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `TemporalAblyHttpClient.channels.get(name)` | None. Getting a channel does not run an activity.                                  |
+| `TemporalAblyHttpClient.time()`             | `ably.time`                                                                        |
+| `TemporalAblyHttpClient.request()`          | `ably.request`                                                                     |
+| `TemporalAblyHttpClient.batchPublish()`     | `ably.batchPublish`                                                                |
+| `TemporalAblyHttpClient.batchPresence()`    | `ably.batchPresence`                                                               |
+| `channel.publish()`                         | `ably.channel.publish`                                                             |
+| `channel.history()`                         | `ably.channel.history`                                                             |
+| `channel.status()`                          | `ably.channel.status`                                                              |
+| `channel.getMessage()`                      | `ably.channel.getMessage`                                                          |
+| `channel.updateMessage()`                   | `ably.channel.updateMessage`                                                       |
+| `channel.deleteMessage()`                   | `ably.channel.deleteMessage`                                                       |
+| `channel.appendMessage()`                   | `ably.channel.appendMessage`                                                       |
+| `channel.getMessageVersions()`              | `ably.channel.getMessageVersions`                                                  |
+| `channel.presence.get()`                    | `ably.channel.presence.get`                                                        |
+| `channel.presence.history()`                | `ably.channel.presence.history`                                                    |
+| `channel.annotations.publish()`             | `ably.channel.annotations.publish`                                                 |
+| `channel.annotations.delete()`              | `ably.channel.annotations.delete`                                                  |
+| `channel.annotations.get()`                 | `ably.channel.annotations.get`                                                     |
+| `channel.object.get()`                      | `ably.channel.object.get`                                                          |
+| `channel.object.publish()`                  | `ably.channel.object.publish`                                                      |
+| `push.admin.<method>()`                     | `ably.push.admin.<method>`, for example `ably.push.admin.deviceRegistrations.save` |
 
 `push.admin` has `publish()`, `createApnsBroadcast()`, `liveActivity.start()`, `update()` and `end()`, `deviceRegistrations.save()`, `get()`, `list()`, `remove()` and `removeWhere()`, and `channelSubscriptions.save()`, `list()`, `listChannels()`, `remove()` and `removeWhere()`. It does not need the Push plugin on the worker's client, which is only needed to activate a device.
 
@@ -330,7 +330,7 @@ Ably discards a message whose ID or idempotency key it has already seen within a
 To keep every attempt within the window, set `scheduleToCloseTimeout` in `activityOptions`, and leave room for the last attempt to run for its `startToCloseTimeout`:
 
 ```typescript
-const ably = new TemporalAblyRest({
+const ably = new TemporalAblyHttpClient({
   activityOptions: { startToCloseTimeout: '30 seconds', scheduleToCloseTimeout: '90 seconds' },
 });
 ```
@@ -375,10 +375,10 @@ Ably does not deduplicate the push admin calls that send a notification or creat
 | `liveActivity.start()`  | Sends the push-to-start notification again, so each device shows a second Live Activity.                                                                                                                                                                                                                                                     |
 | `liveActivity.update()` | Sends the update again. If the workflow sets `aps.timestamp` in workflow code, for example to `Math.floor(Date.now() / 1000)`, and the payload has no `alert`, the device shows the same state after a repeated update. A payload with an `alert` alerts again, and a repeated update counts against Apple's budget for priority 10 updates. |
 
-To pass a failure to the workflow instead of retrying it, make these calls from a separate `TemporalAblyRest` with a single attempt:
+To pass a failure to the workflow instead of retrying it, make these calls from a separate `TemporalAblyHttpClient` with a single attempt:
 
 ```typescript
-const pushAbly = new TemporalAblyRest({
+const pushAbly = new TemporalAblyHttpClient({
   activityOptions: { retry: { maximumAttempts: 1 } },
 });
 ```
@@ -394,7 +394,7 @@ Keep `startToCloseTimeout` longer than a request can take, which is about 25 sec
 Set `idempotentPublishing: false` to send every call with the IDs and keys it has, if any:
 
 ```typescript
-const ably = new TemporalAblyRest({ idempotentPublishing: false });
+const ably = new TemporalAblyHttpClient({ idempotentPublishing: false });
 ```
 
 Retried calls are then not deduplicated. A message without an ID gets a new one on each attempt, from the worker's Ably client for `channel.publish()` and from Ably for `batchPublish()` and `object.publish()`. A publish that reached Ably before its activity failed is therefore published again with a different ID, and a retried update or delete creates another version of the message.
@@ -425,7 +425,7 @@ Your own values take precedence: if a message already has a header, or an operat
 To turn the metadata off, set `temporalMetadata: false`:
 
 ```typescript
-new AblyRestPlugin({ client, temporalMetadata: false });
+new AblyHttpPlugin({ client, temporalMetadata: false });
 ```
 
 ### Reading the metadata in a subscriber
@@ -470,9 +470,9 @@ When the worker's Ably client fails with an Ably `ErrorInfo`, the activity fails
 
 ```typescript
 import { ActivityFailure, log } from '@temporalio/workflow';
-import { getAblyErrorDetails, TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+import { getAblyErrorDetails, TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
 
-const statusAbly = new TemporalAblyRest({ activityOptions: { retry: { maximumAttempts: 3 } } });
+const statusAbly = new TemporalAblyHttpClient({ activityOptions: { retry: { maximumAttempts: 3 } } });
 
 async function publishStatus(channelName: string, status: string): Promise<void> {
   try {
@@ -520,9 +520,9 @@ Errors that are not Ably errors, such as network errors, are passed to Temporal 
 To stop Temporal from retrying any Ably error, add the `AblyError` type to the retry policy's `nonRetryableErrorTypes`. `ABLY_ERROR_TYPE` holds the type:
 
 ```typescript
-import { ABLY_ERROR_TYPE, TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+import { ABLY_ERROR_TYPE, TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
 
-const ably = new TemporalAblyRest({
+const ably = new TemporalAblyHttpClient({
   activityOptions: { retry: { nonRetryableErrorTypes: [ABLY_ERROR_TYPE] } },
 });
 ```
@@ -533,7 +533,7 @@ Some errors are detected in workflow code, before any activity runs:
 
 - **An invalid argument** throws an `ApplicationFailure` of type `AblyError` with code 40003 and status 400. Examples are a first argument to `publish()` that is not an event name, message or array of messages, a `null` message passed to `updateMessage()`, channel options passed to `channels.get()`, and a `null` device ID passed to `push.admin.deviceRegistrations.get()`. It is thrown as it is, not wrapped in an `ActivityFailure`, and `getAblyErrorDetails` accepts it. If you do not catch it, the workflow fails.
 - **Calling `first()` or `current()` on a page without a link to that page** throws an `ApplicationFailure` of type `AblyError` with code 40400 and status 404.
-- **Setting both `activityOptions` and `localActivityOptions`** throws a `TypeError` from the `TemporalAblyRest` constructor. This fails the workflow task rather than the workflow, so Temporal retries the task: fix the options and redeploy the worker, and the workflow resumes.
+- **Setting both `activityOptions` and `localActivityOptions`** throws a `TypeError` from the `TemporalAblyHttpClient` constructor. This fails the workflow task rather than the workflow, so Temporal retries the task: fix the options and redeploy the worker, and the workflow resumes.
 - **Publishing with idempotent publishing enabled on `@temporalio/workflow` earlier than 1.18.0** throws a `TypeError`, which also fails the workflow task. See [Requirements](#requirements).
 
 ## Binary data and results
@@ -587,11 +587,11 @@ const worker = await Worker.create({
 
 `createActivities` takes the same `temporalMetadata` option as the plugin, as its second argument: `createActivities(client, { temporalMetadata: false })`.
 
-Workflow code still calls the activities through `TemporalAblyRest`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
+Workflow code still calls the activities through `TemporalAblyHttpClient`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
 
 ## Exports
 
-| Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ably/pubsub-server/temporal`          | `AblyRestPlugin`, `AblyRestPluginOptions`, `createActivities`, `CreateActivitiesOptions`, `ActivityNames`, `ActivityName`, `AblyActivities`, `TemporalMetadataKeys`, `TemporalMetadata`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                       |
-| `@ably/pubsub-server/temporal/workflow` | `TemporalAblyRest`, `TemporalAblyRestOptions`, `TemporalAblyRestChannels`, `TemporalAblyRestChannel`, `TemporalAblyRestPresence`, `TemporalAblyRestAnnotations`, `TemporalAblyRestObject`, `TemporalAblyRestPush`, `TemporalAblyRestPushAdmin`, `TemporalAblyRestPushDeviceRegistrations`, `TemporalAblyRestPushChannelSubscriptions`, `TemporalAblyRestPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails` |
+| Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `CreateActivitiesOptions`, `ActivityNames`, `ActivityName`, `AblyActivities`, `TemporalMetadataKeys`, `TemporalMetadata`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                                   |
+| `@ably/pubsub-server/temporal/workflow` | `TemporalAblyHttpClient`, `TemporalAblyHttpClientOptions`, `TemporalAblyHttpChannels`, `TemporalAblyHttpChannel`, `TemporalAblyHttpPresence`, `TemporalAblyHttpAnnotations`, `TemporalAblyHttpObject`, `TemporalAblyHttpPush`, `TemporalAblyHttpPushAdmin`, `TemporalAblyHttpPushDeviceRegistrations`, `TemporalAblyHttpPushChannelSubscriptions`, `TemporalAblyHttpPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails` |

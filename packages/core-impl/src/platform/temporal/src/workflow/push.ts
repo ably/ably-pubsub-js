@@ -6,47 +6,47 @@ import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './pagin
 
 /**
  * Push notifications from workflow code. It mirrors the push functionality of the Ably HTTP client that does not
- * need a device, and is obtained from `TemporalAblyRest.push`.
+ * need a device, and is obtained from `TemporalAblyHttpClient.push`.
  */
-export class TemporalAblyRestPush {
+export class TemporalAblyHttpPush {
   /** Manages device registrations and channel subscriptions, and publishes push notifications. */
-  readonly admin: TemporalAblyRestPushAdmin;
+  readonly admin: TemporalAblyHttpPushAdmin;
 
   /** @internal */
   constructor(invoker: ActivityInvoker) {
-    this.admin = new TemporalAblyRestPushAdmin(invoker);
+    this.admin = new TemporalAblyHttpPushAdmin(invoker);
   }
 }
 
 /**
  * Manages device registrations and channel subscriptions, and publishes push notifications, from workflow code. It
- * mirrors the Ably `PushAdmin`, and is obtained from `TemporalAblyRest.push.admin`.
+ * mirrors the Ably `PushAdmin`, and is obtained from `TemporalAblyHttpClient.push.admin`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`. Ably does not deduplicate
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyHttpClientOptions`. Ably does not deduplicate
  * the calls that send a notification or create an APNs broadcast channel, so a retry of `publish()`,
  * `createApnsBroadcast()`, `liveActivity.start()` or `liveActivity.update()` repeats the call. To run them with a
- * single attempt, call them from a separate `TemporalAblyRest` whose retry policy sets `maximumAttempts` to 1. Within an
+ * single attempt, call them from a separate `TemporalAblyHttpClient` whose retry policy sets `maximumAttempts` to 1. Within an
  * attempt, the worker's Ably client can still send the request again to a fallback host after a timeout, a
  * connection error or a 500 to 504 response.
  */
-export class TemporalAblyRestPushAdmin {
+export class TemporalAblyHttpPushAdmin {
   /** Registers, retrieves and removes the devices that receive push notifications. */
-  readonly deviceRegistrations: TemporalAblyRestPushDeviceRegistrations;
+  readonly deviceRegistrations: TemporalAblyHttpPushDeviceRegistrations;
   /** Subscribes devices and clients to push notifications on channels, and retrieves and removes subscriptions. */
-  readonly channelSubscriptions: TemporalAblyRestPushChannelSubscriptions;
+  readonly channelSubscriptions: TemporalAblyHttpPushChannelSubscriptions;
   /**
    * Controls the lifecycle of iOS Live Activities over an APNs broadcast channel created with
-   * {@link TemporalAblyRestPushAdmin.createApnsBroadcast}.
+   * {@link TemporalAblyHttpPushAdmin.createApnsBroadcast}.
    *
    * @experimental This is a preview feature of Ably and may change in a future non-major release.
    */
-  readonly liveActivity: TemporalAblyRestPushLiveActivity;
+  readonly liveActivity: TemporalAblyHttpPushLiveActivity;
 
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {
-    this.deviceRegistrations = new TemporalAblyRestPushDeviceRegistrations(invoker);
-    this.channelSubscriptions = new TemporalAblyRestPushChannelSubscriptions(invoker);
-    this.liveActivity = new TemporalAblyRestPushLiveActivity(invoker);
+    this.deviceRegistrations = new TemporalAblyHttpPushDeviceRegistrations(invoker);
+    this.channelSubscriptions = new TemporalAblyHttpPushChannelSubscriptions(invoker);
+    this.liveActivity = new TemporalAblyHttpPushLiveActivity(invoker);
   }
 
   /**
@@ -94,13 +94,13 @@ const LIVE_ACTIVITY_REMEDIATION =
 
 /**
  * Controls the lifecycle of iOS Live Activities from workflow code. It mirrors the Ably `PushLiveActivity`, and is
- * obtained from `TemporalAblyRest.push.admin.liveActivity`.
+ * obtained from `TemporalAblyHttpClient.push.admin.liveActivity`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`.
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyHttpClientOptions`.
  *
  * @experimental This is a preview feature of Ably and may change in a future non-major release.
  */
-export class TemporalAblyRestPushLiveActivity {
+export class TemporalAblyHttpPushLiveActivity {
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
 
@@ -160,12 +160,12 @@ const PARAMS_REMEDIATION = 'Pass the filter parameters as an object, e.g. { clie
 
 /**
  * Registers, retrieves and removes push devices from workflow code. It mirrors the Ably `PushDeviceRegistrations`,
- * and is obtained from `TemporalAblyRest.push.admin.deviceRegistrations`.
+ * and is obtained from `TemporalAblyHttpClient.push.admin.deviceRegistrations`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`. A save is an upsert keyed
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyHttpClientOptions`. A save is an upsert keyed
  * by the device ID, so a retried save has the same effect as one attempt.
  */
-export class TemporalAblyRestPushDeviceRegistrations {
+export class TemporalAblyHttpPushDeviceRegistrations {
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
 
@@ -250,12 +250,12 @@ const SUBSCRIPTION_REMEDIATION =
 
 /**
  * Subscribes devices and clients to push notifications on channels from workflow code. It mirrors the Ably
- * `PushChannelSubscriptions`, and is obtained from `TemporalAblyRest.push.admin.channelSubscriptions`.
+ * `PushChannelSubscriptions`, and is obtained from `TemporalAblyHttpClient.push.admin.channelSubscriptions`.
  *
- * Each method runs as a Temporal activity with the retry policy in `TemporalAblyRestOptions`. A subscription is keyed by
+ * Each method runs as a Temporal activity with the retry policy in `TemporalAblyHttpClientOptions`. A subscription is keyed by
  * its channel and its device or client, so a retried save has the same effect as one attempt.
  */
-export class TemporalAblyRestPushChannelSubscriptions {
+export class TemporalAblyHttpPushChannelSubscriptions {
   /** @internal */
   constructor(private readonly invoker: ActivityInvoker) {}
 

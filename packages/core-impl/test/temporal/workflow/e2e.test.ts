@@ -1,5 +1,5 @@
 // End-to-end tests of the built plugin on a local Temporal server. The workflows in ./workflows/e2e.ts import the
-// built `@ably/pubsub-server/temporal/workflow`, and run on workers that use the built `AblyRestPlugin` from `@ably/pubsub-server/temporal`. Each
+// built `@ably/pubsub-server/temporal/workflow`, and run on workers that use the built `AblyHttpPlugin` from `@ably/pubsub-server/temporal`. Each
 // plugin is given an Ably HTTP client built from source, with the UTS mock HTTP client installed, so that the real
 // ably-js request pipeline runs and the tests can inspect every HTTP request it makes.
 //
@@ -19,7 +19,7 @@ import {
   type WorkflowBundleWithSourceMap,
 } from '@temporalio/worker';
 import type * as AblyTypes from '@ably/pubsub-server';
-import { AblyRestPlugin, getAblyErrorDetails, TemporalMetadataKeys } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin, getAblyErrorDetails, TemporalMetadataKeys } from '@ably/pubsub-server/temporal';
 import { expect } from 'chai';
 import { Ably, installMockHttp, restoreAll } from '../../uts/helpers';
 import { MockHttpClient, type PendingRequest } from '../../uts/mock_http';
@@ -146,7 +146,7 @@ describe('temporal end to end', function () {
   let env: TestWorkflowEnvironment;
   let namespace: string;
   let workflowBundle: WorkflowBundleWithSourceMap;
-  let jsonPlugin: AblyRestPlugin;
+  let jsonPlugin: AblyHttpPlugin;
   const workers: Worker[] = [];
   const workerRuns: Promise<void>[] = [];
 
@@ -155,8 +155,8 @@ describe('temporal end to end', function () {
     installMockHttp(
       new MockHttpClient({ onConnectionAttempt: (conn) => conn.respond_with_success(), onRequest: handleRequest }),
     );
-    jsonPlugin = new AblyRestPlugin({ client: restClient({ useBinaryProtocol: false, liveObjects: true }) });
-    const msgpackPlugin = new AblyRestPlugin({ client: restClient({ useBinaryProtocol: true }) });
+    jsonPlugin = new AblyHttpPlugin({ client: restClient({ useBinaryProtocol: false, liveObjects: true }) });
+    const msgpackPlugin = new AblyHttpPlugin({ client: restClient({ useBinaryProtocol: true }) });
 
     env = await TestWorkflowEnvironment.createLocal();
     namespace = env.namespace ?? 'default';
@@ -226,7 +226,7 @@ describe('temporal end to end', function () {
     const serverDist = path.resolve(__dirname, '..', '..', '..', '..', 'server', 'dist');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const built = require(path.join(serverDist, 'temporal.js'));
-    expect(AblyRestPlugin).to.equal(built.AblyRestPlugin);
+    expect(AblyHttpPlugin).to.equal(built.AblyHttpPlugin);
     // The workflows import the built workflow entry point rather than the plugin's source, and it imports
     // nothing of the Ably runtime.
     expect(workflowBundle.code).to.include('"./packages/server/dist/temporal-workflow.mjs"');

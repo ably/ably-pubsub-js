@@ -1,15 +1,15 @@
 // Workflows for the sandbox integration tests in ./sandbox.test.ts. They import the built `@ably/pubsub-server/temporal/workflow`
-// entry point, as an application would, and run on workers whose `AblyRestPlugin` talks to an Ably sandbox app. They
+// entry point, as an application would, and run on workers whose `AblyHttpPlugin` talks to an Ably sandbox app. They
 // return plain JSON values describing what they observed, because values such as a Uint8Array or an error class can
 // only be inspected inside the workflow sandbox.
 
 import { ActivityFailure, ApplicationFailure } from '@temporalio/workflow';
 import type * as Ably from '@ably/pubsub-server';
-import { getAblyErrorDetails, TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+import { getAblyErrorDetails, TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
 
 // Retries quickly and a bounded number of times, so that a transient sandbox error does not fail a test, and an
 // unexpected retry shows up in the history rather than as a test timeout.
-const ably = new TemporalAblyRest({
+const ably = new TemporalAblyHttpClient({
   activityOptions: { retry: { initialInterval: '200 milliseconds', backoffCoefficient: 1, maximumAttempts: 3 } },
 });
 

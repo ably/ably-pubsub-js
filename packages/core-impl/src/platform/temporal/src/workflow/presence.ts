@@ -5,11 +5,11 @@ import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './pagin
 
 /**
  * Retrieves the current and historic presence set of a channel from workflow code. It mirrors the Ably REST
- * `Presence`, and is obtained from `TemporalAblyRestChannel.presence`.
+ * `Presence`, and is obtained from `TemporalAblyHttpChannel.presence`.
  *
  * Each method runs as a Temporal activity.
  */
-export class TemporalAblyRestPresence {
+export class TemporalAblyHttpPresence {
   /** @internal */
   constructor(
     private readonly invoker: ActivityInvoker,

@@ -1,8 +1,8 @@
 // The worker entry point, `@ably/pubsub-server/temporal`: the plugin that registers the Ably activities on a Temporal worker.
 // Workflow code imports from `@ably/pubsub-server/temporal/workflow` instead, which is safe to bundle into a workflow.
 
-export { AblyRestPlugin } from './worker/plugin.js';
-export type { AblyRestPluginOptions } from './worker/plugin.js';
+export { AblyHttpPlugin } from './worker/plugin.js';
+export type { AblyHttpPluginOptions } from './worker/plugin.js';
 export { createActivities } from './worker/activities.js';
 export type { CreateActivitiesOptions } from './worker/activities.js';
 export { TemporalMetadataKeys } from './worker/metadata.js';

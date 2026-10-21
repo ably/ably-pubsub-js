@@ -9,17 +9,17 @@ const ANNOTATION_REMEDIATION =
 
 /**
  * Publishes and retrieves annotations on the messages of a channel from workflow code. It mirrors the Ably
- * `HttpAnnotations`, and is obtained from `TemporalAblyRestChannel.annotations`.
+ * `HttpAnnotations`, and is obtained from `TemporalAblyHttpChannel.annotations`.
  *
  * Each method runs as a Temporal activity. Message annotations must be enabled for the channel's namespace by a
  * rule, or the activity fails.
  *
- * When idempotent publishing is enabled (see `TemporalAblyRestOptions.idempotentPublishing`), an annotation published
+ * When idempotent publishing is enabled (see `TemporalAblyHttpClientOptions.idempotentPublishing`), an annotation published
  * or deleted without an `id` is sent with an ID of the form `<base>:0`. The workflow derives the base
  * deterministically, so every attempt of the activity sends the same ID, and Ably deduplicates a retry that arrives
  * within its deduplication window. The object passed in is not modified.
  */
-export class TemporalAblyRestAnnotations {
+export class TemporalAblyHttpAnnotations {
   /** @internal */
   constructor(
     private readonly invoker: ActivityInvoker,

@@ -7,13 +7,13 @@ import type * as Ably from '@ably/pubsub-server';
 import type { HttpObjectOperation } from '@ably/pubsub-server/liveobjects';
 import {
   getAblyErrorDetails,
-  TemporalAblyRest,
+  TemporalAblyHttpClient,
   type TemporalAblyHttpPaginatedResponse,
   type TemporalAblyPaginatedResult,
 } from '../../../../src/platform/temporal/src/workflow.js';
 
 // Constructed at module scope, as in the documented usage.
-const ably = new TemporalAblyRest();
+const ably = new TemporalAblyHttpClient();
 
 interface CapturedError {
   isApplicationFailure: boolean;
@@ -77,7 +77,7 @@ export async function publishOverloads(): Promise<unknown> {
 }
 
 export async function publishIds(idempotentPublishing?: boolean): Promise<unknown> {
-  const rest = new TemporalAblyRest(idempotentPublishing === undefined ? {} : { idempotentPublishing });
+  const rest = new TemporalAblyHttpClient(idempotentPublishing === undefined ? {} : { idempotentPublishing });
   const channel = rest.channels.get('ids');
 
   const fresh: Ably.Message[] = [{ name: 'x' }, { name: 'y', extras: { headers: { h: '1' } } }];
@@ -192,16 +192,16 @@ export async function requestPagination(): Promise<unknown> {
 export async function activityOptions(variant: 'default' | 'custom' | 'summary'): Promise<void> {
   const rest =
     variant === 'default'
-      ? new TemporalAblyRest()
+      ? new TemporalAblyHttpClient()
       : variant === 'custom'
-        ? new TemporalAblyRest({
+        ? new TemporalAblyHttpClient({
             activityOptions: {
               startToCloseTimeout: '7 seconds',
               scheduleToCloseTimeout: '1 minute',
               retry: { maximumAttempts: 2, nonRetryableErrorTypes: ['AblyError'] },
             },
           })
-        : new TemporalAblyRest({ activityOptions: { summary: 'my summary' } });
+        : new TemporalAblyHttpClient({ activityOptions: { summary: 'my summary' } });
   const channel = rest.channels.get('opts');
   await channel.publish('event', 'data');
   const page = await channel.history();
@@ -210,7 +210,7 @@ export async function activityOptions(variant: 'default' | 'custom' | 'summary')
 }
 
 export async function localActivities(): Promise<unknown> {
-  const rest = new TemporalAblyRest({ localActivityOptions: { startToCloseTimeout: '5 seconds' } });
+  const rest = new TemporalAblyHttpClient({ localActivityOptions: { startToCloseTimeout: '5 seconds' } });
   return {
     publish: await rest.channels.get('local').publish('event', 'data'),
     time: await rest.time(),
@@ -227,7 +227,7 @@ export async function activityFailure(rethrow: boolean): Promise<unknown> {
 }
 
 export async function bothOptions(): Promise<void> {
-  new TemporalAblyRest({
+  new TemporalAblyHttpClient({
     activityOptions: { startToCloseTimeout: '1 second' },
     localActivityOptions: { startToCloseTimeout: '1 second' },
   });
@@ -279,7 +279,7 @@ export async function invalidArguments(): Promise<unknown> {
 }
 
 export async function operationKeys(idempotentPublishing?: boolean): Promise<unknown> {
-  const rest = new TemporalAblyRest(idempotentPublishing === undefined ? {} : { idempotentPublishing });
+  const rest = new TemporalAblyHttpClient(idempotentPublishing === undefined ? {} : { idempotentPublishing });
   const channel = rest.channels.get('keys');
   const options = { p: '1' };
   const annotation: Ably.OutboundAnnotation = { type: 'reaction:distinct.v1', name: 'up' };
@@ -329,8 +329,8 @@ export async function pushAdmin(): Promise<unknown> {
 export async function pushRetries(variant: 'default' | 'custom'): Promise<void> {
   const rest =
     variant === 'default'
-      ? new TemporalAblyRest()
-      : new TemporalAblyRest({ activityOptions: { retry: { maximumAttempts: 5 } } });
+      ? new TemporalAblyHttpClient()
+      : new TemporalAblyHttpClient({ activityOptions: { retry: { maximumAttempts: 5 } } });
   const admin = rest.push.admin;
   await admin.publish({ clientId: 'user-1' }, { notification: { title: 'Hello' } });
   await admin.createApnsBroadcast({ messageStoragePolicy: 0 });
@@ -343,7 +343,7 @@ export async function pushRetries(variant: 'default' | 'custom'): Promise<void> 
 
 /** Publishes a push notification whose activity fails retryably, as a local activity. */
 export async function pushLocalFailure(): Promise<unknown> {
-  const rest = new TemporalAblyRest({
+  const rest = new TemporalAblyHttpClient({
     localActivityOptions: { startToCloseTimeout: '5 seconds', retry: { maximumAttempts: 3, initialInterval: '10ms' } },
   });
   return captureError(() => rest.push.admin.publish({ clientId: 'retryable-failure' }, { notification: {} }));

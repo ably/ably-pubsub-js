@@ -952,7 +952,7 @@ describe('temporal/workflow proxy', function () {
       }
       await handle.terminate();
       expect(failure?.message).to.equal(
-        'TemporalAblyRestOptions cannot set both activityOptions and localActivityOptions. Set localActivityOptions to run Ably operations as local activities, or activityOptions to run them as regular activities.',
+        'TemporalAblyHttpClientOptions cannot set both activityOptions and localActivityOptions. Set localActivityOptions to run Ably operations as local activities, or activityOptions to run them as regular activities.',
       );
     });
   });

@@ -179,23 +179,23 @@ Register the plugin on your worker:
 ```typescript
 import { Worker } from '@temporalio/worker';
 import { createHttpClient } from '@ably/pubsub-server';
-import { AblyRestPlugin } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
 const client = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   // ...
-  plugins: [new AblyRestPlugin({ client })],
+  plugins: [new AblyHttpPlugin({ client })],
 });
 ```
 
-Then use `TemporalAblyRest` in your workflow code:
+Then use `TemporalAblyHttpClient` in your workflow code:
 
 ```typescript
 import { workflowInfo } from '@temporalio/workflow';
-import { TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+import { TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
 
-const ably = new TemporalAblyRest();
+const ably = new TemporalAblyHttpClient();
 
 export async function agentWorkflow(): Promise<void> {
   const channel = ably.channels.get(`chat:${workflowInfo().workflowId}`);

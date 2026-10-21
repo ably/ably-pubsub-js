@@ -30,7 +30,7 @@ export interface CreateActivitiesOptions {
 
 /**
  * Creates the Ably activities, keyed by their names in {@link ActivityNames}, which perform each operation with
- * `client`. {@link AblyRestPlugin} registers them on a worker, so most applications do not need to call this
+ * `client`. {@link AblyHttpPlugin} registers them on a worker, so most applications do not need to call this
  * directly. Use it to register the activities on a worker without the plugin.
  *
  * Every activity fails with an `ApplicationFailure` of type `AblyError` when the Ably HTTP client returns an error.

@@ -1,5 +1,5 @@
 // Workflows for the end-to-end tests in ../e2e.test.ts. They import the built `@ably/pubsub-server/temporal/workflow` entry point,
-// as an application would, and run on workers with the built `AblyRestPlugin`. They return plain JSON values
+// as an application would, and run on workers with the built `AblyHttpPlugin`. They return plain JSON values
 // describing what they observed, because values such as a Uint8Array or an error class can only be inspected inside
 // the workflow sandbox.
 
@@ -7,17 +7,17 @@ import { ActivityFailure, ApplicationFailure, type RetryPolicy } from '@temporal
 import type * as Ably from '@ably/pubsub-server';
 import {
   getAblyErrorDetails,
-  TemporalAblyRest,
+  TemporalAblyHttpClient,
   type TemporalAblyPaginatedResult,
 } from '@ably/pubsub-server/temporal/workflow';
 
 // Constructed at module scope, as in the documented usage.
-const ably = new TemporalAblyRest();
+const ably = new TemporalAblyHttpClient();
 
 // Retries a failed activity after 50ms rather than Temporal's default of 1 second, and gives up after 5 attempts,
 // so that an unexpected retry shows up as extra requests rather than a test timeout.
 const fastRetry: RetryPolicy = { initialInterval: '50 milliseconds', backoffCoefficient: 1, maximumAttempts: 5 };
-const retrying = new TemporalAblyRest({ activityOptions: { retry: fastRetry } });
+const retrying = new TemporalAblyHttpClient({ activityOptions: { retry: fastRetry } });
 
 export interface CapturedError {
   isActivityFailure: boolean;
@@ -102,7 +102,9 @@ export async function e2eMessageOperations(channelName: string): Promise<unknown
 }
 
 export async function e2eLocalActivity(channelName: string): Promise<Ably.PublishResult> {
-  const rest = new TemporalAblyRest({ localActivityOptions: { startToCloseTimeout: '10 seconds', retry: fastRetry } });
+  const rest = new TemporalAblyHttpClient({
+    localActivityOptions: { startToCloseTimeout: '10 seconds', retry: fastRetry },
+  });
   return rest.channels.get(channelName).publish('event', 'local');
 }
 

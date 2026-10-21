@@ -1,5 +1,5 @@
 // Integration tests of the built plugin against an Ably sandbox app and a local Temporal server. The workflows in
-// ./workflows.ts import the built `@ably/pubsub-server/temporal/workflow`, and run on workers with the built `AblyRestPlugin`, each
+// ./workflows.ts import the built `@ably/pubsub-server/temporal/workflow`, and run on workers with the built `AblyHttpPlugin`, each
 // given an HTTP client from the built `@ably/pubsub-server` package. A separate client reads back what reached Ably.
 //
 // These tests check the assumptions the plugin makes about the Ably service:
@@ -28,7 +28,7 @@ import { MockActivityEnvironment, TestWorkflowEnvironment } from '@temporalio/te
 import { bundleWorkflowCode, DefaultLogger, Worker, type WorkflowBundleWithSourceMap } from '@temporalio/worker';
 import * as Ably from '@ably/pubsub-server';
 import { LiveObjects, type HttpObjectOperation, type HttpObjectPublishResult } from '@ably/pubsub-server/liveobjects';
-import { AblyRestPlugin, createActivities, type AblyActivities, type ActivityName } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin, createActivities, type AblyActivities, type ActivityName } from '@ably/pubsub-server/temporal';
 import { expect } from 'chai';
 import {
   getSandboxApp,
@@ -125,7 +125,7 @@ describe('temporal sandbox integration', function () {
         taskQueue,
         workflowBundle,
         plugins: [
-          new AblyRestPlugin({
+          new AblyHttpPlugin({
             client: Ably.createHttpClient({ key: workerKey, endpoint: SANDBOX_ENDPOINT, plugins: { LiveObjects } }),
           }),
         ],
@@ -267,7 +267,7 @@ describe('temporal sandbox integration', function () {
     const serverDist = path.resolve(__dirname, '..', '..', '..', '..', 'server', 'dist');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const built = require(path.join(serverDist, 'temporal.js'));
-    expect(AblyRestPlugin).to.equal(built.AblyRestPlugin);
+    expect(AblyHttpPlugin).to.equal(built.AblyHttpPlugin);
     expect(createActivities).to.equal(built.createActivities);
     // The workflows import the built workflow entry point rather than the plugin's source, and it imports
     // nothing of the Ably runtime.

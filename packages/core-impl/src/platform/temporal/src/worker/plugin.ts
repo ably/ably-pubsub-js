@@ -2,8 +2,8 @@ import type * as Ably from '@ably/pubsub-core/api';
 import { SimplePlugin } from '@temporalio/plugin';
 import { createActivities } from './activities.js';
 
-/** Options for {@link AblyRestPlugin}. */
-export interface AblyRestPluginOptions {
+/** Options for {@link AblyHttpPlugin}. */
+export interface AblyHttpPluginOptions {
   /**
    * The `PubSubHttpClient` that the plugin's activities use. Create it with `createHttpClient` from
    * `@ably/pubsub-server`. To use `channel.object` from workflows, create it with the `LiveObjects` plugin from
@@ -35,20 +35,20 @@ export interface AblyRestPluginOptions {
 
 /**
  * A Temporal worker plugin that registers the Ably activities, which perform Ably REST operations on behalf of
- * workflows. Workflow code calls them through `TemporalAblyRest` from `@ably/pubsub-server/temporal/workflow`.
+ * workflows. Workflow code calls them through `TemporalAblyHttpClient` from `@ably/pubsub-server/temporal/workflow`.
  *
  * ```ts
  * const client = createHttpClient({ key: process.env.ABLY_API_KEY });
  *
  * const worker = await Worker.create({
  *   // ...
- *   plugins: [new AblyRestPlugin({ client })],
+ *   plugins: [new AblyHttpPlugin({ client })],
  * });
  * ```
  *
  * The activities are registered under the names in {@link ActivityNames}, which all start with `ably.`.
  */
-export class AblyRestPlugin extends SimplePlugin {
+export class AblyHttpPlugin extends SimplePlugin {
   /** The Ably HTTP client that the plugin's activities use. */
   readonly client: Ably.PubSubHttpClient;
 
@@ -56,10 +56,10 @@ export class AblyRestPlugin extends SimplePlugin {
    * @param options - The plugin options, including the Ably HTTP client that the activities use.
    * @throws `TypeError` if `options.client` is not a `PubSubHttpClient`.
    */
-  constructor(options: AblyRestPluginOptions) {
+  constructor(options: AblyHttpPluginOptions) {
     const client = validateClient(options);
     super({
-      name: 'AblyRestPlugin',
+      name: 'AblyHttpPlugin',
       activities: createActivities(client, {
         temporalMetadata: options.temporalMetadata,
         channelOptions: options.channelOptions,
@@ -75,7 +75,7 @@ export class AblyRestPlugin extends SimplePlugin {
  * client from `createRealtimeClient` is rejected: it has a `connection`, and its channels publish over that
  * connection rather than with an HTTP request.
  */
-function validateClient(options: AblyRestPluginOptions | undefined): Ably.PubSubHttpClient {
+function validateClient(options: AblyHttpPluginOptions | undefined): Ably.PubSubHttpClient {
   const client: unknown = options?.client;
   if (
     typeof client !== 'object' ||
@@ -85,7 +85,7 @@ function validateClient(options: AblyRestPluginOptions | undefined): Ably.PubSub
     'connection' in client
   ) {
     throw new TypeError(
-      'AblyRestPlugin options do not include a PubSubHttpClient in `client`. Create the client with `createHttpClient` from `@ably/pubsub-server` and pass it as `client`, for example `new AblyRestPlugin({ client: createHttpClient({ key: process.env.ABLY_API_KEY }) })`. A realtime client from `createRealtimeClient` is not accepted.',
+      'AblyHttpPlugin options do not include a PubSubHttpClient in `client`. Create the client with `createHttpClient` from `@ably/pubsub-server` and pass it as `client`, for example `new AblyHttpPlugin({ client: createHttpClient({ key: process.env.ABLY_API_KEY }) })`. A realtime client from `createRealtimeClient` is not accepted.',
     );
   }
   return client as Ably.PubSubHttpClient;

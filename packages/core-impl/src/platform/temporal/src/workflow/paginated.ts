@@ -47,7 +47,7 @@ export interface TemporalAblyPaginatedResult<T> {
 }
 
 /**
- * A page of the response to `TemporalAblyRest.request()`, with the details of the HTTP response. It
+ * A page of the response to `TemporalAblyHttpClient.request()`, with the details of the HTTP response. It
  * mirrors the Ably `HttpPaginatedResponse`.
  *
  * Related pages are fetched with a `GET` request to the same path, with the same API version and headers.

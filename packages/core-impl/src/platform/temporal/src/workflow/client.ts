@@ -2,10 +2,10 @@ import type { ActivityOptions, LocalActivityOptions } from '@temporalio/workflow
 import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
 import type { PageParams } from '../common/wire.js';
-import { TemporalAblyRestChannels } from './channel.js';
+import { TemporalAblyHttpChannels } from './channel.js';
 import { requireString, requireStringArray } from './arguments.js';
 import { ActivityInvoker } from './invoker.js';
-import { TemporalAblyRestPush } from './push.js';
+import { TemporalAblyHttpPush } from './push.js';
 import {
   httpPaginatedResponse,
   pageSummary,
@@ -13,8 +13,8 @@ import {
   type TemporalAblyHttpPaginatedResponse,
 } from './paginated.js';
 
-/** Options for {@link TemporalAblyRest}. */
-export interface TemporalAblyRestOptions {
+/** Options for {@link TemporalAblyHttpClient}. */
+export interface TemporalAblyHttpClientOptions {
   /**
    * The options for the activities that run Ably operations. They are applied on top of the defaults, which are a
    * `startToCloseTimeout` of 30 seconds and Temporal's default retry policy.
@@ -34,10 +34,10 @@ export interface TemporalAblyRestOptions {
    * activity. Each key is the same on every attempt of the activity and every replay of the workflow. The key is
    * sent in the form that each endpoint deduplicates on:
    *
-   * - Message IDs for `TemporalAblyRestChannel.publish()` and {@link TemporalAblyRest.batchPublish}.
-   * - The `idempotencyKey` option for `TemporalAblyRestChannel.updateMessage()` and `deleteMessage()`.
-   * - The annotation `id` for `TemporalAblyRestAnnotations.publish()` and `delete()`.
-   * - Operation IDs for `TemporalAblyRestObject.publish()`.
+   * - Message IDs for `TemporalAblyHttpChannel.publish()` and {@link TemporalAblyHttpClient.batchPublish}.
+   * - The `idempotencyKey` option for `TemporalAblyHttpChannel.updateMessage()` and `deleteMessage()`.
+   * - The annotation `id` for `TemporalAblyHttpAnnotations.publish()` and `delete()`.
+   * - Operation IDs for `TemporalAblyHttpObject.publish()`.
    *
    * A call whose messages, annotation or operations already have an `id`, or whose options already have an
    * `idempotencyKey`, is sent as it is. When `false`, every call is sent as it is.
@@ -48,8 +48,8 @@ export interface TemporalAblyRestOptions {
 }
 
 /**
- * An Ably HTTP client for workflow code. It mirrors the Ably `Rest` client, but each operation runs as a Temporal
- * activity on a worker that has the `AblyRestPlugin` from `@ably/pubsub-server/temporal`, which makes the request with its own
+ * An Ably HTTP client for workflow code. It mirrors the `PubSubHttpClient` from `@ably/pubsub-server`, but each operation runs as a Temporal
+ * activity on a worker that has the `AblyHttpPlugin` from `@ably/pubsub-server/temporal`, which makes the request with its own
  * Ably HTTP client.
  *
  * Construct it at module scope or inside a workflow. Constructing it does not run an activity.
@@ -63,9 +63,9 @@ export interface TemporalAblyRestOptions {
  * @example
  * ```ts
  * import { workflowInfo } from '@temporalio/workflow';
- * import { TemporalAblyRest } from '@ably/pubsub-server/temporal/workflow';
+ * import { TemporalAblyHttpClient } from '@ably/pubsub-server/temporal/workflow';
  *
- * const ably = new TemporalAblyRest({ activityOptions: { retry: { maximumAttempts: 3 } } });
+ * const ably = new TemporalAblyHttpClient({ activityOptions: { retry: { maximumAttempts: 3 } } });
  *
  * export async function agentWorkflow(): Promise<void> {
  *   const channel = ably.channels.get(`chat:${workflowInfo().workflowId}`);
@@ -73,21 +73,21 @@ export interface TemporalAblyRestOptions {
  * }
  * ```
  */
-export class TemporalAblyRest {
+export class TemporalAblyHttpClient {
   /** Creates and caches the channels used from this client. */
-  readonly channels: TemporalAblyRestChannels;
+  readonly channels: TemporalAblyHttpChannels;
   /** Manages push notification device registrations and channel subscriptions, and publishes push notifications. */
-  readonly push: TemporalAblyRestPush;
+  readonly push: TemporalAblyHttpPush;
   private readonly invoker: ActivityInvoker;
 
   /**
    * @param options - Options for the activities that run Ably operations, and for idempotent publishing.
    * @throws `TypeError` if both `activityOptions` and `localActivityOptions` are set.
    */
-  constructor(options: TemporalAblyRestOptions = {}) {
+  constructor(options: TemporalAblyHttpClientOptions = {}) {
     if (options.activityOptions && options.localActivityOptions) {
       throw new TypeError(
-        'TemporalAblyRestOptions cannot set both activityOptions and localActivityOptions. Set localActivityOptions to run Ably operations as local activities, or activityOptions to run them as regular activities.',
+        'TemporalAblyHttpClientOptions cannot set both activityOptions and localActivityOptions. Set localActivityOptions to run Ably operations as local activities, or activityOptions to run them as regular activities.',
       );
     }
     this.invoker = new ActivityInvoker({
@@ -95,8 +95,8 @@ export class TemporalAblyRest {
       localActivityOptions: options.localActivityOptions,
       idempotentPublishing: options.idempotentPublishing ?? true,
     });
-    this.channels = new TemporalAblyRestChannels(this.invoker);
-    this.push = new TemporalAblyRestPush(this.invoker);
+    this.channels = new TemporalAblyHttpChannels(this.invoker);
+    this.push = new TemporalAblyHttpPush(this.invoker);
   }
 
   /**
@@ -162,9 +162,9 @@ export class TemporalAblyRest {
   /**
    * Publishes messages to one or more channels, up to a maximum of 100 channels. Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see {@link TemporalAblyRestOptions.idempotentPublishing}) and none of the
+   * When idempotent publishing is enabled (see {@link TemporalAblyHttpClientOptions.idempotentPublishing}) and none of the
    * spec's messages has an `id`, the messages are published with deterministic IDs, as for
-   * `TemporalAblyRestChannel.publish()`. The objects passed in are not modified.
+   * `TemporalAblyHttpChannel.publish()`. The objects passed in are not modified.
    *
    * @param spec - The messages to publish, and the channels to publish them to.
    * @returns A promise which is fulfilled with the result of the publish to each channel. The `error` of a failure
@@ -176,9 +176,9 @@ export class TemporalAblyRest {
   /**
    * Publishes messages to one or more channels, up to a maximum of 100 channels. Runs as a Temporal activity.
    *
-   * When idempotent publishing is enabled (see {@link TemporalAblyRestOptions.idempotentPublishing}), the messages of
+   * When idempotent publishing is enabled (see {@link TemporalAblyHttpClientOptions.idempotentPublishing}), the messages of
    * each spec in which no message has an `id` are published with deterministic IDs, as for
-   * `TemporalAblyRestChannel.publish()`. Each spec gets its own ID base. The objects passed in are not modified.
+   * `TemporalAblyHttpChannel.publish()`. Each spec gets its own ID base. The objects passed in are not modified.
    *
    * @param specs - The messages to publish, and the channels to publish them to.
    * @returns A promise which is fulfilled with an array of results, in the same order as `specs`. The `error` of a

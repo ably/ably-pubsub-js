@@ -6,6 +6,8 @@
  */
 
 import { expect } from 'chai';
+import ErrorInfo from '../../../../../src/common/lib/types/errorinfo';
+import PushChannel from '../../../../../src/plugins/push/pushchannel';
 import { MockHttpClient } from '../../../mock_http';
 import { Ably, installMockHttp, restoreAll } from '../../../helpers';
 
@@ -48,8 +50,6 @@ describe('uts/rest/unit/auth/client_id', function () {
    */
   // UTS: rest/unit/RSA7b/clientid-from-token-details-0
   it('RSA7b - clientId from TokenDetails', function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
@@ -72,8 +72,6 @@ describe('uts/rest/unit/auth/client_id', function () {
    */
   // UTS: rest/unit/RSA7b/clientid-from-callback-token-1
   it('RSA7b - clientId from authCallback TokenDetails', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
@@ -205,8 +203,6 @@ describe('uts/rest/unit/auth/client_id', function () {
    */
   // UTS: rest/unit/RSA7/clientid-updated-after-authorize-0
   it('RSA7 - clientId updated after authorize()', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     let tokenCount = 0;
 
     const mock = new MockHttpClient({
@@ -248,8 +244,6 @@ describe('uts/rest/unit/auth/client_id', function () {
    */
   // UTS: rest/unit/RSA12/wildcard-clientid-0
   it('RSA12 - Wildcard clientId', function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
@@ -303,14 +297,9 @@ describe('uts/rest/unit/auth/client_id', function () {
    * When ClientOptions.clientId is not set but the token has a clientId,
    * the client should inherit the clientId from the token.
    *
-   * DEVIATION: ably-js does not derive auth.clientId from TokenDetails
-   * for REST clients — see deviations.md (RSA7b). This test documents
-   * the expected behavior even though it currently fails.
    */
   // UTS: rest/unit/RSA7/clientid-updated-after-authorize-0.1
   it('RSA7 - case 5: clientId inherited from token', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     installMockHttp(simpleMock(captured));
 
@@ -417,5 +406,133 @@ describe('uts/rest/unit/auth/client_id', function () {
     }
 
     expect(client.auth.clientId).to.equal('any-client');
+  });
+  /** RSA7a - An explicit identity supplied to authorize remains authoritative. */
+  it('RSA7a - authorize clientId is retained with a wildcard token', async function () {
+    const captured: any[] = [];
+    installMockHttp(simpleMock(captured));
+    const client = new Ably.Rest({
+      authCallback(_params: any, callback: any) {
+        callback(null, { token: 'wildcard-token', clientId: '*', issued: Date.now(), expires: Date.now() + 3600000 });
+      },
+    });
+    await client.auth.authorize(null, {
+      clientId: 'explicit-client',
+      authCallback(_params: any, callback: any) {
+        callback(null, { token: 'wildcard-token', clientId: '*', issued: Date.now(), expires: Date.now() + 3600000 });
+      },
+    });
+    expect(client.auth.clientId).to.equal('explicit-client');
+  });
+
+  /** RSA7b - A new unidentified token clears a previously derived identity. */
+  it('RSA7b - an unidentified renewal clears the derived clientId', async function () {
+    const captured: any[] = [];
+    installMockHttp(simpleMock(captured));
+    let count = 0;
+    const client = new Ably.Rest({
+      authCallback(_params: any, callback: any) {
+        callback(null, {
+          token: 'token-' + count,
+          issued: Date.now(),
+          clientId: count++ ? undefined : 'token-client',
+          expires: Date.now() + 3600000,
+        });
+      },
+    });
+    await client.auth.authorize();
+    expect(client.auth.clientId).to.equal('token-client');
+    await client.auth.authorize();
+    expect(client.auth.clientId).to.equal(undefined);
+  });
+  for (const clientId of [null, '']) {
+    /** RSA7a - Preserve explicitly supplied unidentified client IDs. */
+    it(`RSA7a - explicit ${JSON.stringify(clientId)} is not overridden by token details`, async function () {
+      const captured: any[] = [];
+      installMockHttp(simpleMock(captured));
+      const client = new Ably.Rest({
+        clientId,
+        tokenDetails: {
+          capability: '{}',
+          token: 'token-client',
+          clientId: 'token-client',
+          issued: Date.now(),
+          expires: Date.now() + 3600000,
+        },
+        authCallback(_params: any, callback: any) {
+          callback(null, {
+            token: 'renewed',
+            clientId: 'renewed-client',
+            issued: Date.now(),
+            expires: Date.now() + 3600000,
+          });
+        },
+      });
+      expect(client.auth.clientId).to.equal(clientId);
+      await client.auth.authorize();
+      expect(client.auth.clientId).to.equal(clientId);
+    });
+  }
+
+  /** RSA7 - REST token derivation must not affect Realtime before CONNECTED. */
+  it('RSA7 - Realtime token acquisition does not establish identity before connection', async function () {
+    const captured: any[] = [];
+    installMockHttp(simpleMock(captured));
+    const client = new Ably.Realtime({
+      autoConnect: false,
+      authCallback(_params: any, callback: any) {
+        callback(null, {
+          token: 'token-client',
+          clientId: 'token-client',
+          issued: Date.now(),
+          expires: Date.now() + 3600000,
+        });
+      },
+    });
+    expect(client.auth.clientId).to.equal(undefined);
+    await (client.auth as any)._ensureValidAuthCredentials(false);
+    expect(client.auth.clientId).to.equal(undefined);
+    client.close();
+  });
+  /** RSA7b4 - A wildcard token grants permission, not a concrete push identity. */
+  it('RSA7b4 - wildcard token cannot subscribe or unsubscribe a push client', async function () {
+    const client = new Ably.Rest({
+      tokenDetails: {
+        capability: '{}',
+        issued: Date.now(),
+        token: 'wildcard',
+        clientId: '*',
+        expires: Date.now() + 3600000,
+      },
+    });
+    expect(client.auth.clientId).to.equal('*');
+    const push = new PushChannel({ client: { auth: client.auth, ErrorInfo }, name: 'test' } as any);
+    for (const call of [() => push.subscribeClient(), () => push.unsubscribeClient()]) {
+      let caught: any;
+      try {
+        await call();
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught?.code).to.equal(50000);
+      expect(caught?.message).to.match(/without client ID/);
+    }
+  });
+  /** RSA7b - authorize may accept TokenDetails without making a token request. */
+  it('RSA7b - authorize derives and replaces clientId from supplied TokenDetails', async function () {
+    const client = new Ably.Rest({ token: 'initial-token', logLevel: 0 });
+    expect(client.auth.clientId).to.equal(undefined);
+    for (const clientId of ['first-client', 'second-client', '*', undefined]) {
+      await client.auth.authorize(null, {
+        tokenDetails: {
+          token: 'supplied-token',
+          clientId,
+          capability: '{}',
+          issued: Date.now(),
+          expires: Date.now() + 3600000,
+        },
+      });
+      expect(client.auth.clientId).to.equal(clientId);
+    }
   });
 });

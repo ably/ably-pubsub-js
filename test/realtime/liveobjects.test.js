@@ -9341,6 +9341,68 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             }),
             expected: 0,
           },
+          // Non-ASCII scenarios locking the string-measurement convention: strings and keys are
+          // measured as their UTF-8 byte length, while extras is measured as the UTF-16 string
+          // length of its JSON representation. '你' is 3 UTF-8 bytes / 1 UTF-16 code unit and '😊'
+          // is 4 UTF-8 bytes / 2 UTF-16 code units, so the two measurements diverge here.
+          {
+            description: 'client id non-ascii (OM3f UTF-8 byte length)',
+            message: objectMessageFromValues({
+              clientId: '你😊',
+            }),
+            expected: Utils.dataSizeBytes('你😊'),
+          },
+          {
+            description: 'map create op key non-ascii (MCR3a1 UTF-8 byte length)',
+            message: objectMessageFromValues({
+              operation: {
+                action: 0,
+                objectId: 'object-id',
+                mapCreate: { semantics: 0, entries: { '你😊': { tombstone: false, data: { string: 'a string' } } } },
+              },
+            }),
+            expected: Utils.dataSizeBytes('你😊') + Utils.dataSizeBytes('a string'),
+          },
+          {
+            description: 'map set op key non-ascii (MST3c UTF-8 byte length)',
+            message: objectMessageFromValues({
+              operation: { action: 1, objectId: 'object-id', mapSet: { key: '你😊', value: { string: 'my-value' } } },
+            }),
+            expected: Utils.dataSizeBytes('你😊') + Utils.dataSizeBytes('my-value'),
+          },
+          {
+            description: 'map remove op key non-ascii (MRM3a UTF-8 byte length)',
+            message: objectMessageFromValues({
+              operation: { action: 2, objectId: 'object-id', mapRemove: { key: '你😊' } },
+            }),
+            expected: Utils.dataSizeBytes('你😊'),
+          },
+          {
+            description: 'map object entry key non-ascii (OMP4a1 UTF-8 byte length)',
+            message: objectMessageFromValues({
+              object: {
+                objectId: 'object-id',
+                map: {
+                  semantics: 0,
+                  entries: {
+                    '你😊': { tombstone: false, data: { string: 'a string' } },
+                  },
+                },
+                siteTimeserials: { aaa: lexicoTimeserial('aaa', 111, 111, 1) }, // shouldn't be counted
+                tombstone: false,
+              },
+            }),
+            expected: Utils.dataSizeBytes('你😊') + Utils.dataSizeBytes('a string'),
+          },
+          {
+            description: 'extras non-ascii (OM3d UTF-16 string length of JSON)',
+            message: objectMessageFromValues({
+              extras: { foo: '你😊' },
+            }),
+            // extras keeps the docs-verbatim "string length of its JSON representation" (UTF-16
+            // code units), not the UTF-8 byte length used for the fields above.
+            expected: JSON.stringify({ foo: '你😊' }).length,
+          },
         ];
 
         /** @nospec */

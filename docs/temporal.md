@@ -368,15 +368,7 @@ Ably does not deduplicate the push admin calls that send a notification or creat
 
 Ably's `collapseKey` sets FCM's collapse key, which only replaces a message that has not yet been delivered, and APNs' `thread-id`, which only groups notifications. Neither makes a repeated `publish()` idempotent.
 
-To pass a failure to the workflow instead of retrying it, make these calls from a separate `TemporalAblyHttpClient` with a single attempt:
-
-```typescript
-const pushAbly = new TemporalAblyHttpClient({
-  activityOptions: { retry: { maximumAttempts: 1 } },
-});
-```
-
-Within an attempt, the worker's Ably client can still send the request again to a fallback host after a timeout, a connection error or a 500 to 504 response, so a single attempt can still repeat a call. If a call fails with a timeout or a retryable error, it may or may not have reached Ably.
+Within an attempt, the worker's Ably client can also send the request again to a fallback host after a timeout, a connection error or a 500 to 504 response, so even a single attempt can repeat a call. If a call fails with a timeout or a retryable error, it may or may not have reached Ably.
 
 Keep `startToCloseTimeout` longer than a request can take, which is about 25 seconds across fallback hosts with the default client options, so that Temporal does not retry an attempt that is still in progress. The default of 30 seconds allows for this.
 
@@ -480,7 +472,7 @@ The details have these fields:
 | `remediation` | How to fix the error. The Ably SDK sets it only on errors it raises itself, such as an `authUrl` response without a `Content-Type`, so errors from Ably have none. |
 | `detail`      | Additional key-value details about the error, if it has any.                                                                                                       |
 
-If you do not catch the error, the workflow fails with it, and `getAblyErrorDetails` also works on the `WorkflowFailedError` that a Temporal client receives from the workflow handle's `result()`. It is exported from both `@ably/pubsub-server/temporal` and `@ably/pubsub-server/temporal/workflow`. Importing `@ably/pubsub-server/temporal/workflow` requires `@temporalio/workflow` to be installed, and `@ably/pubsub-server/temporal` requires `@temporalio/plugin` and `@temporalio/activity`.
+If you do not catch the error, the workflow fails with it, and `getAblyErrorDetails` also works on the `WorkflowFailedError` that a Temporal client receives from the workflow handle's `result()`. It is exported from both `@ably/pubsub-server/temporal` and `@ably/pubsub-server/temporal/workflow`. Importing `@ably/pubsub-server/temporal/workflow` requires `@temporalio/workflow` to be installed, and `@ably/pubsub-server/temporal` requires `@temporalio/plugin`, `@temporalio/activity` and `@temporalio/common`.
 
 ### Which errors are retried
 

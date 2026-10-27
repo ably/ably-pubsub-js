@@ -24,10 +24,9 @@ export class TemporalAblyHttpPush {
  *
  * Each method runs as a Temporal activity with the retry policy in `TemporalAblyHttpClientOptions`. Ably does not deduplicate
  * the calls that send a notification or create an APNs broadcast channel, so a retry of `publish()`,
- * `createApnsBroadcast()`, `liveActivity.start()` or `liveActivity.update()` repeats the call. To run them with a
- * single attempt, call them from a separate `TemporalAblyHttpClient` whose retry policy sets `maximumAttempts` to 1. Within an
- * attempt, the worker's Ably client can still send the request again to a fallback host after a timeout, a
- * connection error or a 500 to 504 response.
+ * `createApnsBroadcast()`, `liveActivity.start()` or `liveActivity.update()` repeats the call. Within an attempt, the
+ * worker's Ably client can also send the request again to a fallback host after a timeout, a connection error or a
+ * 500 to 504 response.
  */
 export class TemporalAblyHttpPushAdmin {
   /** Registers, retrieves and removes the devices that receive push notifications. */
@@ -51,8 +50,7 @@ export class TemporalAblyHttpPushAdmin {
 
   /**
    * Sends a push notification directly to a device, or a group of devices sharing the same `clientId`. Runs as a
-   * Temporal activity. A retry sends the notification again, so include an ID in the payload's `data` if the app
-   * needs to drop a duplicate.
+   * Temporal activity. A retry sends the notification again.
    *
    * @param recipient - The recipient details, using `clientId`, `deviceId` or the underlying notifications service.
    * @param payload - The push notification payload.

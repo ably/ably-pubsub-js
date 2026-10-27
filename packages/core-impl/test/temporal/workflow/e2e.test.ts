@@ -258,7 +258,7 @@ describe('temporal end to end', function () {
       expect(activity.attempt).to.equal(1);
       expect(activity.input.messages.map((message: { id: string }) => message.id)).to.deep.equal(ids);
 
-      const headers = expectedHeaders(namespace, handle.workflowId, events);
+      const headers = expectedHeaders(namespace, handle.workflowId, events, activity.activityId);
       expect(headers[TemporalMetadataKeys.runId]).to.equal(handle.firstExecutionRunId);
       expect(body).to.have.length(2);
       expect(body[0]).to.deep.include({
@@ -290,7 +290,9 @@ describe('temporal end to end', function () {
 
       const [activity] = historyActivities(events);
       expect(activity.attempt).to.equal(2);
-      expect(first.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events));
+      expect(first.extras.headers).to.deep.equal(
+        expectedHeaders(namespace, handle.workflowId, events, activity.activityId),
+      );
       expect(second).to.deep.equal(first);
     });
   });
@@ -389,7 +391,10 @@ describe('temporal end to end', function () {
       expect(Buffer.isBuffer(published.data)).to.equal(true);
       expect(published.data).to.deep.equal(Buffer.from([0, 1, 254, 255]));
       expect(published).to.not.have.property('encoding');
-      expect(published.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events));
+      const [publishActivity] = historyActivities(events);
+      expect(published.extras.headers).to.deep.equal(
+        expectedHeaders(namespace, handle.workflowId, events, publishActivity.activityId),
+      );
       expect(result).to.deep.equal({
         published: { serials: ['serial-0'] },
         history: [{ isUint8Array: true, bytes: [9, 8, 7] }],
@@ -442,6 +447,7 @@ describe('temporal end to end', function () {
 
       expect(result).to.deep.equal({ update: { versionSerial: 'version-1' }, append: { versionSerial: 'version-2' } });
       const [update, append] = requestsFor(channel);
+      const [updateActivity, appendActivity] = historyActivities(events);
       for (const req of [update, append]) {
         expect(req.method).to.equal('patch');
         expect(req.path).to.equal(`/channels/${channel}/messages/serial-1`);
@@ -454,7 +460,7 @@ describe('temporal end to end', function () {
         version: {
           description: 'edit',
           metadata: {
-            ...expectedOperationMetadata(namespace, handle.workflowId, events),
+            ...expectedOperationMetadata(namespace, handle.workflowId, events, updateActivity.activityId),
             reason: 'typo',
           },
         },
@@ -463,7 +469,9 @@ describe('temporal end to end', function () {
         serial: 'serial-1',
         data: ' more',
         action: 5,
-        version: { metadata: expectedOperationMetadata(namespace, handle.workflowId, events) },
+        version: {
+          metadata: expectedOperationMetadata(namespace, handle.workflowId, events, appendActivity.activityId),
+        },
       });
     });
   });
@@ -496,7 +504,9 @@ describe('temporal end to end', function () {
       expect(requestsFor(channel)).to.have.length(2);
       expectGeneratedIds([first.id]);
       expect(second.id).to.equal(first.id);
-      expect(first.extras.headers).to.deep.equal(expectedHeaders(namespace, handle.workflowId, events));
+      expect(first.extras.headers).to.deep.equal(
+        expectedHeaders(namespace, handle.workflowId, events, marker.activity_id),
+      );
       expect(second).to.deep.equal(first);
     });
   });

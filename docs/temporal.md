@@ -395,6 +395,7 @@ The plugin records which Temporal execution published each message, in the messa
 | `temporalNamespace`  | `namespace`            | The Temporal namespace the activity ran in.             |
 | `temporalWorkflowId` | `workflowId`           | The ID of the workflow that scheduled the activity.     |
 | `temporalRunId`      | `runId`                | The run ID of the workflow that scheduled the activity. |
+| `temporalActivityId` | `activityId`           | The ID of the activity that made the call.              |
 
 The headers are added to every message published with `channel.publish()` and `batchPublish()`. The values are strings. The workflow ID and run ID are omitted for an activity that a workflow did not start. The keys use camelCase so that they can be used in [subscription filters](https://ably.com/docs/channels#filter-subscribe) without quoting.
 
@@ -404,9 +405,11 @@ Annotations and LiveObjects operations do not carry the metadata.
 
 None of the values differs between attempts of an activity, so every attempt of a call sends the same headers and operation metadata. When Ably deduplicates a retried publish, subscribers only receive the first attempt's message, and history shows the same headers whichever attempt's copy it keeps. A deduplicated update or delete keeps the first attempt's metadata.
 
-The plugin does not record the workflow type, the activity ID or the attempt number. If your subscribers need one of them, add your own header in workflow code. Your own headers take precedence, as described below.
+Each call is one activity, so the run ID and activity ID together identify the call that published a message. A retried append, which Ably does not deduplicate, records the same `temporalRunId` and `temporalActivityId` as the first attempt.
 
-The headers add about 115 bytes plus the lengths of the namespace and workflow ID to each message, typically 150 to 200 bytes, and they count towards Ably's maximum message size. The limit applies to all the messages of a publish together, so a publish that is close to the limit, or one that publishes many small messages, can fail with error 40009 because of the headers. Turn the metadata off if your publishes are close to the limit.
+The plugin does not record the workflow type or the attempt number. If your subscribers need one of them, add your own header in workflow code. Your own headers take precedence, as described below.
+
+The headers add about 140 bytes plus the lengths of the namespace and workflow ID to each message, typically 175 to 225 bytes, and they count towards Ably's maximum message size. The limit applies to all the messages of a publish together, so a publish that is close to the limit, or one that publishes many small messages, can fail with error 40009 because of the headers. Turn the metadata off if your publishes are close to the limit.
 
 Your own values take precedence: if a message already has a header, or an operation already has a metadata entry, with one of these keys, the plugin keeps your value. A message whose `extras` or `extras.headers` is not an object is published unchanged.
 

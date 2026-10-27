@@ -298,8 +298,8 @@ describe('temporal sandbox integration', function () {
     expect(items[1].data).to.deep.equal(Buffer.from([0, 1, 254, 255]));
 
     // The headers come back exactly as the plugin sent them.
-    const headers = expectedHeaders(namespace, handle.workflowId, events);
-    expect(Object.keys(headers)).to.have.length(3);
+    const headers = expectedHeaders(namespace, handle.workflowId, events, activity.activityId);
+    expect(Object.keys(headers)).to.have.length(4);
     for (const item of items) {
       expect(item.extras).to.deep.equal({ headers });
     }
@@ -369,7 +369,7 @@ describe('temporal sandbox integration', function () {
 
     expect(pairedItems.map((item) => item.name)).to.deep.equal(['first', 'second']);
     expect(singleItems[0].name).to.equal('single');
-    const headers = expectedHeaders(namespace, handle.workflowId, events);
+    const headers = expectedHeaders(namespace, handle.workflowId, events, activity.activityId);
     for (const item of [...pairedItems, ...otherPairedItems, ...singleItems]) {
       expect(item.extras).to.deep.equal({ headers });
     }
@@ -648,7 +648,9 @@ describe('temporal sandbox integration', function () {
       { interval: 500, timeout: 15_000 },
     );
     expect(latest.version?.description).to.equal('append');
-    expect(latest.version?.metadata).to.deep.equal(expectedOperationMetadata(namespace, handle.workflowId, events));
+    expect(latest.version?.metadata).to.deep.equal(
+      expectedOperationMetadata(namespace, handle.workflowId, events, appendActivity.activityId),
+    );
 
     const versions = await pollUntil(
       async () => {
@@ -660,7 +662,7 @@ describe('temporal sandbox integration', function () {
     const updated = versions.find((item) => item.version?.description === 'edit')!;
     expect(updated.data).to.equal('hello, edited');
     expect(updated.version?.metadata).to.deep.equal({
-      ...expectedOperationMetadata(namespace, handle.workflowId, events),
+      ...expectedOperationMetadata(namespace, handle.workflowId, events, updateActivity.activityId),
       reason: 'typo',
     });
   });

@@ -13,6 +13,8 @@ export const TemporalMetadataKeys = {
   workflowId: 'temporalWorkflowId',
   /** The run ID of the workflow that scheduled the activity. */
   runId: 'temporalRunId',
+  /** The ID of the activity that performed the operation, which identifies the call within the workflow run. */
+  activityId: 'temporalActivityId',
 } as const;
 
 /**
@@ -25,6 +27,7 @@ export interface TemporalMetadata {
   [TemporalMetadataKeys.namespace]: string;
   [TemporalMetadataKeys.workflowId]?: string;
   [TemporalMetadataKeys.runId]?: string;
+  [TemporalMetadataKeys.activityId]: string;
 }
 
 /**
@@ -35,6 +38,7 @@ export function getTemporalMetadata(): TemporalMetadata {
   const info = Context.current().info;
   const metadata: TemporalMetadata = {
     [TemporalMetadataKeys.namespace]: info.namespace,
+    [TemporalMetadataKeys.activityId]: info.activityId,
   };
   if (info.workflowExecution) {
     metadata[TemporalMetadataKeys.workflowId] = info.workflowExecution.workflowId;

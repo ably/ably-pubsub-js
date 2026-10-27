@@ -81,14 +81,20 @@ export function workflowStarted(events: HistoryEvent[]): { runId: string } {
 }
 
 /**
- * The `extras.headers` that the plugin adds to a message published by an activity of the workflow, as derived from
- * the workflow history. They are the same for every activity and every attempt of the run.
+ * The `extras.headers` that the plugin adds to a message published by the activity with the given ID, as derived from
+ * the workflow history. They are the same for every attempt of the activity.
  */
-export function expectedHeaders(namespace: string, workflowId: string, events: HistoryEvent[]): Record<string, string> {
+export function expectedHeaders(
+  namespace: string,
+  workflowId: string,
+  events: HistoryEvent[],
+  activityId: string,
+): Record<string, string> {
   return {
     temporalNamespace: namespace,
     temporalWorkflowId: workflowId,
     temporalRunId: workflowStarted(events).runId,
+    temporalActivityId: activityId,
   };
 }
 
@@ -100,8 +106,9 @@ export function expectedOperationMetadata(
   namespace: string,
   workflowId: string,
   events: HistoryEvent[],
+  activityId: string,
 ): Record<string, string> {
-  return expectedHeaders(namespace, workflowId, events);
+  return expectedHeaders(namespace, workflowId, events, activityId);
 }
 
 /**

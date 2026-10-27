@@ -185,7 +185,10 @@ describe('temporal/worker/activities', function () {
         toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
       );
 
-      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({ temporalNamespace: 'agents' });
+      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({
+        temporalNamespace: 'agents',
+        temporalActivityId: 'standalone-1',
+      });
     });
   });
 

@@ -172,7 +172,7 @@ For more information view the [TypeDoc references](https://sdk.ably.com/builds/a
 
 ## Temporal
 
-The SDK includes a [Temporal](https://temporal.io/) plugin for calling the Ably REST API from workflow code, for example to publish status updates and final replies from an agent workflow. Each call runs as a Temporal activity on your worker, so workflow code stays deterministic and Temporal retries failed calls. Published messages get deterministic IDs, so Ably deduplicates a retried publish.
+`@ably/pubsub-server` includes a [Temporal](https://temporal.io/) plugin for calling the Ably REST API from workflow code, for example to publish status updates and final replies from an agent workflow. Each call runs as a Temporal activity on your worker, so workflow code stays deterministic and Temporal retries failed calls. Published messages get deterministic IDs, so Ably deduplicates a retried publish.
 
 Register the plugin on your worker:
 

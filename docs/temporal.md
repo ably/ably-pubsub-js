@@ -1,10 +1,10 @@
-# ably-js Temporal plugin
+# Ably Pub/Sub Temporal plugin
 
-Call the Ably REST API from [Temporal](https://temporal.io/) workflow code with an API that mirrors the Ably REST client (`Ably.PubSubHttpClient`).
+Call the Ably REST API from [Temporal](https://temporal.io/) workflow code with an API that mirrors the Ably HTTP client, `PubSubHttpClient`.
 
-Temporal workflow code must be deterministic, so any I/O, including a request to Ably, has to run in an activity. The Temporal plugin does this for you: each Ably call you make from workflow code runs as a Temporal activity on your worker, which makes the request with a real Ably REST client. You keep the familiar `channels.get(...).publish(...)` API, and Temporal records, retries and replays each call like any other activity.
+Temporal workflow code must be deterministic, so any I/O, including a request to Ably, has to run in an activity. The Temporal plugin does this for you: each Ably call you make from workflow code runs as a Temporal activity on your worker, which makes the request with a real Ably HTTP client. You keep the familiar `channels.get(...).publish(...)` API, and Temporal records, retries and replays each call like any other activity.
 
-The plugin ships in the `ably` package as two entry points:
+The plugin ships in the `@ably/pubsub-server` package as two entry points:
 
 - `@ably/pubsub-server/temporal` is the worker entry point. It provides `AblyHttpPlugin`, which registers the Ably activities on a Temporal worker.
 - `@ably/pubsub-server/temporal/workflow` is the workflow entry point. It provides `TemporalAblyHttpClient`, the client you use in workflow code.
@@ -57,11 +57,11 @@ Use the plugin for the non-streamed content that an agent workflow delivers to i
 - Presence checks, for example to find out whether the user is still online before notifying them.
 - Reading and updating [LiveObjects](https://ably.com/docs/liveobjects) state on a channel.
 
-The plugin is not designed for token streaming. Each call is a separate activity, which adds latency and a workflow history event per call. To stream tokens as a model produces them, publish from inside your own activity, for example with an Ably Realtime client, in the same activity that makes the model call.
+The plugin is not designed for token streaming. Each call is a separate activity, which adds latency and a workflow history event per call. To stream tokens as a model produces them, publish from inside your own activity, for example with a realtime client from `createRealtimeClient`, in the same activity that makes the model call.
 
 ## Requirements
 
-- **Node.js 20.3 or later.** This is the minimum supported by the `@temporalio` packages. The rest of the `ably` package supports earlier Node.js versions; see `engines` in [package.json](../package.json).
+- **Node.js 22 or later**, which `@ably/pubsub-server` requires. See `engines` in its [package.json](../packages/server/package.json).
 - **`@temporalio/*` 1.18.0 or later.** By default, the workflow derives message IDs from a named random stream (`getRandomStream`), which was added to `@temporalio/workflow` in 1.18.0. See [Retries and idempotency](#retries-and-idempotency).
   - On an earlier version, the first workflow task that publishes fails with a `TypeError` that names the required version. The workflow resumes once the worker is redeployed with 1.18.0 or later.
   - The workflow only uses named random streams for idempotent publishing, so with [`idempotentPublishing: false`](#turning-off-idempotent-publishing) it does not throw this error on earlier versions. 1.18.0 remains the supported minimum.
@@ -69,19 +69,19 @@ The plugin is not designed for token streaming. Each call is a separate activity
 
 ## Installation
 
-The Temporal packages are optional peer dependencies of `ably`, so npm does not install them for you. Install them alongside `ably`, all at the same version as each other:
+The Temporal packages are optional peer dependencies of `@ably/pubsub-server`, so npm does not install them for you. Install them alongside `@ably/pubsub-server`, all at the same version as each other:
 
 ```sh
-npm install ably @temporalio/worker @temporalio/workflow @temporalio/activity @temporalio/common @temporalio/plugin
+npm install @ably/pubsub-server @temporalio/worker @temporalio/workflow @temporalio/activity @temporalio/common @temporalio/plugin
 ```
 
 You also need `@temporalio/client` in the application that starts your workflows.
 
-Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-server/temporal/workflow` only in workflow code. The worker entry point loads worker-only Temporal packages, which cannot be bundled into a workflow, and the worker constructs the Ably client, which cannot run in a workflow. Type-only imports from `ably` and `@ably/pubsub-server/liveobjects`, such as `import type { InboundMessage } from 'ably'`, are fine in workflow code.
+Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-server/temporal/workflow` only in workflow code. The worker entry point loads worker-only Temporal packages, which cannot be bundled into a workflow, and the worker creates the Ably client, which cannot run in a workflow. Type-only imports from `@ably/pubsub-server` and `@ably/pubsub-server/liveobjects`, such as `import type { InboundMessage } from '@ably/pubsub-server'`, are fine in workflow code.
 
 ## Worker setup
 
-Construct an `Ably.PubSubHttpClient` client, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)), and add an `AblyHttpPlugin` with that client to the `plugins` of your worker:
+Create an HTTP client with `createHttpClient` from `@ably/pubsub-server`, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)), and add an `AblyHttpPlugin` with that client to the `plugins` of your worker:
 
 ```typescript
 // worker.ts
@@ -111,16 +111,16 @@ The plugin registers one activity per Ably operation. Every activity name starts
 
 | Option             | Description                                                                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `client`           | Required. The `Ably.PubSubHttpClient` client that the activities use.                                                                    |
+| `client`           | Required. The `PubSubHttpClient`, from `createHttpClient`, that the activities use.                                                      |
 | `temporalMetadata` | Whether to record the Temporal execution that performed each operation. Defaults to `true`. See [Temporal metadata](#temporal-metadata). |
 
-The constructor throws a `TypeError` if `client` is not an Ably REST client. The plugin's client is available as `plugin.client`. Your own activities can use the same client.
+The constructor throws a `TypeError` if `client` is not a `PubSubHttpClient`, for example if it is a realtime client from `createRealtimeClient`. The plugin's client is available as `plugin.client`. Your own activities can use the same client.
 
 The activities get each channel from the client when they need it, and release it once no activity on the worker is using it, so the client does not keep a channel for every name the worker has ever used. A channel that your own code got from the client is never released.
 
 ### Using LiveObjects
 
-`channel.object` needs the worker's client to have the LiveObjects plugin from `@ably/pubsub-server/liveobjects`. Construct the client with it:
+`channel.object` needs the worker's client to have the LiveObjects plugin from `@ably/pubsub-server/liveobjects`. Create the client with it:
 
 ```typescript
 import { createHttpClient } from '@ably/pubsub-server';
@@ -168,7 +168,7 @@ await worker.run();
 
 ## Workflow usage
 
-In workflow code, construct a `TemporalAblyHttpClient` and use it as you would an Ably REST client. Constructing it does not run an activity, so you can create it at module scope:
+In workflow code, construct a `TemporalAblyHttpClient` and use it as you would the Ably HTTP client. Constructing it does not run an activity, so you can create it at module scope:
 
 ```typescript
 // workflows/agent.ts
@@ -256,7 +256,7 @@ The summary of `request()` does not include the `params` you pass, so their valu
 
 ## Supported API
 
-`TemporalAblyHttpClient` and the objects it returns mirror the Ably REST client. Each method runs one activity, registered under the name below. The names are exported as `ActivityNames` from `@ably/pubsub-server/temporal`.
+`TemporalAblyHttpClient` and the objects it returns mirror the Ably HTTP client. Each method runs one activity, registered under the name below. The names are exported as `ActivityNames` from `@ably/pubsub-server/temporal`.
 
 | Method                                      | Activity name                                                                      |
 | ------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -284,14 +284,13 @@ The summary of `request()` does not include the `params` you pass, so their valu
 
 `push.admin` has `publish()`, `createApnsBroadcast()`, `liveActivity.start()`, `update()` and `end()`, `deviceRegistrations.save()`, `get()`, `list()`, `remove()` and `removeWhere()`, and `channelSubscriptions.save()`, `list()`, `listChannels()`, `remove()` and `removeWhere()`. It does not need the Push plugin on the worker's client, which is only needed to activate a device.
 
-`request()` reaches any Ably REST endpoint that the plugin does not wrap. An error response from Ably resolves with `success` set to `false`, as it does in the Ably REST client.
+`request()` reaches any Ably REST endpoint that the plugin does not wrap. An error response from Ably resolves with `success` set to `false`, as it does in the Ably HTTP client.
 
 ### Not supported
 
 - **Encrypted channels.** The `cipher` channel option is not supported, and neither are other channel options. `channels.get()` in workflow code takes only a channel name, and throws if it is passed channel options.
 - **`stats()`.** It is of little use from an agent workflow. Use `request()` if you need it.
 - **`auth`.** Authentication is configured on the worker's client. Issue tokens from your application's auth server.
-- **`push.activate()` and the other device methods of `push`.** A workflow is not a device. Use `push.admin` to manage devices and publish notifications.
 - **`object.generateObjectId()`.** Publish create operations without a pre-generated object ID.
 
 ## Retries and idempotency

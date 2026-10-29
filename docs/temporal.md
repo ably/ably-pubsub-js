@@ -35,8 +35,6 @@ The plugin ships in the `@ably/pubsub-server` package as two entry points:
   - [Retried LiveObjects operations](#retried-liveobjects-operations)
   - [Push notifications](#push-notifications)
   - [Turning off idempotent publishing](#turning-off-idempotent-publishing)
-- [Temporal metadata](#temporal-metadata)
-  - [Reading the metadata in a subscriber](#reading-the-metadata-in-a-subscriber)
 - [Errors](#errors)
   - [Errors from Ably](#errors-from-ably)
   - [Which errors are retried](#which-errors-are-retried)
@@ -109,10 +107,9 @@ The plugin registers one activity per Ably operation. Every activity name starts
 
 `AblyHttpPlugin` takes these options:
 
-| Option             | Description                                                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `client`           | Required. The `PubSubHttpClient`, from `createHttpClient`, that the activities use.                                                      |
-| `temporalMetadata` | Whether to record the Temporal execution that performed each operation. Defaults to `true`. See [Temporal metadata](#temporal-metadata). |
+| Option   | Description                                                                         |
+| -------- | ----------------------------------------------------------------------------------- |
+| `client` | Required. The `PubSubHttpClient`, from `createHttpClient`, that the activities use. |
 
 The constructor throws a `TypeError` if `client` is not a `PubSubHttpClient`, for example if it is a realtime client from `createRealtimeClient`. The plugin's client is available as `plugin.client`. Your own activities can use the same client.
 
@@ -313,7 +310,7 @@ IDs are only assigned when no message in the call has an `id`. For `batchPublish
 
 Deduplication only holds within one channel epoch. A retry that arrives after Ably relocates the channel, or after an idle channel is disposed and later reactivated, is applied again, even within the [deduplication window](#keeping-retries-within-the-deduplication-window).
 
-On a channel whose namespace has message updates, deletes and appends enabled, a deduplicated publish is not broadcast to subscribers, but its content replaces the stored copy of the message. Every attempt of a plugin call sends the same content, including its [Temporal metadata](#temporal-metadata), so a retry leaves the stored copy as it was. A publish from another workflow run that reuses an ID you set replaces the stored copy with that run's content and `temporalRunId`.
+On a channel whose namespace has message updates, deletes and appends enabled, a deduplicated publish is not broadcast to subscribers, but its content replaces the stored copy of the message. Every attempt of a plugin call sends the same content, so a retry leaves the stored copy as it was. A publish from another workflow run that reuses an ID you set replaces the stored copy with that run's content.
 
 On a namespace with server-side batching or conflation enabled, which is off by default, Ably does not deduplicate on message IDs or idempotency keys.
 
@@ -384,56 +381,6 @@ const ably = new TemporalAblyHttpClient({ idempotentPublishing: false });
 ```
 
 Retried calls are then not deduplicated. A message without an ID gets a new one on each attempt, from the worker's Ably client for `channel.publish()` and from Ably for `batchPublish()` and `object.publish()`. A publish that reached Ably before its activity failed is therefore published again with a different ID, and a retried update or delete creates another version of the message.
-
-## Temporal metadata
-
-The plugin records which Temporal execution published each message, in the message's `extras.headers`:
-
-| Header               | `TemporalMetadataKeys` | Value                                                   |
-| -------------------- | ---------------------- | ------------------------------------------------------- |
-| `temporalNamespace`  | `namespace`            | The Temporal namespace the activity ran in.             |
-| `temporalWorkflowId` | `workflowId`           | The ID of the workflow that scheduled the activity.     |
-| `temporalRunId`      | `runId`                | The run ID of the workflow that scheduled the activity. |
-| `temporalActivityId` | `activityId`           | The ID of the activity that made the call.              |
-
-The headers are added to every message published with `channel.publish()` and `batchPublish()`. The values are strings. The workflow ID and run ID are omitted for an activity that a workflow did not start. The keys use camelCase so that they can be used in [subscription filters](https://ably.com/docs/channels#filter-subscribe) without quoting.
-
-For `updateMessage`, `deleteMessage` and `appendMessage`, the same keys are added to the operation's `metadata` instead, with every value as a string. The message's own `extras` are left unchanged. Ably records the operation metadata with the new version of the message, in `message.version.metadata`.
-
-Annotations and LiveObjects operations do not carry the metadata.
-
-None of the values differs between attempts of an activity, so every attempt of a call sends the same headers and operation metadata. When Ably deduplicates a retried publish, subscribers only receive the first attempt's message, and history shows the same headers whichever attempt's copy it keeps. A deduplicated update or delete keeps the first attempt's metadata.
-
-Each call is one activity, so the run ID and activity ID together identify the call that published a message. A retried append, which Ably does not deduplicate, records the same `temporalRunId` and `temporalActivityId` as the first attempt.
-
-The plugin does not record the workflow type or the attempt number. If your subscribers need one of them, add your own header in workflow code. Your own headers take precedence, as described below.
-
-The headers add about 140 bytes plus the lengths of the namespace and workflow ID to each message, typically 175 to 225 bytes, and they count towards Ably's maximum message size. The limit applies to all the messages of a publish together, so a publish that is close to the limit, or one that publishes many small messages, can fail with error 40009 because of the headers. Turn the metadata off if your publishes are close to the limit.
-
-Your own values take precedence: if a message already has a header, or an operation already has a metadata entry, with one of these keys, the plugin keeps your value. A message whose `extras` or `extras.headers` is not an object is published unchanged.
-
-To turn the metadata off, set `temporalMetadata: false`:
-
-```typescript
-new AblyHttpPlugin({ client, temporalMetadata: false });
-```
-
-### Reading the metadata in a subscriber
-
-A subscriber can use the headers to correlate a message with the workflow run that published it, for example by logging them, or by building a link to the run in the Temporal UI, `/namespaces/{temporalNamespace}/workflows/{temporalWorkflowId}/{temporalRunId}/history`.
-
-They also let a subscriber filter by workflow. For example, to receive only the messages published by the workflow with the ID `agent-chat-123`, across all of its runs, with `getDerived()`, which is a preview feature:
-
-```typescript
-const channel = realtime.channels.getDerived('chat:123', {
-  filter: 'headers.temporalWorkflowId == `"agent-chat-123"`',
-});
-await channel.subscribe((message) => {
-  console.log(message.extras?.headers?.temporalRunId, message.data);
-});
-```
-
-`TemporalMetadataKeys` is exported from `@ably/pubsub-server/temporal` for server-side code that already depends on the Temporal packages. Browser code can use the header names directly.
 
 ## Errors
 
@@ -560,13 +507,11 @@ const worker = await Worker.create({
 });
 ```
 
-`createActivities` takes the same `temporalMetadata` option as the plugin, as its second argument: `createActivities(client, { temporalMetadata: false })`.
-
 Workflow code still calls the activities through `TemporalAblyHttpClient`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
 
 ## Exports
 
 | Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `CreateActivitiesOptions`, `ActivityNames`, `ActivityName`, `AblyActivities`, `TemporalMetadataKeys`, `TemporalMetadata`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                                   |
+| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `ActivityNames`, `ActivityName`, `AblyActivities`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                                                                                                          |
 | `@ably/pubsub-server/temporal/workflow` | `TemporalAblyHttpClient`, `TemporalAblyHttpClientOptions`, `TemporalAblyHttpChannels`, `TemporalAblyHttpChannel`, `TemporalAblyHttpPresence`, `TemporalAblyHttpAnnotations`, `TemporalAblyHttpObject`, `TemporalAblyHttpPush`, `TemporalAblyHttpPushAdmin`, `TemporalAblyHttpPushDeviceRegistrations`, `TemporalAblyHttpPushChannelSubscriptions`, `TemporalAblyHttpPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails` |

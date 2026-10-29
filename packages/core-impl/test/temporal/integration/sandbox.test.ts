@@ -41,8 +41,6 @@ import {
   causeChain,
   EventType,
   eventsOfType,
-  expectedHeaders,
-  expectedOperationMetadata,
   expectGeneratedIds,
   historyActivities,
   historyEvents,
@@ -277,10 +275,10 @@ describe('temporal sandbox integration', function () {
     expect(workflowBundle.code).to.not.match(/"\.\/packages\/(core\/|server\/dist\/(index|node)\.)/);
   });
 
-  it('publishes from a workflow with generated IDs, and Ably accepts the Temporal metadata headers', async function () {
+  it('publishes from a workflow with generated IDs, and Ably stores the messages as the workflow sent them', async function () {
     const channel = uniqueChannel('persisted');
 
-    const { result, handle, events } = await execute(TASK_QUEUE, 'sandboxPublish', channel);
+    const { result, events } = await execute(TASK_QUEUE, 'sandboxPublish', channel);
 
     const items = await historyOf(channel, 2);
     expect(items).to.have.length(2);
@@ -296,12 +294,8 @@ describe('temporal sandbox integration', function () {
     expect(items[1].name).to.equal('bytes');
     expect(Buffer.isBuffer(items[1].data)).to.equal(true);
     expect(items[1].data).to.deep.equal(Buffer.from([0, 1, 254, 255]));
-
-    // The headers come back exactly as the plugin sent them.
-    const headers = expectedHeaders(namespace, handle.workflowId, events, activity.activityId);
-    expect(Object.keys(headers)).to.have.length(4);
     for (const item of items) {
-      expect(item.extras).to.deep.equal({ headers });
+      expect(item.extras).to.equal(undefined);
     }
   });
 
@@ -320,8 +314,7 @@ describe('temporal sandbox integration', function () {
       const items = await historyBeforeSentinel(channel);
       expect(items).to.have.length(1);
       expect(items[0].id).to.equal(id);
-      expect(items[0].extras.headers.testAttempt).to.equal(1);
-      expect(items[0].extras.headers.temporalNamespace).to.equal('default');
+      expect(items[0].extras).to.deep.equal({ headers: { testAttempt: 1 } });
       // Ably acknowledges the duplicate with the serial of the original message.
       expect(first.serials).to.deep.equal([items[0].serial]);
       expect(second.serials).to.deep.equal(first.serials);
@@ -346,7 +339,7 @@ describe('temporal sandbox integration', function () {
     const paired = [uniqueChannel('persisted'), uniqueChannel('persisted')];
     const single = uniqueChannel('persisted');
 
-    const { result, handle, events } = await execute(TASK_QUEUE, 'sandboxBatchPublish', paired, single);
+    const { result, events } = await execute(TASK_QUEUE, 'sandboxBatchPublish', paired, single);
 
     const [activity] = historyActivities(events);
     expect(activity.activityType).to.equal('ably.batchPublish');
@@ -369,9 +362,8 @@ describe('temporal sandbox integration', function () {
 
     expect(pairedItems.map((item) => item.name)).to.deep.equal(['first', 'second']);
     expect(singleItems[0].name).to.equal('single');
-    const headers = expectedHeaders(namespace, handle.workflowId, events, activity.activityId);
     for (const item of [...pairedItems, ...otherPairedItems, ...singleItems]) {
-      expect(item.extras).to.deep.equal({ headers });
+      expect(item.extras).to.equal(undefined);
     }
 
     // Ably reports the base of the message IDs as the message ID of each channel's publish.
@@ -620,11 +612,11 @@ describe('temporal sandbox integration', function () {
     expect(failed.activityTaskFailedEventAttributes!.retryState).to.equal(RetryState.RETRY_STATE_NON_RETRYABLE_FAILURE);
   });
 
-  it('updates and appends to a message, and Ably accepts the operation metadata', async function () {
+  it('updates and appends to a message, and Ably stores the operations as the workflow sent them', async function () {
     // The `mutable` namespace of the sandbox app has mutable messages enabled.
     const channel = uniqueChannel('mutable');
 
-    const { result, handle, events } = await execute(TASK_QUEUE, 'sandboxMessageOperations', channel);
+    const { result, events } = await execute(TASK_QUEUE, 'sandboxMessageOperations', channel);
 
     const { serial, update, append } = result;
     for (const [name, outcome] of Object.entries({ update, append })) {
@@ -648,9 +640,7 @@ describe('temporal sandbox integration', function () {
       { interval: 500, timeout: 15_000 },
     );
     expect(latest.version?.description).to.equal('append');
-    expect(latest.version?.metadata).to.deep.equal(
-      expectedOperationMetadata(namespace, handle.workflowId, events, appendActivity.activityId),
-    );
+    expect(latest.version?.metadata).to.equal(undefined);
 
     const versions = await pollUntil(
       async () => {
@@ -661,10 +651,7 @@ describe('temporal sandbox integration', function () {
     );
     const updated = versions.find((item) => item.version?.description === 'edit')!;
     expect(updated.data).to.equal('hello, edited');
-    expect(updated.version?.metadata).to.deep.equal({
-      ...expectedOperationMetadata(namespace, handle.workflowId, events, updateActivity.activityId),
-      reason: 'typo',
-    });
+    expect(updated.version?.metadata).to.deep.equal({ reason: 'typo' });
   });
 
   describe('deduplication of a retried update, delete and annotation', function () {

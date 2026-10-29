@@ -4,9 +4,6 @@
 export { AblyHttpPlugin } from './worker/plugin.js';
 export type { AblyHttpPluginOptions } from './worker/plugin.js';
 export { createActivities } from './worker/activities.js';
-export type { CreateActivitiesOptions } from './worker/activities.js';
-export { TemporalMetadataKeys } from './worker/metadata.js';
-export type { TemporalMetadata } from './worker/metadata.js';
 export { ActivityNames } from './common/activities.js';
 export type { AblyActivities, ActivityName } from './common/activities.js';
 export { ABLY_ERROR_TYPE, getAblyErrorDetails } from './common/errors.js';

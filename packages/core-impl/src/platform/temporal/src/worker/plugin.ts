@@ -10,15 +10,6 @@ export interface AblyHttpPluginOptions {
    * `@ably/pubsub-server/liveobjects`.
    */
   client: Ably.PubSubHttpClient;
-  /**
-   * Whether to record the Temporal execution that performed each operation. When enabled, the
-   * {@link TemporalMetadataKeys | Temporal metadata} is added to the `extras.headers` of every published message,
-   * and to the `metadata` of every update, delete and append operation. The application's own header or metadata
-   * values take precedence over the plugin's when their keys collide.
-   *
-   * @defaultValue `true`
-   */
-  temporalMetadata?: boolean;
 }
 
 /**
@@ -48,7 +39,7 @@ export class AblyHttpPlugin extends SimplePlugin {
     const client = validateClient(options);
     super({
       name: 'AblyHttpPlugin',
-      activities: createActivities(client, { temporalMetadata: options.temporalMetadata }),
+      activities: createActivities(client),
     });
     this.client = client;
   }

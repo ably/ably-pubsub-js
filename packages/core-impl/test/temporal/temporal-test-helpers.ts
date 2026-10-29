@@ -1,7 +1,6 @@
 /**
  * Helpers shared by the end-to-end and sandbox tests, which run workflows on a local Temporal server with the built
- * plugin: installing a quiet Temporal runtime, reading a workflow's history, and deriving from that history the
- * Temporal metadata that the plugin should have recorded.
+ * plugin: installing a quiet Temporal runtime, and reading a workflow's history.
  */
 
 import type { WorkflowHandle } from '@temporalio/client';
@@ -72,43 +71,6 @@ export function historyActivities(events: HistoryEvent[]): HistoryActivity[] {
       input: payload ? defaultPayloadConverter.fromPayload(payload) : undefined,
     };
   });
-}
-
-/** The fields of the `WorkflowExecutionStarted` event that the plugin's metadata is derived from. */
-export function workflowStarted(events: HistoryEvent[]): { runId: string } {
-  const attributes = events[0].workflowExecutionStartedEventAttributes!;
-  return { runId: attributes.originalExecutionRunId! };
-}
-
-/**
- * The `extras.headers` that the plugin adds to a message published by the activity with the given ID, as derived from
- * the workflow history. They are the same for every attempt of the activity.
- */
-export function expectedHeaders(
-  namespace: string,
-  workflowId: string,
-  events: HistoryEvent[],
-  activityId: string,
-): Record<string, string> {
-  return {
-    temporalNamespace: namespace,
-    temporalWorkflowId: workflowId,
-    temporalRunId: workflowStarted(events).runId,
-    temporalActivityId: activityId,
-  };
-}
-
-/**
- * The operation `metadata` that the plugin adds to an update, delete or append by an activity of the workflow. It has
- * the same entries as {@link expectedHeaders}.
- */
-export function expectedOperationMetadata(
-  namespace: string,
-  workflowId: string,
-  events: HistoryEvent[],
-  activityId: string,
-): Record<string, string> {
-  return expectedHeaders(namespace, workflowId, events, activityId);
 }
 
 /**

@@ -4,7 +4,7 @@ import { restoreAll } from '../../uts/helpers';
 import * as WorkerEntryPoint from '../../../src/platform/temporal/src/index';
 import { AblyHttpPlugin } from '../../../src/platform/temporal/src/worker/plugin';
 import { ActivityNames } from '../../../src/platform/temporal/src/common/activities';
-import { activityEnvironment, expectedHeaders, jsonBody, mockAbly, runActivity, toWire } from './worker-helpers';
+import { activityEnvironment, jsonBody, mockAbly, runActivity, toWire } from './worker-helpers';
 
 // createHttpClient and createRealtimeClient from the built `@ably/pubsub-server` package, as an application would
 // import them.
@@ -51,20 +51,9 @@ describe('temporal/worker/plugin', function () {
     );
 
     expect(plugin.client).to.equal(client);
-    expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal(expectedHeaders);
-  });
-
-  it('passes temporalMetadata to the activities', async function () {
-    const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-    const plugin = new AblyHttpPlugin({ client, temporalMetadata: false });
-
-    await runActivity(
-      activityEnvironment(),
-      configuredActivities(plugin)[ActivityNames.publish],
-      toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
-    );
-
-    expect(jsonBody(requests[0])[0]).to.not.have.property('extras');
+    const [message] = jsonBody(requests[0]);
+    expect(message).to.include({ name: 'e' });
+    expect(message).to.not.have.property('extras');
   });
 
   it('accepts a client from the built @ably/pubsub-server package', function () {
@@ -92,20 +81,7 @@ describe('temporal/worker/plugin', function () {
 
   it('exports the worker API from the entry point', function () {
     expect(Object.keys(WorkerEntryPoint).sort()).to.deep.equal(
-      [
-        'ABLY_ERROR_TYPE',
-        'AblyHttpPlugin',
-        'ActivityNames',
-        'TemporalMetadataKeys',
-        'createActivities',
-        'getAblyErrorDetails',
-      ].sort(),
+      ['ABLY_ERROR_TYPE', 'AblyHttpPlugin', 'ActivityNames', 'createActivities', 'getAblyErrorDetails'].sort(),
     );
-    expect(WorkerEntryPoint.TemporalMetadataKeys).to.deep.equal({
-      namespace: 'temporalNamespace',
-      workflowId: 'temporalWorkflowId',
-      runId: 'temporalRunId',
-      activityId: 'temporalActivityId',
-    });
   });
 });

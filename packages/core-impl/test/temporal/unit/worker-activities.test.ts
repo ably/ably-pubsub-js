@@ -8,18 +8,7 @@ import { ActivityNames } from '../../../src/platform/temporal/src/common/activit
 import type { AblyActivities } from '../../../src/platform/temporal/src/common/activities';
 import { ABLY_ERROR_TYPE } from '../../../src/platform/temporal/src/common/errors';
 import type { AblyErrorDetails } from '../../../src/platform/temporal/src/common/errors';
-import {
-  activityEnvironment,
-  expectedHeaders,
-  expectedOperationMetadata,
-  fromWire,
-  jsonBody,
-  mockAbly,
-  queryParams,
-  runActivity,
-  toWire,
-  workflowActivityInfo,
-} from './worker-helpers';
+import { activityEnvironment, fromWire, jsonBody, mockAbly, queryParams, runActivity, toWire } from './worker-helpers';
 
 async function expectAblyFailure(promise: Promise<unknown>): Promise<ApplicationFailure> {
   let caught: unknown;
@@ -47,7 +36,7 @@ describe('temporal/worker/activities', function () {
   });
 
   describe('publish', function () {
-    it('adds the Temporal metadata to the headers of every message, keeping message IDs', async function () {
+    it('publishes the messages unchanged', async function () {
       const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0', 's1'] }));
       const activities = createActivities(client);
 
@@ -58,7 +47,12 @@ describe('temporal/worker/activities', function () {
           channel: 'chat:1',
           messages: [
             { id: 'base:0', name: 'status', data: { status: 'thinking' } },
-            { id: 'base:1', name: 'text', data: 'hello', extras: { push: { notification: { title: 't' } } } },
+            {
+              id: 'base:1',
+              name: 'text',
+              data: 'hello',
+              extras: { push: { notification: { title: 't' } }, headers: { role: 'agent' } },
+            },
           ],
         }),
       );
@@ -69,61 +63,8 @@ describe('temporal/worker/activities', function () {
       expect(requests[0].path).to.equal('/channels/chat%3A1/messages');
       const body = jsonBody(requests[0]);
       expect(body.map((m: any) => m.id)).to.deep.equal(['base:0', 'base:1']);
-      expect(body[0].extras).to.deep.equal({ headers: expectedHeaders });
-      expect(body[1].extras).to.deep.equal({ push: { notification: { title: 't' } }, headers: expectedHeaders });
-    });
-
-    it("keeps the application's own header values when keys collide", async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-      const activities = createActivities(client);
-
-      await runActivity(
-        activityEnvironment(),
-        activities[ActivityNames.publish],
-        toWire({
-          channel: 'chat',
-          messages: [{ name: 'e', extras: { headers: { temporalRunId: 'mine', role: 'agent' } } }],
-        }),
-      );
-
-      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({
-        ...expectedHeaders,
-        temporalRunId: 'mine',
-        role: 'agent',
-      });
-    });
-
-    it('leaves a message unchanged when its extras or headers are not an object', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0', 's1'] }));
-      const activities = createActivities(client);
-
-      await runActivity(
-        activityEnvironment(),
-        activities[ActivityNames.publish],
-        toWire({
-          channel: 'chat',
-          messages: [
-            { name: 'a', extras: { headers: ['not', 'an', 'object'] } },
-            { name: 'b', extras: 'not an object' },
-          ],
-        }),
-      );
-
-      const body = jsonBody(requests[0]);
-      expect(body[0].extras).to.deep.equal({ headers: ['not', 'an', 'object'] });
-      expect(body[1].extras).to.equal('not an object');
-    });
-
-    it('does not add metadata when temporalMetadata is false', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-      const activities = createActivities(client, { temporalMetadata: false });
-
-      // Without metadata the activity does not read the activity context, so it can run outside one.
-      await activities[ActivityNames.publish](toWire({ channel: 'chat', messages: [{ id: 'x:0', name: 'e' }] }));
-
-      const [message] = jsonBody(requests[0]);
-      expect(message).to.include({ id: 'x:0', name: 'e' });
-      expect(message).to.not.have.property('extras');
+      expect(body[0]).to.not.have.property('extras');
+      expect(body[1].extras).to.deep.equal({ push: { notification: { title: 't' } }, headers: { role: 'agent' } });
     });
 
     it('does not mutate its input', async function () {
@@ -154,42 +95,6 @@ describe('temporal/worker/activities', function () {
       expect(message.encoding).to.equal('base64');
       expect(Buffer.from(message.data, 'base64')).to.deep.equal(Buffer.from([0, 1, 254, 255]));
     });
-
-    it('records the metadata of a local activity in the same way', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-      const activities = createActivities(client);
-
-      await runActivity(
-        activityEnvironment({ ...workflowActivityInfo, isLocal: true, attempt: 1 }),
-        activities[ActivityNames.publish],
-        toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
-      );
-
-      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal(expectedHeaders);
-    });
-
-    it('omits the workflow fields for an activity not started by a workflow', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-      const activities = createActivities(client);
-
-      await runActivity(
-        activityEnvironment({
-          namespace: 'agents',
-          activityId: 'standalone-1',
-          attempt: 2,
-          inWorkflow: false,
-          workflowType: undefined,
-          workflowExecution: undefined,
-        }),
-        activities[ActivityNames.publish],
-        toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
-      );
-
-      expect(jsonBody(requests[0])[0].extras.headers).to.deep.equal({
-        temporalNamespace: 'agents',
-        temporalActivityId: 'standalone-1',
-      });
-    });
   });
 
   describe('update, delete and append', function () {
@@ -200,7 +105,7 @@ describe('temporal/worker/activities', function () {
     ] as const;
 
     for (const { activity, action } of cases) {
-      it(`${activity} adds the Temporal metadata to the operation metadata`, async function () {
+      it(`${activity} sends the message and operation unchanged`, async function () {
         const { client, requests } = mockAbly((req) => req.respond_with(200, { versionSerial: 'v1' }));
         const activities = createActivities(client);
 
@@ -210,7 +115,7 @@ describe('temporal/worker/activities', function () {
           toWire({
             channel: 'chat',
             message: { serial: 'serial-1', data: 'edited', extras: { headers: { a: '1' } } },
-            operation: { description: 'edit', metadata: { temporalRunId: 'mine', reason: 'typo' } },
+            operation: { description: 'edit', metadata: { reason: 'typo' } },
           }),
         );
 
@@ -220,14 +125,11 @@ describe('temporal/worker/activities', function () {
         const body = jsonBody(requests[0]);
         expect(body.action).to.equal(action);
         expect(body.extras).to.deep.equal({ headers: { a: '1' } });
-        expect(body.version).to.deep.equal({
-          description: 'edit',
-          metadata: { ...expectedOperationMetadata, temporalRunId: 'mine', reason: 'typo' },
-        });
+        expect(body.version).to.deep.equal({ description: 'edit', metadata: { reason: 'typo' } });
       });
     }
 
-    it('creates the operation when none is given', async function () {
+    it('sends no operation when none is given', async function () {
       const { client, requests } = mockAbly((req) => req.respond_with(200, { versionSerial: 'v1' }));
       const activities = createActivities(client);
 
@@ -237,23 +139,12 @@ describe('temporal/worker/activities', function () {
         toWire({ channel: 'chat', message: { serial: 'serial-1', data: 'edited' } }),
       );
 
-      expect(jsonBody(requests[0]).version).to.deep.equal({ metadata: expectedOperationMetadata });
-    });
-
-    it('does not add operation metadata when temporalMetadata is false', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(200, { versionSerial: 'v1' }));
-      const activities = createActivities(client, { temporalMetadata: false });
-
-      await activities[ActivityNames.deleteMessage](
-        toWire({ channel: 'chat', message: { serial: 'serial-1' }, operation: { description: 'gone' } }),
-      );
-
-      expect(jsonBody(requests[0]).version).to.deep.equal({ description: 'gone' });
+      expect(jsonBody(requests[0])).to.not.have.property('version');
     });
   });
 
   describe('batchPublish', function () {
-    it('adds the Temporal metadata to every message of every spec', async function () {
+    it('publishes every spec unchanged', async function () {
       const { client, requests } = mockAbly((req) =>
         req.respond_with(201, [
           { successCount: 1, failureCount: 0, results: [] },
@@ -269,7 +160,7 @@ describe('temporal/worker/activities', function () {
           specs: [
             {
               channels: ['a', 'b'],
-              messages: [{ id: 'x:0', name: 'e', extras: { headers: { temporalRunId: 'mine' } } }],
+              messages: [{ id: 'x:0', name: 'e', extras: { headers: { role: 'agent' } } }],
             },
             { channels: ['c'], messages: { id: 'y:0', name: 'f' } as any },
           ],
@@ -278,11 +169,10 @@ describe('temporal/worker/activities', function () {
 
       expect(fromWire(result)).to.have.length(2);
       expect(requests[0].path).to.equal('/messages');
-      const body = jsonBody(requests[0]);
-      expect(body[0].messages).to.deep.equal([
-        { id: 'x:0', name: 'e', extras: { headers: { ...expectedHeaders, temporalRunId: 'mine' } } },
+      expect(jsonBody(requests[0])).to.deep.equal([
+        { channels: ['a', 'b'], messages: [{ id: 'x:0', name: 'e', extras: { headers: { role: 'agent' } } }] },
+        { channels: ['c'], messages: { id: 'y:0', name: 'f' } },
       ]);
-      expect(body[1].messages).to.deep.equal({ id: 'y:0', name: 'f', extras: { headers: expectedHeaders } });
     });
 
     it('returns a single result for a single spec', async function () {
@@ -297,9 +187,7 @@ describe('temporal/worker/activities', function () {
       );
 
       expect(fromWire(result)).to.deep.equal(batchResult);
-      expect(jsonBody(requests[0])).to.deep.equal([
-        { channels: ['a'], messages: [{ id: 'x:0', name: 'e', extras: { headers: expectedHeaders } }] },
-      ]);
+      expect(jsonBody(requests[0])).to.deep.equal([{ channels: ['a'], messages: [{ id: 'x:0', name: 'e' }] }]);
     });
 
     it('sends binary data as binary with the MessagePack protocol', async function () {
@@ -314,7 +202,7 @@ describe('temporal/worker/activities', function () {
           }),
         { useBinaryProtocol: true },
       );
-      const activities = createActivities(client, { temporalMetadata: false });
+      const activities = createActivities(client);
 
       await activities[ActivityNames.batchPublish](
         toWire({ specs: [{ channels: ['a'], messages: [{ name: 'e', data: new Uint8Array([1, 2, 3]) }] }] }),

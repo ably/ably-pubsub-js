@@ -4,21 +4,6 @@ import type { AblyActivities } from '../common/activities.js';
 import { decodeFromWire, encodeForWire, setOwnProperty } from '../common/wire.js';
 import type { PageLinks, PageParams, WireHttpPaginatedResponse, WirePage } from '../common/wire.js';
 import { toActivityFailure } from './errors.js';
-import { getTemporalMetadata, toStringMetadata } from './metadata.js';
-import type { TemporalMetadata } from './metadata.js';
-
-/** Options for {@link createActivities}. */
-export interface CreateActivitiesOptions {
-  /**
-   * Whether to record the Temporal execution that performed each operation. When enabled, the
-   * {@link TemporalMetadataKeys | Temporal metadata} is added to the `extras.headers` of every published message,
-   * and to the `metadata` of every update, delete and append operation. The application's own header or metadata
-   * values take precedence over the plugin's when their keys collide.
-   *
-   * @defaultValue `true`
-   */
-  temporalMetadata?: boolean;
-}
 
 /**
  * Creates the Ably activities, keyed by their names in {@link ActivityNames}, which perform each operation with
@@ -33,12 +18,9 @@ export interface CreateActivitiesOptions {
  * `@ably/pubsub-server/liveobjects`. Without it, the `ably.channel.object.*` activities fail non-retryably.
  *
  * @param client - The Ably HTTP client used to perform each operation.
- * @param options - Options for the activities.
  * @returns The activity implementations, keyed by activity name.
  */
-export function createActivities(client: Ably.PubSubHttpClient, options: CreateActivitiesOptions = {}): AblyActivities {
-  const temporalMetadata = options.temporalMetadata ?? true;
-  const metadata = (): TemporalMetadata | undefined => (temporalMetadata ? getTemporalMetadata() : undefined);
+export function createActivities(client: Ably.PubSubHttpClient): AblyActivities {
   const leases = new ChannelLeases(client);
   const admin = (): Ably.PushAdmin => client.push.admin;
 
@@ -46,9 +28,7 @@ export function createActivities(client: Ably.PubSubHttpClient, options: CreateA
     [ActivityNames.publish]: (input) =>
       run(async () => {
         const { channel: name, messages, options } = decode(input);
-        const temporal = metadata();
-        const outgoing = temporal ? messages.map((message) => withHeaders(message, temporal)) : messages;
-        return encode(await leases.use(name, (channel) => channel.publish(outgoing, options)));
+        return encode(await leases.use(name, (channel) => channel.publish(messages, options)));
       }),
 
     [ActivityNames.history]: (input) =>
@@ -73,22 +53,19 @@ export function createActivities(client: Ably.PubSubHttpClient, options: CreateA
     [ActivityNames.updateMessage]: (input) =>
       run(async () => {
         const { channel: name, message, operation, options } = decode(input);
-        const withMetadata = withOperationMetadata(operation, metadata());
-        return encode(await leases.use(name, (channel) => channel.updateMessage(message, withMetadata, options)));
+        return encode(await leases.use(name, (channel) => channel.updateMessage(message, operation, options)));
       }),
 
     [ActivityNames.deleteMessage]: (input) =>
       run(async () => {
         const { channel: name, message, operation, options } = decode(input);
-        const withMetadata = withOperationMetadata(operation, metadata());
-        return encode(await leases.use(name, (channel) => channel.deleteMessage(message, withMetadata, options)));
+        return encode(await leases.use(name, (channel) => channel.deleteMessage(message, operation, options)));
       }),
 
     [ActivityNames.appendMessage]: (input) =>
       run(async () => {
         const { channel: name, message, operation, options } = decode(input);
-        const withMetadata = withOperationMetadata(operation, metadata());
-        return encode(await leases.use(name, (channel) => channel.appendMessage(message, withMetadata, options)));
+        return encode(await leases.use(name, (channel) => channel.appendMessage(message, operation, options)));
       }),
 
     [ActivityNames.getMessageVersions]: (input) =>
@@ -183,12 +160,9 @@ export function createActivities(client: Ably.PubSubHttpClient, options: CreateA
     [ActivityNames.batchPublish]: (input) =>
       run(async () => {
         const { specs } = decode(input);
-        const temporal = metadata();
-        if (Array.isArray(specs)) {
-          const outgoing = temporal ? specs.map((spec) => withSpecHeaders(spec, temporal)) : specs;
-          return encode(await client.batchPublish(outgoing));
-        }
-        return encode(await client.batchPublish(temporal ? withSpecHeaders(specs, temporal) : specs));
+        return Array.isArray(specs)
+          ? encode(await client.batchPublish(specs))
+          : encode(await client.batchPublish(specs));
       }),
 
     [ActivityNames.batchPresence]: (input) =>
@@ -398,60 +372,4 @@ function pageLinks(result: Ably.PaginatedResult<unknown>): PageLinks {
 
 function toWirePage<T>(result: Ably.PaginatedResult<T>): WirePage<T> {
   return { items: result.items, links: pageLinks(result) };
-}
-
-/**
- * Returns a copy of `message` with the Temporal metadata added to its `extras.headers`. The message's own headers
- * take precedence. A message whose `extras` or `extras.headers` is set to something other than an object is returned
- * unchanged.
- */
-function withHeaders(message: Ably.Message, metadata: TemporalMetadata): Ably.Message {
-  if (!isPlainObject(message)) {
-    return message;
-  }
-  const extras: unknown = message.extras ?? {};
-  if (!isPlainObject(extras)) {
-    return message;
-  }
-  const headers = extras.headers ?? {};
-  if (!isPlainObject(headers)) {
-    return message;
-  }
-  return { ...message, extras: { ...extras, headers: { ...metadata, ...headers } } };
-}
-
-/** Returns a copy of `spec` with the Temporal metadata added to the `extras.headers` of each of its messages. */
-function withSpecHeaders(spec: Ably.BatchPublishSpec, metadata: TemporalMetadata): Ably.BatchPublishSpec {
-  if (!isPlainObject(spec)) {
-    return spec;
-  }
-  // The batch publish endpoint also accepts a single message object in place of an array.
-  const messages: Ably.Message[] | Ably.Message = spec.messages;
-  if (Array.isArray(messages)) {
-    return { ...spec, messages: messages.map((message) => withHeaders(message, metadata)) };
-  }
-  return { ...spec, messages: withHeaders(messages, metadata) as unknown as Ably.Message[] };
-}
-
-/**
- * Returns a copy of `operation` with the Temporal metadata added to its `metadata`, or `operation` itself if
- * `metadata` is undefined. The operation's own metadata takes precedence. An operation whose `metadata` is set to
- * something other than an object is returned unchanged.
- */
-function withOperationMetadata(
-  operation: Ably.MessageOperation | undefined,
-  metadata: TemporalMetadata | undefined,
-): Ably.MessageOperation | undefined {
-  if (!metadata) {
-    return operation;
-  }
-  const base: unknown = operation ?? {};
-  if (!isPlainObject(base)) {
-    return operation;
-  }
-  const existing = base.metadata ?? {};
-  if (!isPlainObject(existing)) {
-    return operation;
-  }
-  return { ...base, metadata: { ...toStringMetadata(metadata), ...(existing as Record<string, string>) } };
 }

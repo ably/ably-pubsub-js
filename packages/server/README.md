@@ -33,14 +33,35 @@ await realtime.channels.get('test-channel').subscribe((message) => {
 
 They return a `PubSubHttpClient` and a `PubSubRealtimeClient`, the clients that everything in the [Ably Pub/Sub JavaScript documentation](https://ably.com/docs/getting-started/javascript) describes. The factories are the only way to create them: this package exports no client class to construct, because a client constructed directly would declare no side.
 
+### Publishing from many concurrent operations
+
+A long-running process that publishes from many operations at once, such as the activities of a Temporal worker, can share a pool of publish-only channels created by `createRealtimeChannelPool`. The pool holds several realtime clients, set by `size` (4 by default), and spreads channel names across them, so that the process stays within the inbound message rate of each connection. Every handle on a channel name publishes through the same connection while it is connected, so messages published by consecutive operations on a channel keep their order.
+
+```javascript
+import { createRealtimeChannelPool } from '@ably/pubsub-server';
+
+const pool = createRealtimeChannelPool({ key: 'your-ably-api-key' }, { size: 4 });
+await pool.open();
+
+async function streamReply(channelName, chunks) {
+  using channel = pool.get(channelName); // released when the block exits
+  await Promise.all(chunks.map((chunk) => channel.publish('chunk', chunk)));
+}
+
+// Once the work using the pool has finished
+await pool.close();
+```
+
+A handle publishes, updates, deletes and appends messages, and publishes and deletes annotations, but cannot attach or subscribe. Without `using`, call `channel.release()` when finished with it. Typing `using` needs TypeScript 5.2 or later, and `@types/node` for `Symbol.dispose`.
+
 ## Entry points
 
 Everything the SDK exposes is exported here, so you never need to add `@ably/pubsub-core` as a dependency of your own alongside this package.
 
-| Import from                       | What you get                                                                            |
-| --------------------------------- | --------------------------------------------------------------------------------------- |
-| `@ably/pubsub-server`             | `createHttpClient`, `createRealtimeClient`, plus the core's entire public API and types |
-| `@ably/pubsub-server/liveobjects` | The LiveObjects plugin                                                                  |
+| Import from                       | What you get                                                                                                         |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `@ably/pubsub-server`             | `createHttpClient`, `createRealtimeClient`, `createRealtimeChannelPool`, plus the core's entire public API and types |
+| `@ably/pubsub-server/liveobjects` | The LiveObjects plugin                                                                                               |
 
 ```javascript
 import { createRealtimeClient } from '@ably/pubsub-server';

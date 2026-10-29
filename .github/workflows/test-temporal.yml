@@ -30,11 +30,7 @@ jobs:
         uses: actions/setup-node@f1f314fca9dfce2769ece7d933488f076716723e # v1
         with:
           node-version: ${{ matrix.node-version }}
-      # --ignore-scripts skips the root `prepare` script, which runs the full build, and the dependency
-      # install scripts. The test scripts below build only the packages (`npm run build:packages`). None of the
-      # dependency install scripts is needed on this path: @swc/core, esbuild and protobufjs only validate or
-      # warn, and the native binaries come from optional dependencies, which are still installed.
-      - run: npm ci --ignore-scripts
+      - run: npm ci
       - name: Type-check the plugin and its tests
         run: npm run typecheck:temporal
       - name: Run unit tests

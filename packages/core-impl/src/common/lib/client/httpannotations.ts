@@ -9,6 +9,8 @@ import Resource from './resource';
 import type { Properties } from '../util/utils';
 import ErrorInfo from '../types/errorinfo';
 
+const ANNOTATION_ID_ENTROPY_BYTES = 9;
+
 export interface HttpGetAnnotationsParams {
   limit?: number;
 }
@@ -96,10 +98,16 @@ class HttpAnnotations {
     methodName: string,
   ): Promise<void> {
     const annotation = constructValidateAnnotation(msgOrSerial, annotationValues, methodName);
+    const client = this.channel.client;
+
+    /* RSAN1c4 */
+    if (client.options.idempotentRestPublishing && !annotation.id) {
+      annotation.id = (await Utils.randomString(ANNOTATION_ID_ENTROPY_BYTES)) + ':0';
+    }
+
     const wireAnnotation = await annotation.encode(this.channel.channelOptions);
 
-    const client = this.channel.client,
-      options = client.options,
+    const options = client.options,
       format = options.useBinaryProtocol ? Utils.Format.msgpack : Utils.Format.json,
       headers = Defaults.defaultPostHeaders(client.options),
       params = {};

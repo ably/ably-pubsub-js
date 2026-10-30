@@ -1,0 +1,5 @@
+{
+  "main": "../dist/temporal.js",
+  "module": "../dist/temporal.mjs",
+  "types": "./index.d.ts"
+}

@@ -37,10 +37,12 @@ They return a `PubSubHttpClient` and a `PubSubRealtimeClient`, the clients that 
 
 Everything the SDK exposes is exported here, so you never need to add `@ably/pubsub-core` as a dependency of your own alongside this package.
 
-| Import from                       | What you get                                                                            |
-| --------------------------------- | --------------------------------------------------------------------------------------- |
-| `@ably/pubsub-server`             | `createHttpClient`, `createRealtimeClient`, plus the core's entire public API and types |
-| `@ably/pubsub-server/liveobjects` | The LiveObjects plugin                                                                  |
+| Import from                             | What you get                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `@ably/pubsub-server`                   | `createHttpClient`, `createRealtimeClient`, plus the core's entire public API and types |
+| `@ably/pubsub-server/liveobjects`       | The LiveObjects plugin                                                                  |
+| `@ably/pubsub-server/temporal`          | The Temporal plugin, which registers the Ably activities on a Temporal worker           |
+| `@ably/pubsub-server/temporal/workflow` | The Temporal plugin's HTTP client for Temporal workflow code                            |
 
 ```javascript
 import { createRealtimeClient } from '@ably/pubsub-server';
@@ -56,6 +58,8 @@ const message = await Message.fromEncoded(webhookPayload, { cipher: { key } });
 ```
 
 The LiveObjects plugin is the same object the core exports, not a copy, so a client built here accepts it as the plugin it expects. It carries no side of its own and is available from both packages.
+
+The Temporal plugin calls the Ably REST API from Temporal workflow code, running each call as an activity on the worker. Its `@temporalio/*` dependencies are optional peer dependencies of this package: install them alongside it when you use the plugin.
 
 Push receive and the React hooks are device-side concerns and are not re-exported here; they live on [`@ably/pubsub-device`](https://www.npmjs.com/package/@ably/pubsub-device). Push _admin_ is a server concern and is already on the client, at `client.push.admin`.
 

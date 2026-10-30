@@ -1,0 +1,33 @@
+{
+  // Type-checks the Temporal plugin tests together with the plugin source. `@ably/pubsub-server/temporal` and
+  // `@ably/pubsub-server/temporal/workflow` resolve to the plugin source, so no build is needed to type-check.
+  "extends": "../../src/platform/temporal/tsconfig.json",
+  "include": [
+    "./**/*.ts",
+    "../../src/platform/temporal/src/**/*.ts",
+    // Global declarations that the implementation source relies on (see below).
+    "../../src/common/types/globals.d.ts"
+  ],
+  "compilerOptions": {
+    "noEmit": true,
+    "emitDeclarationOnly": false,
+    "rootDir": "../../..",
+    "module": "CommonJS",
+    "types": ["node", "mocha"],
+    // The tests reuse the UTS helpers, which import the implementation source. These options match
+    // packages/core-impl/tsconfig.json, which that source is written against.
+    "baseUrl": "../../src",
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "webworker"],
+    "resolveJsonModule": true,
+    // Relative to baseUrl. The rest of the mapping matches packages/core-impl/test/uts/tsconfig.json.
+    "paths": {
+      "@ably/pubsub-core": ["../../core/src/index.ts"],
+      "@ably/pubsub-core/api": ["../../core/api.d.ts"],
+      "@ably/pubsub-core/liveobjects": ["../../core/liveobjects.d.ts"],
+      "@ably/pubsub-server": ["../../server/index.d.ts"],
+      "@ably/pubsub-server/liveobjects": ["../../server/liveobjects/index.d.ts"],
+      "@ably/pubsub-server/temporal": ["platform/temporal/src/index.ts"],
+      "@ably/pubsub-server/temporal/workflow": ["platform/temporal/src/workflow.ts"]
+    }
+  }
+}

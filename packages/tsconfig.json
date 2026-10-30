@@ -30,5 +30,10 @@
     "server/src/**/*.ts",
     "server/**/*.d.ts",
     "server/**/*.d.mts"
-  ]
+  ],
+  // The Temporal plugin's entry points are type-checked by the plugin's own tsconfig instead
+  // (`npm run build:temporal:types` and `npm run typecheck:temporal`). Checking them here, with
+  // `skipLibCheck` off, would also check the Temporal SDK's declarations, which need a newer
+  // TypeScript and @types/node than this repository uses.
+  "exclude": ["server/src/temporal.ts", "server/src/temporal-workflow.ts", "server/temporal", "server/dist"]
 }

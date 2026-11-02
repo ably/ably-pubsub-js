@@ -288,7 +288,8 @@ export async function activityOptions(variant: 'default' | 'custom' | 'summary')
               retry: { maximumAttempts: 2, nonRetryableErrorTypes: ['AblyError'] },
             },
           })
-        : new TemporalAblyHttpClient({ activityOptions: { summary: 'my summary' } });
+        : // A caller that bypasses the type of the options cannot set the summary either.
+          new TemporalAblyHttpClient({ activityOptions: { summary: 'my summary' } as Record<string, unknown> });
   const channel = rest.channels.get('opts');
   await channel.publish('event', 'data');
   const page = await channel.history();

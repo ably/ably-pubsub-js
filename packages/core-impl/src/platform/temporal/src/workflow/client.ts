@@ -19,16 +19,16 @@ export interface TemporalAblyHttpClientOptions {
    * The options for the activities that run Ably operations. They are applied on top of the defaults, which are a
    * `startToCloseTimeout` of 30 seconds and Temporal's default retry policy.
    *
-   * Unless you set `summary`, each activity gets a summary for the Temporal UI that names the operation and
+   * They cannot set the `summary`. Each activity gets a summary for the Temporal UI that names the operation and
    * channel, such as `publish chat:123`.
    */
-  activityOptions?: ActivityOptions;
+  activityOptions?: Omit<ActivityOptions, 'summary'>;
   /**
    * When set, Ably operations run as local activities with these options, applied on top of a default
    * `startToCloseTimeout` of 30 seconds. Local activities have lower latency, which suits short operations such as
-   * status updates. Cannot be set together with `activityOptions`.
+   * status updates. Cannot be set together with `activityOptions`. They cannot set the `summary`.
    */
-  localActivityOptions?: LocalActivityOptions;
+  localActivityOptions?: Omit<LocalActivityOptions, 'summary'>;
   /**
    * Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried
    * activity. Each key is the same on every attempt of the activity and every replay of the workflow. The key is

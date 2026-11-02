@@ -203,11 +203,11 @@ const userIsOnline = members.items.length > 0;
 
 `TemporalAblyHttpClient` takes these options:
 
-| Option                 | Default                                                                  | Description                                                                                                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activityOptions`      | `startToCloseTimeout` of 30 seconds, and Temporal's default retry policy | The `ActivityOptions` for the Ably activities. They are applied on top of the defaults.                                                                                                     |
-| `localActivityOptions` | Not set                                                                  | When set, Ably operations run as local activities with these `LocalActivityOptions`, applied on top of a default `startToCloseTimeout` of 30 seconds. Cannot be set with `activityOptions`. |
-| `idempotentPublishing` | `true`                                                                   | Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried call. See [Retries and idempotency](#retries-and-idempotency).                  |
+| Option                 | Default                                                                  | Description                                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `activityOptions`      | `startToCloseTimeout` of 30 seconds, and Temporal's default retry policy | The `ActivityOptions` for the Ably activities, without `summary`. They are applied on top of the defaults.                                                                                                     |
+| `localActivityOptions` | Not set                                                                  | When set, Ably operations run as local activities with these `LocalActivityOptions`, without `summary`, applied on top of a default `startToCloseTimeout` of 30 seconds. Cannot be set with `activityOptions`. |
+| `idempotentPublishing` | `true`                                                                   | Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried call. See [Retries and idempotency](#retries-and-idempotency).                                     |
 
 Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried call within its deduplication window of 2 minutes. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
 
@@ -241,7 +241,7 @@ Each activity has a summary that names the operation, which the Temporal UI show
 | `request()`                                             | `request POST /path`                        |
 | `batchPublish()`, `batchPresence()`                     | `batchPublish (3 channels)`                 |
 
-The summary of `request()` does not include the `params` you pass, so their values do not appear in the UI. To use your own summary, set `summary` in `activityOptions` or `localActivityOptions`. It then applies to every call made through that `TemporalAblyHttpClient`.
+The summary of `request()` does not include the `params` you pass, so their values do not appear in the UI. The summaries cannot be changed, so `activityOptions` and `localActivityOptions` do not take a `summary`.
 
 ## Supported API
 

@@ -34,8 +34,8 @@ type ActivityResult<N extends ActivityName> = Awaited<ReturnType<AblyActivities[
 
 /** Options for an {@link ActivityInvoker}, from `TemporalAblyHttpClientOptions`. */
 export interface ActivityInvokerOptions {
-  activityOptions?: ActivityOptions;
-  localActivityOptions?: LocalActivityOptions;
+  activityOptions?: Omit<ActivityOptions, 'summary'>;
+  localActivityOptions?: Omit<LocalActivityOptions, 'summary'>;
   idempotentPublishing: boolean;
 }
 
@@ -79,7 +79,7 @@ export class ActivityInvoker {
    * Runs the activity `name`. Binary data in its arguments must already be encoded, as described in
    * ../common/wire.ts, and binary data in its result is returned encoded.
    *
-   * @param summary - The summary shown for the activity in the Temporal UI, unless the caller set their own.
+   * @param summary - The summary shown for the activity in the Temporal UI.
    * @throws An `ApplicationFailure` of type `AblyError` if the arguments contain a binary value.
    */
   async invoke<N extends ActivityName>(name: N, summary: string, ...args: ActivityArgs<N>): Promise<ActivityResult<N>> {
@@ -126,8 +126,8 @@ export class ActivityInvoker {
   private proxy(summary: string) {
     const { activityOptions, localActivityOptions } = this.options;
     if (localActivityOptions) {
-      return proxyLocalActivities<AblyActivities>({ ...DEFAULT_ACTIVITY_OPTIONS, summary, ...localActivityOptions });
+      return proxyLocalActivities<AblyActivities>({ ...DEFAULT_ACTIVITY_OPTIONS, ...localActivityOptions, summary });
     }
-    return proxyActivities<AblyActivities>({ ...DEFAULT_ACTIVITY_OPTIONS, summary, ...activityOptions });
+    return proxyActivities<AblyActivities>({ ...DEFAULT_ACTIVITY_OPTIONS, ...activityOptions, summary });
   }
 }

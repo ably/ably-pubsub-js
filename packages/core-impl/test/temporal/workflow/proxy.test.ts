@@ -1022,10 +1022,10 @@ describe('temporal/workflow proxy', function () {
       }
     });
 
-    it("uses the caller's summary when set", async function () {
+    it('gives each activity its own summary even when the options set one', async function () {
       const { handle } = await execute('activityOptions', 'summary');
       const events = scheduledEvents(await historyEvents(handle));
-      expect(events.map(summaryOf)).to.deep.equal(['my summary', 'my summary', 'my summary', 'my summary']);
+      expect(events.map(summaryOf)).to.deep.equal(['publish opts', 'history opts', 'history opts (next page)', 'time']);
       expect(tsToMs(events[0].activityTaskScheduledEventAttributes!.startToCloseTimeout)).to.equal(30_000);
     });
 

@@ -75,57 +75,52 @@ npm install @ably/pubsub-server @temporalio/worker @temporalio/workflow @tempora
 
 You also need `@temporalio/client` in the application that starts your workflows.
 
-Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-server/temporal/workflow` only in workflow code. The worker entry point loads worker-only Temporal packages, which cannot be bundled into a workflow, and the worker creates the Ably client, which cannot run in a workflow. Type-only imports from `@ably/pubsub-server` and `@ably/pubsub-server/liveobjects`, such as `import type { InboundMessage } from '@ably/pubsub-server'`, are fine in workflow code.
+Import `@ably/pubsub-server/temporal` only in worker code, and `@ably/pubsub-server/temporal/workflow` only in workflow code. The worker entry point loads worker-only Temporal packages, which cannot be bundled into a workflow, and the plugin creates the Ably client on the worker, which cannot run in a workflow. Type-only imports from `@ably/pubsub-server` and `@ably/pubsub-server/liveobjects`, such as `import type { InboundMessage } from '@ably/pubsub-server'`, are fine in workflow code.
 
 ## Worker setup
 
-Create an HTTP client with `createHttpClient` from `@ably/pubsub-server`, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)), and add an `AblyHttpPlugin` with that client to the `plugins` of your worker:
+Add an `AblyHttpPlugin` to the `plugins` of your worker, with the same `ClientOptions` as any other Ably client (see [Getting started with Pub/Sub in JavaScript](https://ably.com/docs/getting-started/javascript)):
 
 ```typescript
 // worker.ts
 import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
-import { createHttpClient } from '@ably/pubsub-server';
 import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
 const connection = await NativeConnection.connect({ address: 'localhost:7233' });
-
-const client = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   connection,
   namespace: 'default',
   taskQueue: 'agents',
   workflowsPath: fileURLToPath(new URL('./workflows.ts', import.meta.url)),
-  plugins: [new AblyHttpPlugin({ client })],
+  plugins: [new AblyHttpPlugin({ clientOptions: { key: process.env.ABLY_API_KEY } })],
 });
 
 await worker.run();
 ```
 
-The plugin registers one activity per Ably operation. Every activity name starts with `ably.`, so they cannot collide with your own activities. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
+The plugin creates its own Ably HTTP client from the options, with `createHttpClient` from `@ably/pubsub-server`, and registers one activity per Ably operation. Every activity name starts with `ably.`, so they cannot collide with your own activities. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
 
 `AblyHttpPlugin` takes these options:
 
-| Option   | Description                                                                         |
-| -------- | ----------------------------------------------------------------------------------- |
-| `client` | Required. The `PubSubHttpClient`, from `createHttpClient`, that the activities use. |
+| Option          | Description                                                                    |
+| --------------- | ------------------------------------------------------------------------------ |
+| `clientOptions` | Required. The `ClientOptions` of the Ably HTTP client that the plugin creates. |
 
-The constructor throws a `TypeError` if `client` is not a `PubSubHttpClient`, for example if it is a realtime client from `createRealtimeClient`. The plugin's client is available as `plugin.client`. Your own activities can use the same client.
+The constructor throws a `TypeError` if `clientOptions` is not an object.
 
-The activities get each channel from the client when they need it, and release it once no activity on the worker is using it, so the client does not keep a channel for every name the worker has ever used. A channel that your own code got from the client is never released.
+Only the plugin's activities use its client. Use a client of your own, from `createHttpClient`, in your own activities. The activities get each channel from the plugin's client when they need it, and release it once no activity on the worker is using it, so the client does not keep a channel for every name the worker has ever used.
 
 ### Using LiveObjects
 
-`channel.object` needs the worker's client to have the LiveObjects plugin from `@ably/pubsub-server/liveobjects`. Create the client with it:
+`channel.object` needs the plugin's client to have the LiveObjects plugin from `@ably/pubsub-server/liveobjects`. Pass it in `clientOptions`:
 
 ```typescript
-import { createHttpClient } from '@ably/pubsub-server';
 import { LiveObjects } from '@ably/pubsub-server/liveobjects';
 import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
-const client = createHttpClient({ key: process.env.ABLY_API_KEY, plugins: { LiveObjects } });
-const plugin = new AblyHttpPlugin({ client });
+const plugin = new AblyHttpPlugin({ clientOptions: { key: process.env.ABLY_API_KEY, plugins: { LiveObjects } } });
 ```
 
 Without it, the `ably.channel.object.*` activities fail with a non-retryable Ably error, code 40019.
@@ -140,12 +135,9 @@ import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
 import { AiSdkPlugin } from '@temporalio/ai-sdk';
 import { gateway } from 'ai';
-import { createHttpClient } from '@ably/pubsub-server';
 import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
 
 const connection = await NativeConnection.connect({ address: 'localhost:7233' });
-
-const client = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   connection,
@@ -156,7 +148,7 @@ const worker = await Worker.create({
     // Runs model calls as activities. Uses AI_GATEWAY_API_KEY from the worker environment.
     new AiSdkPlugin({ modelProvider: gateway }),
     // Runs Ably REST calls as activities.
-    new AblyHttpPlugin({ client }),
+    new AblyHttpPlugin({ clientOptions: { key: process.env.ABLY_API_KEY } }),
   ],
 });
 
@@ -499,13 +491,15 @@ import { Worker } from '@temporalio/worker';
 import { createActivities } from '@ably/pubsub-server/temporal';
 import * as activities from './activities';
 
-const client = createHttpClient({ key: process.env.ABLY_API_KEY });
+const ablyActivitiesClient = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   // ...
-  activities: { ...activities, ...createActivities(client) },
+  activities: { ...activities, ...createActivities(ablyActivitiesClient) },
 });
 ```
+
+Create the client for the Ably activities alone, and do not use it anywhere else, as for the plugin's client. The activities release each channel from the client once no activity is using it, so a channel that other code got from the client could be released while that code still uses it, and the channel options that other code sets, such as a `cipher`, would apply to the activities' requests.
 
 Workflow code still calls the activities through `TemporalAblyHttpClient`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
 

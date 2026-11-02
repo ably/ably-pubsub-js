@@ -22,7 +22,8 @@
     "paths": {
       "@ably/pubsub-core": ["../../../../core"],
       "@ably/pubsub-core/api": ["../../../../core/api.d.ts"],
-      "@ably/pubsub-core/liveobjects": ["../../../../core/liveobjects.d.ts"]
+      "@ably/pubsub-core/liveobjects": ["../../../../core/liveobjects.d.ts"],
+      "@ably/pubsub-server": ["../../../../server/index.d.ts"]
     }
   }
 }

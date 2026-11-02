@@ -178,14 +178,11 @@ Register the plugin on your worker:
 
 ```typescript
 import { Worker } from '@temporalio/worker';
-import { createHttpClient } from '@ably/pubsub-server';
 import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
-
-const client = createHttpClient({ key: process.env.ABLY_API_KEY });
 
 const worker = await Worker.create({
   // ...
-  plugins: [new AblyHttpPlugin({ client })],
+  plugins: [new AblyHttpPlugin({ clientOptions: { key: process.env.ABLY_API_KEY } })],
 });
 ```
 

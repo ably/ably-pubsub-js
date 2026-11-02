@@ -1,7 +1,9 @@
 // End-to-end tests of the built plugin on a local Temporal server. The workflows in ./workflows/e2e.ts import the
-// built `@ably/pubsub-server/temporal/workflow`, and run on workers that use the built `AblyHttpPlugin` from `@ably/pubsub-server/temporal`. Each
-// plugin is given an Ably HTTP client built from source, with the UTS mock HTTP client installed, so that the real
-// ably-js request pipeline runs and the tests can inspect every HTTP request it makes.
+// built `@ably/pubsub-server/temporal/workflow`, and run on workers with the activities from `createActivities` in the
+// built `@ably/pubsub-server/temporal`, which `AblyHttpPlugin` registers. The activities are given an Ably HTTP client
+// built from source, with the UTS mock HTTP client installed, so that the real ably-js request pipeline runs and the
+// tests can inspect every HTTP request it makes. The plugin itself creates its client with the built
+// `@ably/pubsub-server`, which the mock does not reach, and is covered by the unit tests.
 //
 // Run `npm run build:node && npm run build:liveobjects && npm run build:temporal` first.
 
@@ -19,7 +21,7 @@ import {
   type WorkflowBundleWithSourceMap,
 } from '@temporalio/worker';
 import type * as AblyTypes from '@ably/pubsub-server';
-import { AblyHttpPlugin, getAblyErrorDetails } from '@ably/pubsub-server/temporal';
+import { AblyHttpPlugin, createActivities, getAblyErrorDetails } from '@ably/pubsub-server/temporal';
 import { expect } from 'chai';
 import { Ably, installMockHttp, restoreAll } from '../../uts/helpers';
 import { MockHttpClient, type PendingRequest } from '../../uts/mock_http';
@@ -144,7 +146,6 @@ describe('temporal end to end', function () {
   let env: TestWorkflowEnvironment;
   let namespace: string;
   let workflowBundle: WorkflowBundleWithSourceMap;
-  let jsonPlugin: AblyHttpPlugin;
   const workers: Worker[] = [];
   const workerRuns: Promise<void>[] = [];
 
@@ -153,8 +154,8 @@ describe('temporal end to end', function () {
     installMockHttp(
       new MockHttpClient({ onConnectionAttempt: (conn) => conn.respond_with_success(), onRequest: handleRequest }),
     );
-    jsonPlugin = new AblyHttpPlugin({ client: restClient({ useBinaryProtocol: false, liveObjects: true }) });
-    const msgpackPlugin = new AblyHttpPlugin({ client: restClient({ useBinaryProtocol: true }) });
+    const jsonActivities = createActivities(restClient({ useBinaryProtocol: false, liveObjects: true }));
+    const msgpackActivities = createActivities(restClient({ useBinaryProtocol: true, liveObjects: true }));
 
     env = await TestWorkflowEnvironment.createLocal();
     namespace = env.namespace ?? 'default';
@@ -163,9 +164,9 @@ describe('temporal end to end', function () {
       workflowInterceptorModules: [path.join(__dirname, 'workflows', 'interceptors.ts')],
       logger: new DefaultLogger('WARN'),
     });
-    for (const [taskQueue, plugin] of [
-      [JSON_QUEUE, jsonPlugin],
-      [MSGPACK_QUEUE, msgpackPlugin],
+    for (const [taskQueue, activities] of [
+      [JSON_QUEUE, jsonActivities],
+      [MSGPACK_QUEUE, msgpackActivities],
     ] as const) {
       const worker = await Worker.create({
         connection: env.nativeConnection,
@@ -173,7 +174,7 @@ describe('temporal end to end', function () {
         taskQueue,
         workflowBundle,
         sinks,
-        plugins: [plugin],
+        activities,
       });
       workers.push(worker);
       workerRuns.push(worker.run());
@@ -225,6 +226,7 @@ describe('temporal end to end', function () {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const built = require(path.join(serverDist, 'temporal.js'));
     expect(AblyHttpPlugin).to.equal(built.AblyHttpPlugin);
+    expect(createActivities).to.equal(built.createActivities);
     // The workflows import the built workflow entry point rather than the plugin's source, and it imports
     // nothing of the Ably runtime.
     expect(workflowBundle.code).to.include('"./packages/server/dist/temporal-workflow.mjs"');
@@ -488,7 +490,7 @@ describe('temporal end to end', function () {
   });
 
   describe('replay', function () {
-    it('replays the history with the plugin without making any requests', async function () {
+    it('replays the history without making any requests', async function () {
       const channel = uniqueChannel('replay');
       responders.set(channel, (req, count) =>
         req.method === 'post'
@@ -510,7 +512,7 @@ describe('temporal end to end', function () {
       const history = await handle.fetchHistory();
       recordingPhase = 'replay';
       try {
-        await Worker.runReplayHistory({ workflowBundle, sinks, plugins: [jsonPlugin] }, history, workflowId);
+        await Worker.runReplayHistory({ workflowBundle, sinks }, history, workflowId);
       } finally {
         recordingPhase = 'run';
       }

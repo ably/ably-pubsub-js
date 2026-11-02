@@ -571,7 +571,7 @@ describe('temporal/worker/activities', function () {
   describe('channels', function () {
     const publishInput = (channel: string) => toWire({ channel, messages: [{ name: 'e', data: 'd' }] });
 
-    it('releases a channel that the activities added once the activity settles', async function () {
+    it('releases a channel once the activity settles', async function () {
       const { client } = mockAbly((req) => req.respond_with(201, { serials: ['s'] }));
       const activities = createActivities(client);
 
@@ -610,16 +610,6 @@ describe('temporal/worker/activities', function () {
       pending[1].respond_with(201, { serials: ['s1'] });
       await second;
       expect(Object.keys(client.channels.all)).to.deep.equal([]);
-    });
-
-    it('never releases a channel that the application got from the client', async function () {
-      const { client } = mockAbly((req) => req.respond_with(201, { serials: ['s'] }));
-      const own = client.channels.get('chat:1');
-      const activities = createActivities(client);
-
-      await runActivity(activityEnvironment(), activities[ActivityNames.publish], publishInput('chat:1'));
-
-      expect(client.channels.all['chat:1']).to.equal(own);
     });
   });
 

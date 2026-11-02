@@ -1,36 +1,69 @@
+import * as http from 'http';
+import type { AddressInfo } from 'net';
 import { expect } from 'chai';
 import type { WorkerOptions } from '@temporalio/worker';
-import { restoreAll } from '../../uts/helpers';
 import * as WorkerEntryPoint from '../../../src/platform/temporal/src/index';
 import { AblyHttpPlugin } from '../../../src/platform/temporal/src/worker/plugin';
 import { ActivityNames } from '../../../src/platform/temporal/src/common/activities';
-import { activityEnvironment, jsonBody, mockAbly, runActivity, toWire } from './worker-helpers';
+import { activityEnvironment, runActivity, toWire } from './worker-helpers';
 
-// createHttpClient and createRealtimeClient from the built `@ably/pubsub-server` package, as an application would
-// import them.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const BuiltServer = require('@ably/pubsub-server');
+const KEY = 'appId.keyId:keySecret';
 
 function configuredActivities(plugin: AblyHttpPlugin, activities: object = {}): Record<string, any> {
   const options = plugin.configureWorker({ taskQueue: 'test', activities } as WorkerOptions);
   return options.activities as Record<string, any>;
 }
 
+interface ReceivedRequest {
+  method?: string;
+  url?: string;
+  headers: http.IncomingHttpHeaders;
+  body: string;
+}
+
 describe('temporal/worker/plugin', function () {
-  afterEach(function () {
-    restoreAll();
+  // The plugin creates its client with the built `@ably/pubsub-server`, which the UTS mock HTTP client does not
+  // reach, so these tests serve the Ably REST API from a local HTTP server.
+  let server: http.Server;
+  let port: number;
+  const received: ReceivedRequest[] = [];
+
+  before(async function () {
+    server = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => {
+        received.push({ method: req.method, url: req.url, headers: req.headers, body });
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ serials: ['s0'] }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    port = (server.address() as AddressInfo).port;
   });
 
+  after(async function () {
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  beforeEach(function () {
+    received.length = 0;
+  });
+
+  function plugin(): AblyHttpPlugin {
+    return new AblyHttpPlugin({
+      clientOptions: { key: KEY, endpoint: 'localhost', port, tls: false, useBinaryProtocol: false },
+    });
+  }
+
   it('is named AblyHttpPlugin', function () {
-    const { client } = mockAbly((req) => req.respond_with(200, {}));
-    expect(new AblyHttpPlugin({ client }).name).to.equal('AblyHttpPlugin');
+    expect(plugin().name).to.equal('AblyHttpPlugin');
   });
 
   it('registers every Ably activity alongside the application activities', function () {
-    const { client } = mockAbly((req) => req.respond_with(200, {}));
     const myActivity = async () => 'mine';
 
-    const activities = configuredActivities(new AblyHttpPlugin({ client }), { myActivity });
+    const activities = configuredActivities(plugin(), { myActivity });
 
     expect(Object.keys(activities).sort()).to.deep.equal([...Object.values(ActivityNames), 'myActivity'].sort());
     expect(activities.myActivity).to.equal(myActivity);
@@ -40,43 +73,35 @@ describe('temporal/worker/plugin', function () {
     }
   });
 
-  it('uses the client it is given', async function () {
-    const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-    const plugin = new AblyHttpPlugin({ client });
-
-    await runActivity(
+  it('creates its own client from clientOptions', async function () {
+    const result = await runActivity(
       activityEnvironment(),
-      configuredActivities(plugin)[ActivityNames.publish],
-      toWire({ channel: 'chat', messages: [{ name: 'e' }] }),
+      configuredActivities(plugin())[ActivityNames.publish],
+      toWire({ channel: 'chat', messages: [{ name: 'e', data: 'AQID', encoding: 'base64' }] }),
     );
 
-    expect(plugin.client).to.equal(client);
-    const [message] = jsonBody(requests[0]);
-    expect(message).to.include({ name: 'e' });
+    expect(result).to.deep.equal({ serials: ['s0'] });
+    expect(received).to.have.length(1);
+    expect(received[0].method).to.equal('POST');
+    expect(received[0].url).to.match(/^\/channels\/chat\/messages(\?|$)/);
+    expect(received[0].headers.authorization).to.equal(`Basic ${Buffer.from(KEY).toString('base64')}`);
+    const [message] = JSON.parse(received[0].body);
+    expect(message).to.include({ name: 'e', data: 'AQID', encoding: 'base64' });
     expect(message).to.not.have.property('extras');
   });
 
-  it('accepts a client from the built @ably/pubsub-server package', function () {
-    const client = BuiltServer.createHttpClient({ key: 'appId.keyId:keySecret' });
-
-    expect(new AblyHttpPlugin({ client }).client).to.equal(client);
+  it('does not expose its client', function () {
+    expect(plugin()).to.not.have.property('client');
   });
 
-  it('rejects options without a client', function () {
-    const message = /do not include a PubSubHttpClient in `client`/;
+  it('rejects options without a ClientOptions object', function () {
+    const message = /do not include the Ably ClientOptions object in `clientOptions`/;
     expect(() => new (AblyHttpPlugin as any)()).to.throw(TypeError, message);
     expect(() => new AblyHttpPlugin({} as any)).to.throw(TypeError, message);
-    expect(() => new AblyHttpPlugin({ ably: { key: 'appId.keyId:keySecret' } } as any)).to.throw(TypeError, message);
-    expect(() => new AblyHttpPlugin({ client: { key: 'appId.keyId:keySecret' } } as any)).to.throw(TypeError, message);
-  });
-
-  it('rejects a realtime client', function () {
-    const client = BuiltServer.createRealtimeClient({ key: 'appId.keyId:keySecret', autoConnect: false });
-    try {
-      expect(() => new AblyHttpPlugin({ client })).to.throw(TypeError, /do not include a PubSubHttpClient in `client`/);
-    } finally {
-      client.close();
-    }
+    expect(() => new AblyHttpPlugin({ client: { key: KEY } } as any)).to.throw(TypeError, message);
+    expect(() => new AblyHttpPlugin({ clientOptions: KEY } as any)).to.throw(TypeError, message);
+    expect(() => new AblyHttpPlugin({ clientOptions: null } as any)).to.throw(TypeError, message);
+    expect(() => new AblyHttpPlugin({ clientOptions: [KEY] } as any)).to.throw(TypeError, message);
   });
 
   it('exports the worker API from the entry point', function () {

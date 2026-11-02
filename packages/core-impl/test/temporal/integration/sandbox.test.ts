@@ -1,6 +1,6 @@
 // Integration tests of the built plugin against an Ably sandbox app and a local Temporal server. The workflows in
 // ./workflows.ts import the built `@ably/pubsub-server/temporal/workflow`, and run on workers with the built `AblyHttpPlugin`, each
-// given an HTTP client from the built `@ably/pubsub-server` package. A separate client reads back what reached Ably.
+// given the `ClientOptions` of the client it creates. A separate client reads back what reached Ably.
 //
 // These tests check the assumptions the plugin makes about the Ably service:
 //
@@ -124,7 +124,7 @@ describe('temporal sandbox integration', function () {
         workflowBundle,
         plugins: [
           new AblyHttpPlugin({
-            client: Ably.createHttpClient({ key: workerKey, endpoint: SANDBOX_ENDPOINT, plugins: { LiveObjects } }),
+            clientOptions: { key: workerKey, endpoint: SANDBOX_ENDPOINT, plugins: { LiveObjects } },
           }),
         ],
       });

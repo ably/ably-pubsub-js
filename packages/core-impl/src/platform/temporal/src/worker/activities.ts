@@ -10,6 +10,11 @@ import { toActivityFailure } from './errors.js';
  * `client`. {@link AblyHttpPlugin} registers them on a worker, so most applications do not need to call this
  * directly. Use it to register the activities on a worker without the plugin.
  *
+ * Create `client` for the activities alone, and do not use it anywhere else. The activities get each channel from
+ * `client` when they need it, and release it from `client` once no activity is using it. A channel that other code
+ * gets from `client` would be released while that code still uses it, and the channel options it sets, such as a
+ * `cipher`, would apply to the activities' requests on that channel.
+ *
  * Every activity fails with an `ApplicationFailure` of type `AblyError` when the Ably HTTP client returns an error.
  * The failure is retryable only when the error is likely to be transient, such as a 5xx response, a timeout, a
  * rate limit or a network failure.
@@ -253,58 +258,38 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
   };
 }
 
-interface ChannelLease {
-  channel: Ably.HttpChannel;
-  /** The number of activities using the channel. */
-  count: number;
-  /** Whether the activities added the channel to the client, rather than the application. */
-  added: boolean;
-}
-
 /**
- * Gets channels from the client for the activities, and releases each channel that the activities added once no
- * activity is using it, so that `client.channels.all` does not keep every channel the worker has used. A channel
- * that the application got from the client is never released.
+ * Gets channels from the client for the activities, and releases each channel once no activity is using it, so that
+ * `client.channels.all` does not keep every channel the worker has used.
  *
  * A REST channel holds only its options, so getting a released channel again costs a few small objects. An activity
  * that is using a channel keeps its reference to it after a release.
  */
 class ChannelLeases {
-  private readonly leases = new Map<string, ChannelLease>();
+  /** The number of activities using each channel. */
+  private readonly counts = new Map<string, number>();
 
   constructor(private readonly client: Ably.PubSubHttpClient) {}
 
   /** Runs `operation` with the channel called `name`, which stays on the client until the operation settles. */
   async use<T>(name: string, operation: (channel: Ably.HttpChannel) => Promise<T>): Promise<T> {
-    const lease = this.acquire(name);
+    const channel = this.client.channels.get(name);
+    this.counts.set(name, (this.counts.get(name) ?? 0) + 1);
     try {
-      return await operation(lease.channel);
+      return await operation(channel);
     } finally {
-      this.release(name, lease);
+      this.release(name);
     }
   }
 
-  private acquire(name: string): ChannelLease {
-    let lease = this.leases.get(name);
-    if (!lease) {
-      const channels = this.client.channels;
-      const added = !Object.prototype.hasOwnProperty.call(channels.all, name);
-      lease = { channel: channels.get(name), count: 0, added };
-      this.leases.set(name, lease);
-    }
-    lease.count++;
-    return lease;
-  }
-
-  private release(name: string, lease: ChannelLease): void {
-    if (--lease.count > 0) {
+  private release(name: string): void {
+    const count = (this.counts.get(name) ?? 1) - 1;
+    if (count > 0) {
+      this.counts.set(name, count);
       return;
     }
-    this.leases.delete(name);
-    // The application may have released the channel and got a new one with the same name in the meantime.
-    if (lease.added && this.client.channels.all[name] === lease.channel) {
-      this.client.channels.release(name);
-    }
+    this.counts.delete(name);
+    this.client.channels.release(name);
   }
 }
 

@@ -451,18 +451,28 @@ const ably = new TemporalAblyHttpClient({
 
 Some errors are detected in workflow code, before any activity runs:
 
-- **An invalid argument** throws an `ApplicationFailure` of type `AblyError` with code 40003 and status 400. Examples are a first argument to `publish()` that is not an event name, message or array of messages, a `null` message passed to `updateMessage()`, channel options passed to `channels.get()`, a `null` device ID passed to `push.admin.deviceRegistrations.get()`, and a `channel.object.publish()` call that Ably cannot deduplicate (see [Retried LiveObjects operations](#retried-liveobjects-operations)). It is thrown as it is, not wrapped in an `ActivityFailure`, and `getAblyErrorDetails` accepts it. If you do not catch it, the workflow fails.
+- **An invalid argument** throws an `ApplicationFailure` of type `AblyError` with code 40003 and status 400. Examples are a first argument to `publish()` that is not an event name, message or array of messages, a `null` message passed to `updateMessage()`, channel options passed to `channels.get()`, a `null` device ID passed to `push.admin.deviceRegistrations.get()`, binary data where it cannot be passed (see [Binary data and results](#binary-data-and-results)), and a `channel.object.publish()` call that Ably cannot deduplicate (see [Retried LiveObjects operations](#retried-liveobjects-operations)). It is thrown as it is, not wrapped in an `ActivityFailure`, and `getAblyErrorDetails` accepts it. If you do not catch it, the workflow fails.
 - **Calling `first()` or `current()` on a page without a link to that page** throws an `ApplicationFailure` of type `AblyError` with code 40400 and status 404.
 - **Setting both `activityOptions` and `localActivityOptions`** throws a `TypeError` from the `TemporalAblyHttpClient` constructor. This fails the workflow task rather than the workflow, so Temporal retries the task: fix the options and redeploy the worker, and the workflow resumes.
 - **Publishing with idempotent publishing enabled on `@temporalio/workflow` earlier than 1.18.0** throws a `TypeError`, which also fails the workflow task. See [Requirements](#requirements).
 
 ## Binary data and results
 
-Pass binary data in workflow code as a `Uint8Array`, an `ArrayBuffer` or another typed array, anywhere in the arguments. Temporal serialises activity arguments and results as JSON, so the plugin encodes binary values as base64 on the way into the activity and decodes them on the way out. The worker's Ably client publishes them as binary. Binary values in results, such as the `data` of a binary message in `history()`, are returned to the workflow as `Uint8Array`.
+Temporal serialises activity arguments and results as JSON, so binary data crosses the activity boundary as Ably's JSON protocol carries it, as a base64 string. Pass binary data in workflow code as a `Uint8Array`, an `ArrayBuffer` or another typed array, in these places:
+
+- The `data` of a message, for `publish()`, `batchPublish()`, `updateMessage()`, `deleteMessage()` and `appendMessage()`, and the `data` of an annotation. The workflow encodes it as base64 and appends `base64` to the message's `encoding`, so the activity's input in the Temporal UI shows, for example, `{ "data": "iVBORw==", "encoding": "base64" }`. The worker sends it to Ably as it is, and Ably decodes it, so a client reading the message gets the original bytes.
+- The `bytes` of a LiveObjects value, in a `mapSet` or a `mapCreate` entry. The activity's input shows it as a base64 string.
 
 ```typescript
 await channel.publish('thumbnail', new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
 ```
+
+Binary data anywhere else, such as nested inside an object in a message's `data`, in a `request()` body or in a push notification payload, throws an `ApplicationFailure` of type `AblyError` with code 40003 that names where the binary value is. Encode it as a base64 string yourself.
+
+Results that contain messages carry binary `data` the same way, as base64 with `base64` appended to the `encoding`, and the workflow decodes it back. Binary `data` in the results of `history()`, `getMessage()`, `getMessageVersions()`, `presence.get()`, `presence.history()`, `annotations.get()` and `batchPresence()` is returned as a `Uint8Array`. Other binary values in results are returned as base64 strings:
+
+- A full-format `object.get()` result, with `compact: false`, returns `bytes` as a `Uint8Array`. A compact result returns them as base64 strings, as Ably does over its JSON protocol.
+- `request()` returns binary values in the response, which Ably only sends when the worker's client uses the MessagePack protocol, as base64 strings.
 
 Results are plain data. For example, the `error` of a failed `batchPublish()` result is a plain object with the fields of an `ErrorInfo`.
 

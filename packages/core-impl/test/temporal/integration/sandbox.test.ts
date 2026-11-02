@@ -5,6 +5,8 @@
 // These tests check the assumptions the plugin makes about the Ably service:
 //
 // - that it accepts the plugin's `extras.headers`;
+// - that it decodes the base64 `data` of a message and the base64 `bytes` of an object value that the plugin sends,
+//   so that a reader gets the original bytes;
 // - that it accepts the message IDs the plugin generates for `publish` and `batchPublish`, and the operation IDs it
 //   generates for `object.publish`;
 // - that it deduplicates a retried `publish` or `batchPublish` by message ID, even when the retry's headers differ;
@@ -460,6 +462,26 @@ describe('temporal sandbox integration', function () {
       expect(result.counter.objectId).to.equal(counterId);
 
       expect(await objectAfterSentinel(channel)).to.deep.equal({ counter: 5, greeting: 'hello' });
+    });
+
+    it('publishes binary object values from a workflow, and Ably stores the bytes', async function () {
+      const channel = uniqueChannel('liveobjects');
+
+      const { result } = await execute(TASK_QUEUE, 'sandboxObjectBytes', channel);
+
+      expect(result).to.not.have.property('error');
+      const object = rest.channels.get(channel).object;
+      const full = (await pollUntil(
+        async () => {
+          const value = (await object.get({ compact: false })) as any;
+          return value?.map?.entries?.blob && value.map.entries.profile ? value : null;
+        },
+        { interval: 500, timeout: 15_000 },
+      )) as any;
+      expect(Buffer.from(full.map.entries.blob.data.bytes)).to.deep.equal(Buffer.from([0, 1, 254, 255]));
+      expect(Buffer.from(full.map.entries.profile.data.map.entries.avatar.data.bytes)).to.deep.equal(
+        Buffer.from([9, 8, 7]),
+      );
     });
 
     // Observed on nonprod:sandbox: Ably rejects an operation ID on an operation that it expands into several object

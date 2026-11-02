@@ -72,7 +72,7 @@ describe('temporal/worker/activities', function () {
       const activities = createActivities(client);
       const input = toWire({
         channel: 'chat',
-        messages: [{ id: 'x:0', name: 'e', data: new Uint8Array([1, 2]), extras: { headers: { a: '1' } } }],
+        messages: [{ id: 'x:0', name: 'e', data: 'AQI=', encoding: 'base64', extras: { headers: { a: '1' } } }],
       });
       const snapshot = JSON.parse(JSON.stringify(input));
 
@@ -81,20 +81,33 @@ describe('temporal/worker/activities', function () {
       expect(input).to.deep.equal(snapshot);
     });
 
-    it('publishes binary data as binary', async function () {
-      const { client, requests } = mockAbly((req) => req.respond_with(201, { serials: ['s0'] }));
-      const activities = createActivities(client);
+    for (const useBinaryProtocol of [false, true]) {
+      it(`publishes base64 data with its encoding as it is with the ${useBinaryProtocol ? 'MessagePack' : 'JSON'} protocol`, async function () {
+        const { client, requests } = mockAbly(
+          (req) =>
+            useBinaryProtocol
+              ? req._resolve!({
+                  error: null,
+                  body: msgpack.encode({ serials: ['s0'] }) as any,
+                  headers: {},
+                  unpacked: false,
+                  statusCode: 201,
+                })
+              : req.respond_with(201, { serials: ['s0'] }),
+          { useBinaryProtocol },
+        );
+        const activities = createActivities(client);
 
-      await runActivity(
-        activityEnvironment(),
-        activities[ActivityNames.publish],
-        toWire({ channel: 'chat', messages: [{ name: 'bytes', data: new Uint8Array([0, 1, 254, 255]) }] }),
-      );
+        await runActivity(
+          activityEnvironment(),
+          activities[ActivityNames.publish],
+          toWire({ channel: 'chat', messages: [{ name: 'bytes', data: 'AAH+/w==', encoding: 'utf-8/base64' }] }),
+        );
 
-      const [message] = jsonBody(requests[0]);
-      expect(message.encoding).to.equal('base64');
-      expect(Buffer.from(message.data, 'base64')).to.deep.equal(Buffer.from([0, 1, 254, 255]));
-    });
+        const [message] = useBinaryProtocol ? msgpack.decode(requests[0].body) : jsonBody(requests[0]);
+        expect(message).to.include({ name: 'bytes', data: 'AAH+/w==', encoding: 'utf-8/base64' });
+      });
+    }
   });
 
   describe('update, delete and append', function () {
@@ -190,7 +203,7 @@ describe('temporal/worker/activities', function () {
       expect(jsonBody(requests[0])).to.deep.equal([{ channels: ['a'], messages: [{ id: 'x:0', name: 'e' }] }]);
     });
 
-    it('sends binary data as binary with the MessagePack protocol', async function () {
+    it('sends base64 data with its encoding as it is with the MessagePack protocol', async function () {
       const { client, requests } = mockAbly(
         (req) =>
           req._resolve!({
@@ -205,12 +218,11 @@ describe('temporal/worker/activities', function () {
       const activities = createActivities(client);
 
       await activities[ActivityNames.batchPublish](
-        toWire({ specs: [{ channels: ['a'], messages: [{ name: 'e', data: new Uint8Array([1, 2, 3]) }] }] }),
+        toWire({ specs: [{ channels: ['a'], messages: [{ name: 'e', data: 'AQID', encoding: 'base64' }] }] }),
       );
 
       const [spec] = msgpack.decode(requests[0].body);
-      expect(Buffer.isBuffer(spec.messages[0].data)).to.equal(true);
-      expect(spec.messages[0].data).to.deep.equal(Buffer.from([1, 2, 3]));
+      expect(spec.messages[0]).to.deep.equal({ name: 'e', data: 'AQID', encoding: 'base64' });
     });
   });
 
@@ -282,9 +294,12 @@ describe('temporal/worker/activities', function () {
       expect(queryParams(viaActivity)).to.deep.equal({ limit: '2', direction: 'backwards', cursor: 'abc:1' });
     });
 
-    it('returns binary data in history results as binary', async function () {
+    it('returns binary data in history results as base64, with its encoding', async function () {
       const { client } = mockAbly((req) =>
-        req.respond_with(200, [{ id: 'm1', data: Buffer.from([9, 8, 7]).toString('base64'), encoding: 'base64' }]),
+        req.respond_with(200, [
+          { id: 'm1', data: Buffer.from([9, 8, 7]).toString('base64'), encoding: 'base64' },
+          { id: 'm2', data: '{"a":1}', encoding: 'json' },
+        ]),
       );
       const activities = createActivities(client);
 
@@ -292,8 +307,53 @@ describe('temporal/worker/activities', function () {
         await runActivity(activityEnvironment(), activities[ActivityNames.history], toWire({ channel: 'chat' })),
       );
 
-      expect(page.items[0].data).to.be.instanceOf(Uint8Array);
-      expect(Array.from(page.items[0].data as Uint8Array)).to.deep.equal([9, 8, 7]);
+      expect(page.items[0]).to.include({ id: 'm1', data: 'CQgH', encoding: 'base64' });
+      expect(page.items[1]).to.deep.include({ id: 'm2', data: { a: 1 } });
+      expect(page.items[1].encoding).to.equal(null);
+    });
+
+    it('returns binary data in results from the MessagePack protocol as base64, with its encoding', async function () {
+      const respond = (req: PendingRequest, body: unknown) =>
+        req._resolve!({
+          error: null,
+          body: msgpack.encode(body) as any,
+          headers: {},
+          unpacked: false,
+          statusCode: 200,
+        });
+      const { client } = mockAbly(
+        (req) =>
+          req.path === '/presence'
+            ? respond(req, [
+                {
+                  successCount: 1,
+                  failureCount: 0,
+                  results: [{ channel: 'a', presence: [{ data: Buffer.from([4]) }] }],
+                },
+              ])
+            : respond(req, [{ id: 'm1', data: Buffer.from([9, 8, 7]) }]),
+        { useBinaryProtocol: true },
+      );
+      const activities = createActivities(client) as any;
+      const env = activityEnvironment();
+
+      const page = fromWire(
+        await runActivity(env, activities[ActivityNames.history], toWire({ channel: 'chat' })),
+      ) as any;
+      const annotations = fromWire(
+        await runActivity(
+          env,
+          activities[ActivityNames.annotationsGet],
+          toWire({ channel: 'chat', messageOrSerial: 's' }),
+        ),
+      ) as any;
+      const presence = fromWire(
+        await runActivity(env, activities[ActivityNames.batchPresence], toWire({ channels: ['a'] })),
+      ) as any;
+
+      expect(page.items[0]).to.include({ id: 'm1', data: 'CQgH', encoding: 'base64' });
+      expect(annotations.items[0]).to.include({ data: 'CQgH', encoding: 'base64' });
+      expect(presence[0].results[0].presence).to.deep.equal([{ data: 'BA==', encoding: 'base64' }]);
     });
 
     const pagedActivities: {
@@ -439,27 +499,29 @@ describe('temporal/worker/activities', function () {
       });
     });
 
-    it('sends a binary body as binary with the MessagePack protocol', async function () {
-      const { client, requests } = mockAbly(
+    it('returns binary data in a MessagePack response as base64 strings', async function () {
+      const { client } = mockAbly(
         (req) =>
           req._resolve!({
             error: null,
-            body: msgpack.encode([]) as any,
+            body: msgpack.encode([{ bytes: Buffer.from([4, 5]), text: 'kept' }]) as any,
             headers: {},
             unpacked: false,
-            statusCode: 201,
+            statusCode: 200,
           }),
         { useBinaryProtocol: true },
       );
       const activities = createActivities(client);
 
-      await runActivity(
-        activityEnvironment(),
-        activities[ActivityNames.request],
-        toWire({ method: 'POST', path: '/custom', version: 3, body: { bytes: new Uint8Array([4, 5]) } }),
+      const response = fromWire(
+        await runActivity(
+          activityEnvironment(),
+          activities[ActivityNames.request],
+          toWire({ method: 'GET', path: '/custom', version: 3 }),
+        ),
       );
 
-      expect(msgpack.decode(requests[0].body)).to.deep.equal({ bytes: Buffer.from([4, 5]) });
+      expect(response.items).to.deep.equal([{ bytes: 'BAU=', text: 'kept' }]);
     });
   });
 
@@ -565,6 +627,79 @@ describe('temporal/worker/activities', function () {
         'get /channels/chat/object',
         'post /channels/chat/object',
       ]);
+    });
+
+    for (const useBinaryProtocol of [false, true]) {
+      it(`object.publish publishes base64 bytes as binary values with the ${useBinaryProtocol ? 'MessagePack' : 'JSON'} protocol`, async function () {
+        const result = { messageId: 'm', channel: 'chat', objectIds: ['root'] };
+        const { client, requests } = mockAbly(
+          (req) =>
+            useBinaryProtocol
+              ? req._resolve!({
+                  error: null,
+                  body: msgpack.encode(result) as any,
+                  headers: {},
+                  unpacked: false,
+                  statusCode: 200,
+                })
+              : req.respond_with(200, result),
+          { liveObjects: true, useBinaryProtocol },
+        );
+        const activities = createActivities(client);
+
+        await runActivity(
+          activityEnvironment(),
+          activities[ActivityNames.objectPublish],
+          toWire({
+            channel: 'chat',
+            operations: [
+              { objectId: 'root', mapSet: { key: 'blob', value: { bytes: 'AQID' } } },
+              { path: 'm', mapCreate: { semantics: 'lww', entries: { b: { data: { bytes: 'BAU=' } } } } },
+            ] as any,
+          }),
+        );
+
+        const [mapSet, mapCreate] = useBinaryProtocol ? msgpack.decode(requests[0].body) : jsonBody(requests[0]);
+        const expected = useBinaryProtocol ? [Buffer.from([1, 2, 3]), Buffer.from([4, 5])] : ['AQID', 'BAU='];
+        expect(mapSet.mapSet.value.bytes).to.deep.equal(expected[0]);
+        expect(mapCreate.mapCreate.entries.b.data.bytes).to.deep.equal(expected[1]);
+      });
+    }
+
+    it('object.get returns binary values as base64 strings', async function () {
+      const full = {
+        objectId: 'root',
+        map: { semantics: 0, entries: { blob: { data: { bytes: Buffer.from([7, 8]) } } } },
+      };
+      const { client } = mockAbly(
+        (req) =>
+          req._resolve!({
+            error: null,
+            body: msgpack.encode(
+              req.url.searchParams.get('compact') === 'false' ? full : { blob: Buffer.from([7, 8]) },
+            ) as any,
+            headers: {},
+            unpacked: false,
+            statusCode: 200,
+          }),
+        { liveObjects: true, useBinaryProtocol: true },
+      );
+      const activities = createActivities(client) as any;
+      const env = activityEnvironment();
+
+      const fullResult = fromWire(
+        await runActivity(
+          env,
+          activities[ActivityNames.objectGet],
+          toWire({ channel: 'chat', params: { compact: false } }),
+        ),
+      ) as any;
+      const compactResult = fromWire(
+        await runActivity(env, activities[ActivityNames.objectGet], toWire({ channel: 'chat' })),
+      );
+
+      expect(fullResult.map.entries.blob.data).to.deep.equal({ bytes: 'Bwg=' });
+      expect(compactResult).to.deep.equal({ blob: 'Bwg=' });
     });
   });
 

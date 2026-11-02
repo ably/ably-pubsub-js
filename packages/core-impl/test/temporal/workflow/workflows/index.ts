@@ -181,14 +181,60 @@ export async function objectNotDeduplicated(): Promise<unknown> {
 
 export async function binaryData(): Promise<unknown> {
   const channel = ably.channels.get('binary');
-  await channel.publish('bin', new Uint8Array([1, 2, 3]));
-  await channel.publish({ name: 'nested', data: { inner: new Uint8Array([4, 5]), text: 'kept' } });
+  const bytes = new Uint8Array([1, 2, 3]);
+  await channel.publish('bin', bytes);
+  await channel.publish([{ name: 'buffer', data: bytes.buffer, encoding: 'utf-8' }]);
+  await channel.updateMessage({ serial: 's1', data: new Uint8Array([4]) });
+  await channel.annotations.publish('s1', { type: 'reaction:distinct.v1', data: new Uint8Array([5]) });
+  await ably.batchPublish({ channels: ['binary'], messages: [{ name: 'batch', data: new Uint8Array([6]) }] });
+  await channel.object.publish(
+    [
+      { objectId: 'root', mapSet: { key: 'blob', value: { bytes: new Uint8Array([7]) as unknown as ArrayBuffer } } },
+      {
+        path: 'map',
+        mapCreate: {
+          semantics: 'lww',
+          entries: { b: { data: { bytes: new Uint8Array([8]) as unknown as ArrayBuffer } } },
+        },
+      },
+    ],
+    { idempotentPublishing: false },
+  );
   const page = await channel.history();
-  const object = (await channel.object.get({ compact: false })) as { map: { entries: { bytes: { data: unknown } } } };
+  const message = await channel.getMessage('s1');
+  const presence = await channel.presence.get();
+  const annotations = await channel.annotations.get('s1', null);
+  const batchPresence = await ably.batchPresence(['binary']);
+  const full = (await channel.object.get({ compact: false })) as { map: { entries: { bytes: { data: unknown } } } };
+  const compact = await channel.object.get();
+  const presenceResult = batchPresence[0].results[0] as Ably.BatchPresenceSuccessResult;
   return {
     historyData: describeBinary(page.items[0].data),
-    historyNested: describeBinary((page.items[1].data as { inner: unknown }).inner),
-    objectBytes: describeBinary((object.map.entries.bytes.data as { bytes: unknown }).bytes),
+    historyEncoding: page.items[0].encoding ?? null,
+    historyPartlyDecoded: { ...describeBinary(page.items[1].data), encoding: page.items[1].encoding },
+    historyText: page.items[2].data,
+    getMessage: describeBinary(message.data),
+    presence: describeBinary(presence.items[0].data),
+    annotations: describeBinary(annotations.items[0].data),
+    batchPresence: describeBinary(presenceResult.presence[0].data),
+    objectBytes: describeBinary((full.map.entries.bytes.data as { bytes: unknown }).bytes),
+    compactBytes: compact,
+    rejected: {
+      nested: await captureError(() => channel.publish({ name: 'nested', data: { inner: new Uint8Array([4, 5]) } })),
+      extras: await captureError(() =>
+        channel.publish({ name: 'extras', extras: { headers: { h: new Uint8Array([1]) as unknown as string } } }),
+      ),
+      requestBody: await captureError(() => ably.request('POST', '/custom', 3, {}, { file: new Uint8Array([1]) })),
+      pushPayload: await captureError(() =>
+        ably.push.admin.publish({ clientId: 'user-1' }, { data: { blob: new Uint8Array([1]) } }),
+      ),
+      objectJson: await captureError(() =>
+        channel.object.publish({
+          objectId: 'root',
+          mapSet: { key: 'k', value: { json: { blob: new Uint8Array([1]) } as any } },
+        }),
+      ),
+    },
   };
 }
 

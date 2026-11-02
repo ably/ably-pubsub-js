@@ -1,7 +1,7 @@
 import type { ActivityOptions, LocalActivityOptions } from '@temporalio/workflow';
 import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
-import type { PageParams } from '../common/wire.js';
+import { decodeBinaryData, encodeBinaryData, type PageParams } from '../common/wire.js';
 import { TemporalAblyHttpChannels } from './channel.js';
 import { requireString, requireStringArray } from './arguments.js';
 import { ActivityInvoker } from './invoker.js';
@@ -58,7 +58,10 @@ export interface TemporalAblyHttpClientOptions {
  * Ably error from it. Errors detected in workflow code, such as invalid arguments, are thrown as an
  * `ApplicationFailure` of type `AblyError`, which `getAblyErrorDetails()` also accepts.
  *
- * Binary values, such as message data, are sent as they are and returned as `Uint8Array`.
+ * Binary data can be passed as the `data` of a message or annotation, and as the `bytes` of a LiveObjects value, as a
+ * `Uint8Array`, an `ArrayBuffer` or another typed array. Passing it anywhere else throws an `ApplicationFailure` of
+ * type `AblyError`. Binary data in results, such as the `data` of a message or presence message, is returned as a
+ * `Uint8Array`, except where a method's documentation says otherwise.
  *
  * @example
  * ```ts
@@ -119,10 +122,11 @@ export class TemporalAblyHttpClient {
    * @param path - The request path.
    * @param version - The version of the Ably REST API to use.
    * @param params - The parameters to include in the URL query of the request.
-   * @param body - The JSON body of the request.
+   * @param body - The JSON body of the request. It cannot contain binary data.
    * @param headers - Additional HTTP headers to include in the request.
    * @returns A promise which is fulfilled with the first page of the response. An error response from Ably is
-   * returned with `success` set to `false`, rather than rejected.
+   * returned with `success` set to `false`, rather than rejected. Binary data in the response, which Ably only sends
+   * when the worker's client uses the MessagePack protocol, is returned as a base64 string.
    */
   async request<T = any>(
     method: string,
@@ -197,10 +201,14 @@ export class TemporalAblyHttpClient {
       // The batch publish endpoint also accepts a single message object in place of an array.
       const messages: Ably.Message[] | Ably.Message | undefined = spec?.messages;
       if (Array.isArray(messages)) {
-        return { ...spec, messages: this.invoker.assignMessageIds(messages) };
+        return {
+          ...spec,
+          messages: this.invoker.assignMessageIds(messages).map((message) => encodeBinaryData(message)),
+        };
       }
       if (messages !== null && typeof messages === 'object') {
-        return { ...spec, messages: this.invoker.assignMessageIds([messages])[0] as unknown as Ably.Message[] };
+        const message = encodeBinaryData(this.invoker.assignMessageIds([messages])[0]);
+        return { ...spec, messages: message as unknown as Ably.Message[] };
       }
       return spec;
     };
@@ -217,16 +225,35 @@ export class TemporalAblyHttpClient {
    *
    * @param channels - The names of the channels.
    * @returns A promise which is fulfilled with the result for each channel. The `error` of a failure result is a
-   * plain object with the fields of an `ErrorInfo`.
+   * plain object with the fields of an `ErrorInfo`. The presence messages are returned as Ably sent them, without
+   * decoding their `data`, as in the Ably HTTP client, except that binary `data` is returned as a `Uint8Array`.
    */
   async batchPresence(
     channels: string[],
   ): Promise<Ably.BatchResult<Ably.BatchPresenceSuccessResult | Ably.BatchPresenceFailureResult>[]> {
     requireStringArray('batchPresence', 'channels', channels);
-    return this.invoker.invoke(ActivityNames.batchPresence, `batchPresence (${channelCount(channels.length)})`, {
-      channels,
-    });
+    const batches = await this.invoker.invoke(
+      ActivityNames.batchPresence,
+      `batchPresence (${channelCount(channels.length)})`,
+      { channels },
+    );
+    return Array.isArray(batches) ? batches.map(decodeBatchPresence) : batches;
   }
+}
+
+/** Decodes the binary `data` of the presence messages in a batch presence result. */
+function decodeBatchPresence(
+  batch: Ably.BatchResult<Ably.BatchPresenceSuccessResult | Ably.BatchPresenceFailureResult>,
+): Ably.BatchResult<Ably.BatchPresenceSuccessResult | Ably.BatchPresenceFailureResult> {
+  if (!Array.isArray(batch?.results)) {
+    return batch;
+  }
+  const results = batch.results.map((result) =>
+    result && 'presence' in result && Array.isArray(result.presence)
+      ? { ...result, presence: result.presence.map((message) => decodeBinaryData(message)) }
+      : result,
+  );
+  return { ...batch, results };
 }
 
 function channelCount(count: number): string {

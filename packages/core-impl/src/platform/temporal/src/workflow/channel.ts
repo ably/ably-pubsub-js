@@ -1,5 +1,6 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
+import { decodeBinaryData, decodePageData, encodeBinaryData } from '../common/wire.js';
 import { TemporalAblyHttpAnnotations } from './annotations.js';
 import { requireObject, serialArgument } from './arguments.js';
 import { ablyFailure } from './failure.js';
@@ -111,7 +112,7 @@ export class TemporalAblyHttpChannel {
 
     return this.invoker.invoke(ActivityNames.publish, `publish ${this.name}`, {
       channel: this.name,
-      messages: this.invoker.assignMessageIds(messages),
+      messages: this.invoker.assignMessageIds(messages).map((message) => encodeBinaryData(message)),
       ...(options ? { options } : {}),
     });
   }
@@ -125,10 +126,12 @@ export class TemporalAblyHttpChannel {
   async history(params?: Ably.HttpHistoryParams): Promise<TemporalAblyPaginatedResult<Ably.InboundMessage>> {
     return paginate(
       (pageParams, relation) =>
-        this.invoker.invoke(ActivityNames.history, pageSummary(`history ${this.name}`, relation), {
-          channel: this.name,
-          params: pageParams,
-        }),
+        this.invoker
+          .invoke(ActivityNames.history, pageSummary(`history ${this.name}`, relation), {
+            channel: this.name,
+            params: pageParams,
+          })
+          .then(decodePageData),
       params,
     );
   }
@@ -149,10 +152,11 @@ export class TemporalAblyHttpChannel {
    * @returns A promise which is fulfilled with the latest version of the message.
    */
   async getMessage(serialOrMessage: string | Ably.Message): Promise<Ably.Message> {
-    return this.invoker.invoke(ActivityNames.getMessage, `getMessage ${this.name}`, {
+    const message = await this.invoker.invoke(ActivityNames.getMessage, `getMessage ${this.name}`, {
       channel: this.name,
       serialOrMessage: serialArgument('getMessage', serialOrMessage),
     });
+    return decodeBinaryData(message);
   }
 
   /**
@@ -176,7 +180,7 @@ export class TemporalAblyHttpChannel {
     requireObject('updateMessage', 'message', message, MESSAGE_REMEDIATION);
     return this.invoker.invoke(ActivityNames.updateMessage, `updateMessage ${this.name}`, {
       channel: this.name,
-      message,
+      message: encodeBinaryData(message),
       operation,
       options: this.invoker.withIdempotencyKey(options),
     });
@@ -204,7 +208,7 @@ export class TemporalAblyHttpChannel {
     requireObject('deleteMessage', 'message', message, MESSAGE_REMEDIATION);
     return this.invoker.invoke(ActivityNames.deleteMessage, `deleteMessage ${this.name}`, {
       channel: this.name,
-      message,
+      message: encodeBinaryData(message),
       operation,
       options: this.invoker.withIdempotencyKey(options),
     });
@@ -229,7 +233,7 @@ export class TemporalAblyHttpChannel {
     requireObject('appendMessage', 'message', message, MESSAGE_REMEDIATION);
     return this.invoker.invoke(ActivityNames.appendMessage, `appendMessage ${this.name}`, {
       channel: this.name,
-      message,
+      message: encodeBinaryData(message),
       operation,
       options,
     });
@@ -249,11 +253,13 @@ export class TemporalAblyHttpChannel {
     const serial = serialArgument('getMessageVersions', serialOrMessage);
     return paginate(
       (pageParams, relation) =>
-        this.invoker.invoke(
-          ActivityNames.getMessageVersions,
-          pageSummary(`getMessageVersions ${this.name}`, relation),
-          { channel: this.name, serialOrMessage: serial, params: pageParams },
-        ),
+        this.invoker
+          .invoke(ActivityNames.getMessageVersions, pageSummary(`getMessageVersions ${this.name}`, relation), {
+            channel: this.name,
+            serialOrMessage: serial,
+            params: pageParams,
+          })
+          .then(decodePageData),
       params,
     );
   }

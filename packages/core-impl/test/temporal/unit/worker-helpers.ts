@@ -1,6 +1,6 @@
 /**
  * Helpers for the worker-side unit tests: an HTTP client built from source with mocked HTTP, an activity environment
- * with a controlled `Info`, and the payload round trip that values take across the activity boundary.
+ * with a controlled `Info`, and the JSON round trip that values take across the activity boundary.
  */
 
 import type * as AblyTypes from '@ably/pubsub-server';
@@ -10,7 +10,6 @@ import { DefaultLogger } from '@temporalio/worker';
 import { MockHttpClient, PendingRequest } from '../../uts/mock_http';
 import { Ably, installMockHttp } from '../../uts/helpers';
 import * as LiveObjectsPlugin from '../../../src/plugins/liveobjects';
-import { decodeFromWire, encodeForWire } from '../../../src/platform/temporal/src/common/wire';
 
 /** The `Info` of an activity scheduled by a workflow, as the worker would populate it. */
 export const workflowActivityInfo: Partial<Info> = {
@@ -38,14 +37,14 @@ export function runActivity<A extends unknown[], R>(
   return env.run(activity as (...args: unknown[]) => Promise<R>, ...args) as Promise<R>;
 }
 
-/** Encodes a value as the workflow does, and serialises it as Temporal's default JSON payload converter does. */
+/** Serialises an activity input as Temporal's default JSON payload converter does. */
 export function toWire<T>(value: T): T {
-  return JSON.parse(JSON.stringify(encodeForWire(value)));
+  return JSON.parse(JSON.stringify(value));
 }
 
-/** Serialises an activity result as Temporal's default JSON payload converter does, and decodes it as the workflow does. */
+/** Serialises an activity result as Temporal's default JSON payload converter does. */
 export function fromWire<T>(value: T): T {
-  return decodeFromWire(JSON.parse(JSON.stringify(value))) as T;
+  return JSON.parse(JSON.stringify(value));
 }
 
 export interface MockAbly {

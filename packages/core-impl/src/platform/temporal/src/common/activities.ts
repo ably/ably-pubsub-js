@@ -4,9 +4,8 @@
 // Shared between the workflow and worker entry points, so this module must stay workflow-safe. It only
 // imports types from '@ably/pubsub-core/api', never values.
 //
-// Every input and result passes through `encodeForWire`/`decodeFromWire` (see ./wire.ts) at the activity
-// boundary, so binary values are carried as tagged base64 strings in transit. The types below describe the
-// values before encoding and after decoding.
+// Binary data crosses the activity boundary as base64 strings, as described in ./wire.ts. The types below describe
+// the values that workflow code passes and receives, before that encoding and after decoding.
 
 import type * as Ably from '@ably/pubsub-core/api';
 import type {

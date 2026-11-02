@@ -358,17 +358,19 @@ describe('temporal end to end', function () {
             ]),
       );
 
-      const { result } = await execute(JSON_QUEUE, 'e2eBinary', channel);
+      const { result, events } = await execute(JSON_QUEUE, 'e2eBinary', channel);
 
       const [published] = bodyOf(requestsFor(channel)[0]);
       expect(published).to.include({ name: 'bytes', data: 'AAH+/w==', encoding: 'base64' });
+      const [activity] = historyActivities(events);
+      expect(activity.input.messages[0]).to.include({ data: 'AAH+/w==', encoding: 'base64' });
       expect(result).to.deep.equal({
         published: { serials: ['serial-0'] },
         history: [{ isUint8Array: true, bytes: [9, 8, 7] }],
       });
     });
 
-    it('publishes a Uint8Array as binary with the MessagePack protocol, and returns binary history data as a Uint8Array', async function () {
+    it('publishes a Uint8Array as base64 with the MessagePack protocol, and returns binary history data as a Uint8Array', async function () {
       const channel = uniqueChannel('binary-msgpack');
       responders.set(channel, (req) =>
         req.method === 'post'
@@ -381,9 +383,8 @@ describe('temporal end to end', function () {
       const [req] = requestsFor(channel);
       expect(isMsgpack(req)).to.equal(true);
       const [published] = bodyOf(req);
-      expect(Buffer.isBuffer(published.data)).to.equal(true);
-      expect(published.data).to.deep.equal(Buffer.from([0, 1, 254, 255]));
-      expect(published).to.not.have.property('encoding');
+      // Ably decodes the base64 encoding, so a client reading the message back gets the bytes.
+      expect(published).to.include({ name: 'bytes', data: 'AAH+/w==', encoding: 'base64' });
       expect(published).to.not.have.property('extras');
       expect(result).to.deep.equal({
         published: { serials: ['serial-0'] },

@@ -6,7 +6,8 @@ import {
   type LocalActivityOptions,
 } from '@temporalio/workflow';
 import type { AblyActivities, ActivityName } from '../common/activities.js';
-import { decodeFromWire, encodeForWire } from '../common/wire.js';
+import { toWireValue } from '../common/wire.js';
+import { ablyFailure } from './failure.js';
 
 /** The activity options applied beneath the caller's own options. */
 export const DEFAULT_ACTIVITY_OPTIONS = { startToCloseTimeout: '30 seconds' } as const;
@@ -38,6 +39,28 @@ export interface ActivityInvokerOptions {
   idempotentPublishing: boolean;
 }
 
+/** The name of the method that runs the activity `name`, for an error message, such as `object.publish`. */
+function methodName(name: ActivityName): string {
+  return name.replace(/^ably\.(channel\.)?/, '');
+}
+
+/**
+ * Returns `arg` as it is sent to the activity, after checking that it contains no binary values. Binary data is only
+ * sent where it is encoded as base64 before this, such as the `data` of a message, because Temporal's JSON payload
+ * converter would otherwise serialise it as an object of numbered bytes.
+ */
+function activityArgument(name: ActivityName, arg: unknown): unknown {
+  return toWireValue(arg, (_bytes, path) => {
+    throw ablyFailure({
+      message: `${methodName(name)}() was called with binary data at ${path || 'its argument'}, where workflow code cannot pass binary data to an Ably activity`,
+      code: 40003,
+      statusCode: 400,
+      remediation:
+        'Pass binary data only as the data of a message or annotation, or as the bytes of a LiveObjects value. Encode any other binary value, such as one nested inside an object, as a base64 string.',
+    });
+  });
+}
+
 /**
  * Runs Ably activities on behalf of a `TemporalAblyHttpClient` instance and the channels it creates.
  *
@@ -53,14 +76,16 @@ export class ActivityInvoker {
   }
 
   /**
-   * Runs the activity `name`, encoding its arguments for the activity boundary and decoding its result.
+   * Runs the activity `name`. Binary data in its arguments must already be encoded, as described in
+   * ../common/wire.ts, and binary data in its result is returned encoded.
    *
    * @param summary - The summary shown for the activity in the Temporal UI, unless the caller set their own.
+   * @throws An `ApplicationFailure` of type `AblyError` if the arguments contain a binary value.
    */
   async invoke<N extends ActivityName>(name: N, summary: string, ...args: ActivityArgs<N>): Promise<ActivityResult<N>> {
+    const wireArgs = args.map((arg) => activityArgument(name, arg));
     const activity = this.proxy(summary)[name] as unknown as (...args: unknown[]) => Promise<unknown>;
-    const result = await activity(...args.map(encodeForWire));
-    return decodeFromWire(result) as ActivityResult<N>;
+    return (await activity(...wireArgs)) as ActivityResult<N>;
   }
 
   /**

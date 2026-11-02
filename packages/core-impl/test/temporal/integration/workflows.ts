@@ -158,6 +158,20 @@ export async function sandboxObjectOperationsWithoutIds(
   };
 }
 
+/** Publishes binary values to the channel object: one set on the root map, and one in a map created at a path. */
+export async function sandboxObjectBytes(channelName: string): Promise<Outcome<unknown>> {
+  const object = ably.channels.get(channelName).object;
+  // The LiveObjects types name Buffer and ArrayBuffer, which workflow code passes as a Uint8Array.
+  const bytes = (values: number[]) => new Uint8Array(values) as unknown as ArrayBuffer;
+  return outcome(async () => {
+    await object.publish({ objectId: 'root', mapSet: { key: 'blob', value: { bytes: bytes([0, 1, 254, 255]) } } });
+    return object.publish(
+      { path: 'profile', mapCreate: { semantics: 'lww', entries: { avatar: { data: { bytes: bytes([9, 8, 7]) } } } } },
+      { idempotentPublishing: false },
+    );
+  });
+}
+
 export async function sandboxPresenceAndStatus(channelName: string): Promise<unknown> {
   const channel = ably.channels.get(channelName);
   await channel.publish('activate', 'data');

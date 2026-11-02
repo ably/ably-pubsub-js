@@ -8,6 +8,14 @@ import type {
   HttpObjectPublishResult,
 } from '@ably/pubsub-core/liveobjects';
 import { ActivityNames } from '../common/activities.js';
+import {
+  base64ToBytes,
+  bytesToBase64,
+  isBinary,
+  mapFullObjectBytes,
+  mapOperationBytes,
+  toBytes,
+} from '../common/wire.js';
 import { requireObject } from './arguments.js';
 import { ablyFailure } from './failure.js';
 import type { ActivityInvoker } from './invoker.js';
@@ -27,7 +35,9 @@ export interface TemporalAblyHttpObjectPublishOptions {
  * from `TemporalAblyHttpChannel.object`.
  *
  * Each method runs as a Temporal activity, which fails unless the worker's Ably client has the LiveObjects plugin.
- * Binary values in results are returned as `Uint8Array`.
+ * Binary values are published as `bytes` in a `Uint8Array`, an `ArrayBuffer` or another typed array. In a full-format
+ * result, binary values are returned as `Uint8Array`. In a compact result, they are returned as base64 strings, as Ably
+ * returns them over its JSON protocol.
  */
 export class TemporalAblyHttpObject {
   /** @internal */
@@ -41,7 +51,8 @@ export class TemporalAblyHttpObject {
    * returned. Runs as a Temporal activity.
    *
    * @param params - Specifies the object to fetch.
-   * @returns A promise which is fulfilled with the object data in compact format.
+   * @returns A promise which is fulfilled with the object data in compact format, with binary values as base64
+   * strings.
    */
   get(params?: HttpObjectGetCompactParams): Promise<HttpObjectGetCompactResult>;
   /**
@@ -49,7 +60,7 @@ export class TemporalAblyHttpObject {
    * given, the entire channel object is returned. Runs as a Temporal activity.
    *
    * @param params - Specifies the object to fetch, with `compact: false`.
-   * @returns A promise which is fulfilled with the object data in full format.
+   * @returns A promise which is fulfilled with the object data in full format, with binary values as `Uint8Array`.
    */
   get(params: HttpObjectGetFullParams): Promise<HttpObjectGetFullResult>;
   /**
@@ -61,10 +72,11 @@ export class TemporalAblyHttpObject {
    */
   get(params?: HttpObjectGetParams): Promise<HttpObjectGetCompactResult | HttpObjectGetFullResult>;
   async get(params?: HttpObjectGetParams): Promise<HttpObjectGetCompactResult | HttpObjectGetFullResult> {
-    return this.invoker.invoke(ActivityNames.objectGet, `object.get ${this.channel}`, {
+    const result = await this.invoker.invoke(ActivityNames.objectGet, `object.get ${this.channel}`, {
       channel: this.channel,
       params,
     });
+    return params?.compact === false ? mapFullObjectBytes(result, decodeBytes) : result;
   }
 
   /**
@@ -115,13 +127,23 @@ export class TemporalAblyHttpObject {
         throw notDeduplicatedFailure(Array.isArray(op) ? `operations[${index}]` : 'the operation', list[index]);
       }
     }
-    const withIds = this.invoker.assignMessageIds(list, idempotentPublishing);
+    const withIds = this.invoker
+      .assignMessageIds(list, idempotentPublishing)
+      .map((operation) => mapOperationBytes(operation, encodeBytes));
     const operations = Array.isArray(op) ? withIds : withIds[0];
     return this.invoker.invoke(ActivityNames.objectPublish, `object.publish ${this.channel}`, {
       channel: this.channel,
       operations,
     });
   }
+}
+
+function encodeBytes(bytes: unknown): unknown {
+  return isBinary(bytes) ? bytesToBase64(toBytes(bytes)) : bytes;
+}
+
+function decodeBytes(bytes: unknown): unknown {
+  return typeof bytes === 'string' ? base64ToBytes(bytes) : bytes;
 }
 
 function isCreate(operation: object): boolean {

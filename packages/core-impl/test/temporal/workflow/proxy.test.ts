@@ -21,7 +21,7 @@ import {
 import { expect } from 'chai';
 import { ActivityNames, type ActivityName } from '../../../src/platform/temporal/src/common/activities';
 import { getAblyErrorDetails } from '../../../src/platform/temporal/src/common/errors';
-import { decodeFromWire, encodeForWire, type WirePage } from '../../../src/platform/temporal/src/common/wire';
+import type { WirePage } from '../../../src/platform/temporal/src/common/wire';
 import type { RecorderSinks } from './workflows/interceptors';
 
 const EventType = temporal.api.enums.v1.EventType;
@@ -37,7 +37,7 @@ const AUTH_ERROR_DETAILS = {
   href: 'https://help.ably.io/error/40142',
 };
 
-/** An activity input as the stub activity received it, before decoding. */
+/** An activity input as the stub activity received it. */
 interface ActivityCall {
   name: ActivityName;
   input: any;
@@ -63,7 +63,11 @@ function page(channel: string, params: Record<string, string> | undefined): Wire
     return { items: [{ id: 'only' }], links: {} };
   }
   if (channel === 'binary') {
-    return { items: [{ data: Uint8Array.from([1, 2, 3]) }, { data: { inner: Buffer.from([4, 5]) } }], links: {} };
+    // Binary data as the worker returns it.
+    return {
+      items: [{ data: 'AQID', encoding: 'base64' }, { data: 'AQID', encoding: 'utf-8/base64' }, { data: 'text' }],
+      links: {},
+    };
   }
   if (params?.page === '2') {
     return { items: [{ id: 'item-2' }], links: { first: { page: '1' }, current: { page: '2' } } };
@@ -74,7 +78,7 @@ function page(channel: string, params: Record<string, string> | undefined): Wire
   };
 }
 
-// The canned results of the stub activities, computed from their decoded inputs.
+// The canned results of the stub activities, computed from their inputs.
 const handlers: Record<ActivityName, (input: any) => unknown> = {
   [ActivityNames.publish]: ({ channel, messages }) => {
     if (channel.startsWith('fail:')) {
@@ -89,7 +93,10 @@ const handlers: Record<ActivityName, (input: any) => unknown> = {
   },
   [ActivityNames.history]: ({ channel, params }) => page(channel, params),
   [ActivityNames.status]: ({ channel }) => ({ channelId: channel, status: { isActive: true } }),
-  [ActivityNames.getMessage]: ({ serialOrMessage }) => ({ serial: serialOrMessage, name: 'got' }),
+  [ActivityNames.getMessage]: ({ channel, serialOrMessage }) =>
+    channel === 'binary'
+      ? { serial: serialOrMessage, data: 'BA==', encoding: 'base64' }
+      : { serial: serialOrMessage, name: 'got' },
   [ActivityNames.updateMessage]: () => ({ versionSerial: 'v-update' }),
   [ActivityNames.deleteMessage]: () => ({ versionSerial: 'v-delete' }),
   [ActivityNames.appendMessage]: () => ({ versionSerial: 'v-append' }),
@@ -99,10 +106,14 @@ const handlers: Record<ActivityName, (input: any) => unknown> = {
   [ActivityNames.annotationsPublish]: () => undefined,
   [ActivityNames.annotationsDelete]: () => undefined,
   [ActivityNames.annotationsGet]: ({ channel, params }) => page(channel, params ?? undefined),
-  [ActivityNames.objectGet]: ({ channel }) =>
-    channel === 'binary'
-      ? { objectId: 'root', map: { semantics: 'lww', entries: { bytes: { data: { bytes: Buffer.from([7, 8]) } } } } }
-      : { a: { b: 1 } },
+  [ActivityNames.objectGet]: ({ channel, params }) => {
+    if (channel !== 'binary') {
+      return { a: { b: 1 } };
+    }
+    return params?.compact === false
+      ? { objectId: 'root', map: { semantics: 'lww', entries: { bytes: { data: { bytes: 'Bwg=' } } } } }
+      : { blob: 'Bwg=' };
+  },
   [ActivityNames.objectPublish]: ({ channel }) => ({ messageId: 'msg-1', channel, objectIds: ['counter:1'] }),
   [ActivityNames.time]: () => 1234567890,
   [ActivityNames.request]: ({ path, params }) => {
@@ -150,7 +161,10 @@ const handlers: Record<ActivityName, (input: any) => unknown> = {
     {
       successCount: channels.length,
       failureCount: 0,
-      results: channels.map((channel: string) => ({ channel, presence: [] })),
+      results: channels.map((channel: string) => ({
+        channel,
+        presence: channel === 'binary' ? [{ data: 'BQ==', encoding: 'base64' }] : [],
+      })),
     },
   ],
   [ActivityNames.pushPublish]: ({ recipient }) => {
@@ -181,7 +195,7 @@ const activities = Object.fromEntries(
       const { info } = Context.current();
       const workflowId = info.workflowExecution?.workflowId ?? '';
       activityCalls.push({ name, input, workflowId, isLocal: info.isLocal });
-      return encodeForWire(await handlers[name](decodeFromWire(input)));
+      return handlers[name](input);
     },
   ]),
 );
@@ -725,16 +739,69 @@ describe('temporal/workflow proxy', function () {
   });
 
   describe('binary data', function () {
-    it('sends binary data encoded and returns binary results as Uint8Array', async function () {
+    it('sends binary data as base64 with its encoding, and returns binary results as Uint8Array', async function () {
       const { result, workflowId } = await execute('binaryData');
       const [first, second] = inputsFor(workflowId, ActivityNames.publish);
-      expect(first.messages[0].data).to.deep.equal({ __ablyTemporalBinary: 'AQID' });
-      expect(second.messages[0].data).to.deep.equal({ inner: { __ablyTemporalBinary: 'BAU=' }, text: 'kept' });
-      expect(result).to.deep.equal({
-        historyData: { isUint8Array: true, bytes: [1, 2, 3] },
-        historyNested: { isUint8Array: true, bytes: [4, 5] },
-        objectBytes: { isUint8Array: true, bytes: [7, 8] },
+      expect(inputsFor(workflowId, ActivityNames.publish)).to.have.length(2);
+      expect(first.messages[0]).to.include({ name: 'bin', data: 'AQID', encoding: 'base64' });
+      expect(second.messages[0]).to.include({ name: 'buffer', data: 'AQID', encoding: 'utf-8/base64' });
+      expect(inputsFor(workflowId, ActivityNames.updateMessage)[0].message).to.deep.equal({
+        serial: 's1',
+        data: 'BA==',
+        encoding: 'base64',
       });
+      expect(inputsFor(workflowId, ActivityNames.annotationsPublish)[0].annotation).to.include({
+        data: 'BQ==',
+        encoding: 'base64',
+      });
+      expect(inputsFor(workflowId, ActivityNames.batchPublish)[0].specs.messages[0]).to.include({
+        name: 'batch',
+        data: 'Bg==',
+        encoding: 'base64',
+      });
+      expect(inputsFor(workflowId, ActivityNames.objectPublish)).to.deep.equal([
+        {
+          channel: 'binary',
+          operations: [
+            { objectId: 'root', mapSet: { key: 'blob', value: { bytes: 'Bw==' } } },
+            { path: 'map', mapCreate: { semantics: 'lww', entries: { b: { data: { bytes: 'CA==' } } } } },
+          ],
+        },
+      ]);
+      expect(inputsFor(workflowId, ActivityNames.request)).to.have.length(0);
+      expect(inputsFor(workflowId, ActivityNames.pushPublish)).to.have.length(0);
+
+      const { rejected, ...decoded } = result;
+      expect(decoded).to.deep.equal({
+        historyData: { isUint8Array: true, bytes: [1, 2, 3] },
+        historyEncoding: null,
+        historyPartlyDecoded: { isUint8Array: true, bytes: [1, 2, 3], encoding: 'utf-8' },
+        historyText: 'text',
+        getMessage: { isUint8Array: true, bytes: [4] },
+        presence: { isUint8Array: true, bytes: [1, 2, 3] },
+        annotations: { isUint8Array: true, bytes: [1, 2, 3] },
+        batchPresence: { isUint8Array: true, bytes: [5] },
+        objectBytes: { isUint8Array: true, bytes: [7, 8] },
+        compactBytes: { blob: 'Bwg=' },
+      });
+
+      const paths: Record<string, string> = {
+        nested: 'publish() was called with binary data at messages[0].data.inner',
+        extras: 'publish() was called with binary data at messages[0].extras.headers.h',
+        requestBody: 'request() was called with binary data at body.file',
+        pushPayload: 'push.admin.publish() was called with binary data at payload.data.blob',
+        objectJson: 'object.publish() was called with binary data at operations.mapSet.value.json.blob',
+      };
+      expect(Object.keys(rejected)).to.deep.equal(Object.keys(paths));
+      for (const [name, prefix] of Object.entries(paths)) {
+        const error = rejected[name];
+        expect(error, name).to.include({ isApplicationFailure: true, type: 'AblyError', nonRetryable: true });
+        expect(error.message, name).to.equal(
+          `${prefix}, where workflow code cannot pass binary data to an Ably activity`,
+        );
+        expect(error.details, name).to.include({ code: 40003, statusCode: 400 });
+        expect(error.details.remediation, name).to.match(/^Pass binary data only as the data of a message/);
+      }
     });
   });
 

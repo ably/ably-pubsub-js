@@ -1,5 +1,6 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
+import { decodePageData } from '../common/wire.js';
 import type { ActivityInvoker } from './invoker.js';
 import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './paginated.js';
 
@@ -7,7 +8,7 @@ import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './pagin
  * Retrieves the current and historic presence set of a channel from workflow code. It mirrors the Ably REST
  * `Presence`, and is obtained from `TemporalAblyHttpChannel.presence`.
  *
- * Each method runs as a Temporal activity.
+ * Each method runs as a Temporal activity. Binary presence data is returned as `Uint8Array`.
  */
 export class TemporalAblyHttpPresence {
   /** @internal */
@@ -25,10 +26,12 @@ export class TemporalAblyHttpPresence {
   async get(params?: Ably.HttpPresenceParams): Promise<TemporalAblyPaginatedResult<Ably.PresenceMessage>> {
     return paginate(
       (pageParams, relation) =>
-        this.invoker.invoke(ActivityNames.presenceGet, pageSummary(`presence.get ${this.channel}`, relation), {
-          channel: this.channel,
-          params: pageParams,
-        }),
+        this.invoker
+          .invoke(ActivityNames.presenceGet, pageSummary(`presence.get ${this.channel}`, relation), {
+            channel: this.channel,
+            params: pageParams,
+          })
+          .then(decodePageData),
       params,
     );
   }
@@ -42,10 +45,12 @@ export class TemporalAblyHttpPresence {
   async history(params?: Ably.HttpHistoryParams): Promise<TemporalAblyPaginatedResult<Ably.PresenceMessage>> {
     return paginate(
       (pageParams, relation) =>
-        this.invoker.invoke(ActivityNames.presenceHistory, pageSummary(`presence.history ${this.channel}`, relation), {
-          channel: this.channel,
-          params: pageParams,
-        }),
+        this.invoker
+          .invoke(ActivityNames.presenceHistory, pageSummary(`presence.history ${this.channel}`, relation), {
+            channel: this.channel,
+            params: pageParams,
+          })
+          .then(decodePageData),
       params,
     );
   }

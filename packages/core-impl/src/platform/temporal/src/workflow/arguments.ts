@@ -1,4 +1,5 @@
 import type { ApplicationFailure } from '@temporalio/common';
+import { encodeBinaryData } from '../common/wire.js';
 import { ablyFailure } from './failure.js';
 
 // Arguments are checked in workflow code when passing them to the activity would make the Ably SDK throw a
@@ -15,7 +16,8 @@ function isObject(value: unknown): value is object {
 /**
  * Returns the value to send for an argument that is either a message serial or a message carrying a `serial`. A
  * message with a serial is reduced to its serial, so that only the serial is recorded in the workflow history. A
- * message without one is sent as it is, so that the activity fails with the Ably SDK's own error.
+ * message without one is sent as it is, with binary data encoded, so that the activity fails with the Ably SDK's own
+ * error.
  *
  * @param method - The name of the method, for the error message, such as `getMessage`.
  * @param serialOrMessage - The argument passed to the method.
@@ -26,7 +28,7 @@ export function serialArgument<M extends object>(method: string, serialOrMessage
   }
   if (isObject(serialOrMessage)) {
     const serial = (serialOrMessage as { serial?: unknown }).serial;
-    return typeof serial === 'string' && serial.length > 0 ? serial : serialOrMessage;
+    return typeof serial === 'string' && serial.length > 0 ? serial : encodeBinaryData(serialOrMessage);
   }
   throw invalidArgument(
     `${method}() expects a message serial or a message object, but was called with ${describeValue(serialOrMessage)}`,

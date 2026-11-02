@@ -1,5 +1,6 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { ActivityNames } from '../common/activities.js';
+import { decodePageData, encodeBinaryData } from '../common/wire.js';
 import { requireObject, serialArgument } from './arguments.js';
 import type { ActivityInvoker } from './invoker.js';
 import { paginate, pageSummary, type TemporalAblyPaginatedResult } from './paginated.js';
@@ -39,7 +40,7 @@ export class TemporalAblyHttpAnnotations {
     await this.invoker.invoke(ActivityNames.annotationsPublish, `annotations.publish ${this.channel}`, {
       channel: this.channel,
       messageOrSerial: serialArgument('annotations.publish', messageOrSerial),
-      annotation: this.invoker.assignMessageIds([annotation])[0],
+      annotation: encodeBinaryData(this.invoker.assignMessageIds([annotation])[0]),
     });
   }
 
@@ -57,7 +58,7 @@ export class TemporalAblyHttpAnnotations {
     await this.invoker.invoke(ActivityNames.annotationsDelete, `annotations.delete ${this.channel}`, {
       channel: this.channel,
       messageOrSerial: serialArgument('annotations.delete', messageOrSerial),
-      annotation: this.invoker.assignMessageIds([annotation])[0],
+      annotation: encodeBinaryData(this.invoker.assignMessageIds([annotation])[0]),
     });
   }
 
@@ -76,11 +77,13 @@ export class TemporalAblyHttpAnnotations {
     const serial = serialArgument('annotations.get', messageOrSerial);
     return paginate(
       (pageParams, relation) =>
-        this.invoker.invoke(ActivityNames.annotationsGet, pageSummary(`annotations.get ${this.channel}`, relation), {
-          channel: this.channel,
-          messageOrSerial: serial,
-          params: pageParams ?? null,
-        }),
+        this.invoker
+          .invoke(ActivityNames.annotationsGet, pageSummary(`annotations.get ${this.channel}`, relation), {
+            channel: this.channel,
+            messageOrSerial: serial,
+            params: pageParams ?? null,
+          })
+          .then(decodePageData),
       params ?? undefined,
     );
   }

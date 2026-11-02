@@ -294,7 +294,7 @@ When idempotent publishing is enabled, which is the default, the workflow derive
 - `batchPublish()`: as for `channel.publish()`. Each spec gets its own base.
 - `channel.updateMessage()` and `channel.deleteMessage()`: the key is sent as the `idempotencyKey` option. A retry returns the `versionSerial` of the first attempt, and creates no new version.
 - `channel.annotations.publish()` and `channel.annotations.delete()`: the annotation gets an ID of the form `<base>:0`.
-- `channel.object.publish()`: each operation gets an ID, so a retried `counterInc` is not applied twice. A call is published without IDs if any of its operations is a `mapCreate` or `counterCreate`, or has a `path` with a wildcard, such as `scores.*`. See [Retried LiveObjects operations](#retried-liveobjects-operations).
+- `channel.object.publish()`: each operation gets an ID, so a retried `counterInc` is not applied twice. A call that includes a `mapCreate` or `counterCreate`, or an operation whose `path` has a wildcard, such as `scores.*`, throws instead, because Ably cannot deduplicate a retry of it. See [Retried LiveObjects operations](#retried-liveobjects-operations).
 
 Ably does not apply a retry with the same IDs or key again. A retried publish returns the serials of the first attempt.
 
@@ -326,7 +326,13 @@ A retried `appendMessage` appends its data again, so the message can end up with
 
 ### Retried LiveObjects operations
 
-`channel.object.publish()` publishes a call without IDs if any of its operations is one of those below, so Ably does not deduplicate a retry of it. If the first attempt reached Ably, the retried activity does the following:
+Ably cannot deduplicate a retry of the operations below. When idempotent publishing is enabled and no operation in the call has an `id`, a `channel.object.publish()` call that includes one throws an `ApplicationFailure` of type `AblyError` with code 40003, before any activity runs. To publish it without deduplication, pass `{ idempotentPublishing: false }` as the second argument, which overrides the client's `idempotentPublishing` for that call:
+
+```typescript
+await channel.object.publish({ path: 'votes', counterCreate: { count: 0 } }, { idempotentPublishing: false });
+```
+
+The operations are then published as they are, without IDs. If the first attempt reached Ably, the retried activity does the following:
 
 | Operation                                       | Retried activity                                                                                                     |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -334,14 +340,14 @@ A retried `appendMessage` appends its data again, so the message can end up with
 | `mapCreate` or `counterCreate` with a `path`    | Fails with a non-retryable Ably error, code 92007, because the path holds the object that the first attempt created. |
 | Any operation whose `path` contains a wildcard  | Applies the operation again. For example, a `counterInc` at `scores.*` increments each matching counter twice.       |
 
-These operations are published without IDs for the following reasons:
+Ably cannot deduplicate these operations for the following reasons:
 
 - Ably rejects an ID on a create at a `path`, and on a wildcard `path`, with error 40031. It expands such an operation into several object messages.
 - When Ably discards a retried create as a duplicate, it responds with the ID of an object that it did not create.
 
 The other operations in the same call are published without IDs too, because Ably needs every operation in a call to have an ID, or none. Publish create operations and wildcard operations in a call of their own, so that your other operations keep their IDs.
 
-`mapCreateWithObjectId` and `counterCreateWithObjectId` operations do get IDs.
+`mapCreateWithObjectId` and `counterCreateWithObjectId` operations get IDs, and a retry of them is deduplicated. Their object ID comes from `channel.object.generateObjectId()`, which the plugin does not support, so call it in an activity of your own.
 
 ### Push notifications
 
@@ -372,7 +378,7 @@ Set `idempotentPublishing: false` to send every call with the IDs and keys it ha
 const ably = new TemporalAblyHttpClient({ idempotentPublishing: false });
 ```
 
-Retried calls are then not deduplicated. A message without an ID gets a new one on each attempt, from the worker's Ably client for `channel.publish()` and from Ably for `batchPublish()` and `object.publish()`. A publish that reached Ably before its activity failed is therefore published again with a different ID, and a retried update or delete creates another version of the message.
+Retried calls are then not deduplicated. `channel.object.publish()` takes the same option for a single call, as its second argument. A message without an ID gets a new one on each attempt, from the worker's Ably client for `channel.publish()` and from Ably for `batchPublish()` and `object.publish()`. A publish that reached Ably before its activity failed is therefore published again with a different ID, and a retried update or delete creates another version of the message.
 
 ## Errors
 
@@ -445,7 +451,7 @@ const ably = new TemporalAblyHttpClient({
 
 Some errors are detected in workflow code, before any activity runs:
 
-- **An invalid argument** throws an `ApplicationFailure` of type `AblyError` with code 40003 and status 400. Examples are a first argument to `publish()` that is not an event name, message or array of messages, a `null` message passed to `updateMessage()`, channel options passed to `channels.get()`, and a `null` device ID passed to `push.admin.deviceRegistrations.get()`. It is thrown as it is, not wrapped in an `ActivityFailure`, and `getAblyErrorDetails` accepts it. If you do not catch it, the workflow fails.
+- **An invalid argument** throws an `ApplicationFailure` of type `AblyError` with code 40003 and status 400. Examples are a first argument to `publish()` that is not an event name, message or array of messages, a `null` message passed to `updateMessage()`, channel options passed to `channels.get()`, a `null` device ID passed to `push.admin.deviceRegistrations.get()`, and a `channel.object.publish()` call that Ably cannot deduplicate (see [Retried LiveObjects operations](#retried-liveobjects-operations)). It is thrown as it is, not wrapped in an `ActivityFailure`, and `getAblyErrorDetails` accepts it. If you do not catch it, the workflow fails.
 - **Calling `first()` or `current()` on a page without a link to that page** throws an `ApplicationFailure` of type `AblyError` with code 40400 and status 404.
 - **Setting both `activityOptions` and `localActivityOptions`** throws a `TypeError` from the `TemporalAblyHttpClient` constructor. This fails the workflow task rather than the workflow, so Temporal retries the task: fix the options and redeploy the worker, and the workflow resumes.
 - **Publishing with idempotent publishing enabled on `@temporalio/workflow` earlier than 1.18.0** throws a `TypeError`, which also fails the workflow task. See [Requirements](#requirements).
@@ -505,7 +511,7 @@ Workflow code still calls the activities through `TemporalAblyHttpClient`, which
 
 ## Exports
 
-| Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `ActivityNames`, `ActivityName`, `AblyActivities`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                                                                                                          |
-| `@ably/pubsub-server/temporal/workflow` | `TemporalAblyHttpClient`, `TemporalAblyHttpClientOptions`, `TemporalAblyHttpChannels`, `TemporalAblyHttpChannel`, `TemporalAblyHttpPresence`, `TemporalAblyHttpAnnotations`, `TemporalAblyHttpObject`, `TemporalAblyHttpPush`, `TemporalAblyHttpPushAdmin`, `TemporalAblyHttpPushDeviceRegistrations`, `TemporalAblyHttpPushChannelSubscriptions`, `TemporalAblyHttpPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails` |
+| Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `ActivityNames`, `ActivityName`, `AblyActivities`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `@ably/pubsub-server/temporal/workflow` | `TemporalAblyHttpClient`, `TemporalAblyHttpClientOptions`, `TemporalAblyHttpChannels`, `TemporalAblyHttpChannel`, `TemporalAblyHttpPresence`, `TemporalAblyHttpAnnotations`, `TemporalAblyHttpObject`, `TemporalAblyHttpObjectPublishOptions`, `TemporalAblyHttpPush`, `TemporalAblyHttpPushAdmin`, `TemporalAblyHttpPushDeviceRegistrations`, `TemporalAblyHttpPushChannelSubscriptions`, `TemporalAblyHttpPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails` |

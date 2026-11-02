@@ -139,16 +139,22 @@ export async function sandboxObjectOperationsWithoutIds(
   channelName: string,
 ): Promise<Record<string, Outcome<unknown>>> {
   const object = ably.channels.get(channelName).object;
+  const options = { idempotentPublishing: false };
   return {
-    counterCreate: await outcome(() => object.publish({ counterCreate: { count: 1 } })),
-    counterCreateAtPath: await outcome(() => object.publish({ path: 'votes', counterCreate: { count: 5 } })),
+    counterCreate: await outcome(() => object.publish({ counterCreate: { count: 1 } }, options)),
+    counterCreateAtPath: await outcome(() => object.publish({ path: 'votes', counterCreate: { count: 5 } }, options)),
     mapCreateAtPath: await outcome(() =>
-      object.publish({
-        path: 'profile',
-        mapCreate: { semantics: 'lww', entries: { name: { data: { string: 'Ada' } } } },
-      }),
+      object.publish(
+        {
+          path: 'profile',
+          mapCreate: { semantics: 'lww', entries: { name: { data: { string: 'Ada' } } } },
+        },
+        options,
+      ),
     ),
-    counterIncAtWildcardPath: await outcome(() => object.publish({ path: 'scores.*', counterInc: { number: 1 } })),
+    counterIncAtWildcardPath: await outcome(() =>
+      object.publish({ path: 'scores.*', counterInc: { number: 1 } }, options),
+    ),
   };
 }
 

@@ -9,7 +9,18 @@ import type {
 } from '@ably/pubsub-core/liveobjects';
 import { ActivityNames } from '../common/activities.js';
 import { requireObject } from './arguments.js';
+import { ablyFailure } from './failure.js';
 import type { ActivityInvoker } from './invoker.js';
+
+/** Options for {@link TemporalAblyHttpObject.publish}. */
+export interface TemporalAblyHttpObjectPublishOptions {
+  /**
+   * Whether to publish the operations with IDs that Ably deduplicates a retried activity on. When set, it overrides
+   * `TemporalAblyHttpClientOptions.idempotentPublishing` for this call. When `false`, the operations are published as
+   * they are.
+   */
+  idempotentPublishing?: boolean;
+}
 
 /**
  * Reads and modifies the objects on a channel from workflow code. It mirrors the Ably `HttpObject`, and is obtained
@@ -60,26 +71,34 @@ export class TemporalAblyHttpObject {
    * Publishes one or more operations to modify objects on the channel. An array of operations is published as an
    * atomic batch. Runs as a Temporal activity.
    *
-   * Unless idempotent publishing is disabled with `TemporalAblyHttpClientOptions.idempotentPublishing`, and provided that no
-   * operation already has an `id`, each operation is assigned an ID that is the same on every attempt of the
-   * activity and every replay of the workflow. Ably uses these IDs to discard an operation that a retried activity
-   * publishes again, for at least 130 seconds after the first attempt.
+   * When idempotent publishing is enabled, and provided that no operation already has an `id`, each operation is
+   * assigned an ID that is the same on every attempt of the activity and every replay of the workflow. Ably uses these
+   * IDs to discard an operation that a retried activity publishes again, for at least 130 seconds after the first
+   * attempt. `TemporalAblyHttpClientOptions.idempotentPublishing` enables it, unless `options.idempotentPublishing`
+   * sets it for this call.
    *
-   * No IDs are assigned when any of the operations is a `mapCreate` or `counterCreate`, or has a `path` with a
-   * wildcard, so a retried activity applies those operations again:
+   * Ably cannot deduplicate a retry of a `mapCreate` or `counterCreate` operation, or of an operation whose `path` has
+   * a wildcard, so a call that includes one throws when idempotent publishing is enabled and no operation has an `id`:
    *
-   * - Ably rejects a client-specified ID on a create at a `path`, or on a wildcard `path`, because it expands such
-   *   an operation into several object messages.
+   * - Ably rejects an ID on a create at a `path`, and on a wildcard `path`, because it expands such an operation into
+   *   several object messages.
    * - When Ably discards a retried create by its ID, it responds with the ID of an object that it did not create.
-   *   Without an ID, a retried create makes another object, and the result names an object that exists.
    *
-   * A retried create at a `path` fails with error 92007 if the first attempt succeeded, because the path then holds
-   * an object. `mapCreateWithObjectId` and `counterCreateWithObjectId` operations are assigned IDs.
+   * To publish such a call, pass `{ idempotentPublishing: false }`. A retried activity then applies every operation in
+   * the call again. A create without a `path` creates another object. A create at a `path` fails with error 92007 if
+   * the first attempt succeeded, because the path then holds an object. A wildcard operation is applied to each match
+   * again. `mapCreateWithObjectId` and `counterCreateWithObjectId` operations can be deduplicated.
    *
    * @param op - The operation, or array of operations, to publish.
+   * @param options - Options for this call.
    * @returns A promise which is fulfilled with the ID of the published message and the IDs of the affected objects.
+   * @throws An `ApplicationFailure` of type `AblyError` with code 40003 if idempotent publishing is enabled, no
+   * operation has an `id`, and an operation cannot be deduplicated.
    */
-  async publish(op: HttpObjectOperation | HttpObjectOperation[]): Promise<HttpObjectPublishResult> {
+  async publish(
+    op: HttpObjectOperation | HttpObjectOperation[],
+    options?: TemporalAblyHttpObjectPublishOptions,
+  ): Promise<HttpObjectPublishResult> {
     if (!Array.isArray(op)) {
       requireObject(
         'object.publish',
@@ -89,7 +108,14 @@ export class TemporalAblyHttpObject {
       );
     }
     const list = Array.isArray(op) ? op : [op];
-    const withIds = list.some(publishedWithoutId) ? list : this.invoker.assignMessageIds(list);
+    const idempotentPublishing = options?.idempotentPublishing ?? this.invoker.idempotentPublishing;
+    if (idempotentPublishing && !list.some((operation) => operation?.id)) {
+      const index = list.findIndex((operation) => notDeduplicatedReason(operation) !== undefined);
+      if (index !== -1) {
+        throw notDeduplicatedFailure(Array.isArray(op) ? `operations[${index}]` : 'the operation', list[index]);
+      }
+    }
+    const withIds = this.invoker.assignMessageIds(list, idempotentPublishing);
     const operations = Array.isArray(op) ? withIds : withIds[0];
     return this.invoker.invoke(ActivityNames.objectPublish, `object.publish ${this.channel}`, {
       channel: this.channel,
@@ -98,23 +124,48 @@ export class TemporalAblyHttpObject {
   }
 }
 
+function isCreate(operation: object): boolean {
+  return 'mapCreate' in operation || 'counterCreate' in operation;
+}
+
 /**
- * Whether an operation must be published without an ID, which then applies to every operation in the publish, since
- * Ably needs all of them to have an ID or none.
+ * Why Ably cannot deduplicate a retry of `operation` by an ID, or `undefined` if it can. Ably needs every operation
+ * in a publish to have an ID, or none, so one such operation applies to the whole call.
  *
- * - A create operation, because when Ably discards a retried create by its ID, the response names the object that
- *   the retry would have created, which does not exist. A create at a path also gets error 40031 with an ID, because
- *   Ably expands it into the create and a set on the parent map.
+ * - A create, because when Ably discards a retried create by its ID, the response names the object that the retry
+ *   would have created, which does not exist. A create at a path also gets error 40031 with an ID, because Ably
+ *   expands it into the create and a set on the parent map.
  * - An operation whose path has a wildcard, because Ably expands it into one object message for each match, and
  *   rejects the publish with error 40031 if it has an ID.
  */
-function publishedWithoutId(operation: unknown): boolean {
+function notDeduplicatedReason(operation: unknown): string | undefined {
   if (operation === null || typeof operation !== 'object') {
-    return false;
-  }
-  if ('mapCreate' in operation || 'counterCreate' in operation) {
-    return true;
+    return undefined;
   }
   const path = (operation as { path?: unknown }).path;
-  return typeof path === 'string' && path.includes('*');
+  if (isCreate(operation)) {
+    return typeof path === 'string'
+      ? 'Ably rejects an operation ID on a create at a path'
+      : 'Ably responds to a retried create that it discards as a duplicate with the ID of an object that it did not create';
+  }
+  if (typeof path === 'string' && path.includes('*')) {
+    return 'Ably rejects an operation ID on an operation whose path has a wildcard';
+  }
+  return undefined;
+}
+
+function notDeduplicatedFailure(description: string, operation: object) {
+  return ablyFailure({
+    message: `object.publish() cannot deduplicate a retry of ${description}, because ${notDeduplicatedReason(operation)}`,
+    code: 40003,
+    statusCode: 400,
+    remediation: [
+      'Pass { idempotentPublishing: false } as the second argument to object.publish() to publish without deduplication.',
+      'A retried activity then applies every operation in the call again.',
+      'Publish the operations that can be deduplicated in a separate call, so that they keep their IDs.',
+      isCreate(operation)
+        ? 'To create an object that a retry does not create again, generate its object ID with channel.object.generateObjectId() in an activity of your own, and publish a mapCreateWithObjectId or counterCreateWithObjectId operation instead.'
+        : 'To deduplicate the operation, target each object by its objectId or by a path without a wildcard.',
+    ].join(' '),
+  });
 }

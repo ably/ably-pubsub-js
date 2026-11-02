@@ -5,7 +5,7 @@ export { TemporalAblyHttpClient, type TemporalAblyHttpClientOptions } from './wo
 export { TemporalAblyHttpChannel, TemporalAblyHttpChannels } from './workflow/channel.js';
 export { TemporalAblyHttpPresence } from './workflow/presence.js';
 export { TemporalAblyHttpAnnotations } from './workflow/annotations.js';
-export { TemporalAblyHttpObject } from './workflow/object.js';
+export { TemporalAblyHttpObject, type TemporalAblyHttpObjectPublishOptions } from './workflow/object.js';
 export {
   TemporalAblyHttpPush,
   TemporalAblyHttpPushAdmin,

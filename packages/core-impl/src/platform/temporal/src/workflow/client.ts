@@ -37,7 +37,7 @@ export interface TemporalAblyHttpClientOptions {
    * - Message IDs for `TemporalAblyHttpChannel.publish()` and {@link TemporalAblyHttpClient.batchPublish}.
    * - The `idempotencyKey` option for `TemporalAblyHttpChannel.updateMessage()` and `deleteMessage()`.
    * - The annotation `id` for `TemporalAblyHttpAnnotations.publish()` and `delete()`.
-   * - Operation IDs for `TemporalAblyHttpObject.publish()`.
+   * - Operation IDs for `TemporalAblyHttpObject.publish()`, which can also set this option for a single call.
    *
    * A call whose messages, annotation or operations already have an `id`, or whose options already have an
    * `idempotencyKey`, is sent as it is. When `false`, every call is sent as it is.

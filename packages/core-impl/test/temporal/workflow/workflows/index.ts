@@ -107,13 +107,20 @@ export async function publishIds(idempotentPublishing?: boolean): Promise<unknow
     singleMessageSpec: await rest.batchPublish(singleMessageSpec),
     objectOperations: await channel.object.publish(operations),
     objectOperationsWithOwnId: await channel.object.publish(operationsWithOwnId),
-    // Create operations, and operations with a wildcard path, are published without IDs.
-    objectCreateAtPath: await channel.object.publish([
-      { path: 'votes', counterCreate: { count: 0 } },
-      { objectId: 'counter:1', counterInc: { number: 1 } },
-    ]),
-    objectWildcard: await channel.object.publish({ path: 'scores.*', counterInc: { number: 1 } }),
-    objectCreate: await channel.object.publish({ counterCreate: { count: 0 } }),
+    // Create operations, and operations with a wildcard path, cannot be deduplicated, so they are published with
+    // idempotent publishing disabled for the call.
+    objectCreateAtPath: await channel.object.publish(
+      [
+        { path: 'votes', counterCreate: { count: 0 } },
+        { objectId: 'counter:1', counterInc: { number: 1 } },
+      ],
+      { idempotentPublishing: false },
+    ),
+    objectWildcard: await channel.object.publish(
+      { path: 'scores.*', counterInc: { number: 1 } },
+      { idempotentPublishing: false },
+    ),
+    objectCreate: await channel.object.publish({ counterCreate: { count: 0 } }, { idempotentPublishing: false }),
     objectCreateWithObjectId: await channel.object.publish({
       objectId: 'counter:4',
       counterCreateWithObjectId: { initialValue: '{"count":0}', nonce: 'nonce' },
@@ -136,6 +143,40 @@ export async function publishInvalid(rethrow: boolean): Promise<unknown> {
     await publish();
   }
   return captureError(publish);
+}
+
+/** Publishes an operation that cannot be deduplicated in each way, and returns the error each call throws. */
+export async function objectNotDeduplicated(): Promise<unknown> {
+  const object = ably.channels.get('not-deduplicated').object;
+  const unsetClient = new TemporalAblyHttpClient({ idempotentPublishing: false });
+  const unset = unsetClient.channels.get('not-deduplicated').object;
+  return {
+    counterCreate: await captureError(() => object.publish({ counterCreate: { count: 0 } })),
+    mapCreateAtPath: await captureError(() =>
+      object.publish({ path: 'profile', mapCreate: { semantics: 'lww', entries: {} } }),
+    ),
+    wildcard: await captureError(() => object.publish({ path: 'scores.*', counterInc: { number: 1 } })),
+    batch: await captureError(() =>
+      object.publish([
+        { objectId: 'counter:1', counterInc: { number: 1 } },
+        { path: 'votes', counterCreate: { count: 0 } },
+      ]),
+    ),
+    perCallOverride: await captureError(() =>
+      unset.publish({ counterCreate: { count: 0 } }, { idempotentPublishing: true }),
+    ),
+    // Sent, as idempotent publishing is disabled.
+    perCallOptOut: await captureError(() =>
+      object.publish({ path: 'votes', counterCreate: { count: 0 } }, { idempotentPublishing: false }),
+    ),
+    clientOptOut: await captureError(() => unset.publish({ path: 'scores.*', counterInc: { number: 1 } })),
+    // Sent, as the operation has an ID of its own.
+    ownId: await captureError(() => object.publish({ id: 'own-id', counterCreate: { count: 0 } })),
+    // Sent with an ID, as the call enables idempotent publishing on a client that disables it.
+    perCallOptIn: await captureError(() =>
+      unset.publish({ objectId: 'counter:1', counterInc: { number: 1 } }, { idempotentPublishing: true }),
+    ),
+  };
 }
 
 export async function binaryData(): Promise<unknown> {

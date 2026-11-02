@@ -464,8 +464,9 @@ describe('temporal sandbox integration', function () {
 
     // Observed on nonprod:sandbox: Ably rejects an operation ID on an operation that it expands into several object
     // messages, with 40031/400 "Client-specified message id missing or not a string in some messages of a
-    // multi-message ProtocolMessage". The same operations succeed without an ID. The workflow publishes create
-    // operations, and operations with a wildcard path, without IDs.
+    // multi-message ProtocolMessage". The same operations succeed without an ID. The workflow cannot publish create
+    // operations, and operations with a wildcard path, idempotently, so it publishes them with idempotent publishing
+    // disabled.
     it('publishes create and wildcard operations from a workflow without IDs, and Ably applies them', async function () {
       const channel = uniqueChannel('liveobjects');
       const object = rest.channels.get(channel).object;
@@ -550,8 +551,8 @@ describe('temporal sandbox integration', function () {
         expect(second.messageId).to.not.equal(first.messageId);
       });
 
-      // Why the workflow publishes create operations without IDs. If Ably starts responding to the duplicate with
-      // the original's object IDs, this test fails, and the workflow can assign IDs to create operations.
+      // Why the workflow cannot publish create operations idempotently. If Ably starts responding to the duplicate
+      // with the original's object IDs, this test fails, and the workflow can assign IDs to create operations.
       it('responds to a create with a fixed ID that it discards as a duplicate with an object that does not exist', async function () {
         const object = rest.channels.get(uniqueChannel('liveobjects')).object;
         const operation: HttpObjectOperation = { id: `${randomUUID()}:0`, counterCreate: { count: 1 } };

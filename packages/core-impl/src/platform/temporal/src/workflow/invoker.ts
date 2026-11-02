@@ -47,6 +47,11 @@ export interface ActivityInvokerOptions {
 export class ActivityInvoker {
   constructor(private readonly options: ActivityInvokerOptions) {}
 
+  /** Whether idempotent publishing is enabled for the client. */
+  get idempotentPublishing(): boolean {
+    return this.options.idempotentPublishing;
+  }
+
   /**
    * Runs the activity `name`, encoding its arguments for the activity boundary and decoding its result.
    *
@@ -65,9 +70,15 @@ export class ActivityInvoker {
    *
    * This applies to anything published with an `id` that Ably uses for deduplication, such as messages, annotations
    * and object operations. The caller's objects are never modified. Messages that need IDs are copied.
+   *
+   * @param idempotentPublishing - Whether idempotent publishing is enabled for this call. Defaults to the client's
+   * option.
    */
-  assignMessageIds<T extends { id?: string }>(messages: T[]): T[] {
-    if (!this.options.idempotentPublishing || messages.length === 0 || !messages.every((message) => !message?.id)) {
+  assignMessageIds<T extends { id?: string }>(
+    messages: T[],
+    idempotentPublishing: boolean = this.options.idempotentPublishing,
+  ): T[] {
+    if (!idempotentPublishing || messages.length === 0 || !messages.every((message) => !message?.id)) {
       return messages;
     }
     const base = messageIdStream().uuid4();

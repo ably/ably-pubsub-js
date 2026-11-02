@@ -413,6 +413,43 @@ describe('temporal/workflow proxy', function () {
       expect(result.results.singleSpec.results[0].serials).to.deep.equal([`${singleSpecBase}:0`]);
     });
 
+    it('throws for object operations that cannot be deduplicated, unless idempotent publishing is disabled', async function () {
+      const { result, workflowId } = await execute('objectNotDeduplicated');
+      const rejected = ['counterCreate', 'mapCreateAtPath', 'wildcard', 'batch', 'perCallOverride'];
+      for (const name of rejected) {
+        const error = result[name];
+        expect(error, name).to.include({ isApplicationFailure: true, type: 'AblyError', nonRetryable: true });
+        expect(error.details, name).to.include({ code: 40003, statusCode: 400 });
+        expect(error.details.remediation, name).to.match(
+          /^Pass \{ idempotentPublishing: false \} as the second argument to object\.publish\(\)/,
+        );
+      }
+      expect(result.counterCreate.message).to.equal(
+        'object.publish() cannot deduplicate a retry of the operation, because Ably responds to a retried create that it discards as a duplicate with the ID of an object that it did not create',
+      );
+      expect(result.counterCreate.details.remediation).to.include('channel.object.generateObjectId()');
+      expect(result.mapCreateAtPath.message).to.equal(
+        'object.publish() cannot deduplicate a retry of the operation, because Ably rejects an operation ID on a create at a path',
+      );
+      expect(result.wildcard.message).to.equal(
+        'object.publish() cannot deduplicate a retry of the operation, because Ably rejects an operation ID on an operation whose path has a wildcard',
+      );
+      expect(result.wildcard.details.remediation).to.include('a path without a wildcard');
+      expect(result.batch.message).to.equal(
+        'object.publish() cannot deduplicate a retry of operations[1], because Ably rejects an operation ID on a create at a path',
+      );
+      for (const name of ['perCallOptOut', 'clientOptOut', 'ownId', 'perCallOptIn']) {
+        expect(result[name], name).to.equal(null);
+      }
+
+      const [perCallOptOut, clientOptOut, ownId, perCallOptIn] = inputsFor(workflowId, ActivityNames.objectPublish);
+      expect(inputsFor(workflowId, ActivityNames.objectPublish)).to.have.length(4);
+      expect(perCallOptOut.operations).to.deep.equal({ path: 'votes', counterCreate: { count: 0 } });
+      expect(clientOptOut.operations).to.deep.equal({ path: 'scores.*', counterInc: { number: 1 } });
+      expect(ownId.operations).to.deep.equal({ id: 'own-id', counterCreate: { count: 0 } });
+      expect(splitId(perCallOptIn.operations.id).index).to.equal(0);
+    });
+
     it('does not assign IDs when idempotent publishing is disabled', async function () {
       const { workflowId } = await execute('publishIds', false);
       const [fresh, withOwnId, single] = inputsFor(workflowId, ActivityNames.publish);

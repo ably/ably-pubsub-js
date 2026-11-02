@@ -209,7 +209,7 @@ const userIsOnline = members.items.length > 0;
 | `localActivityOptions` | Not set                                                                  | When set, Ably operations run as local activities with these `LocalActivityOptions`, applied on top of a default `startToCloseTimeout` of 30 seconds. Cannot be set with `activityOptions`. |
 | `idempotentPublishing` | `true`                                                                   | Whether the workflow derives idempotency keys for calls that have none, so that Ably deduplicates a retried call. See [Retries and idempotency](#retries-and-idempotency).                  |
 
-Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried call within its deduplication window, which by default is at least 130 seconds. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
+Temporal's default retry policy retries a failed activity indefinitely, with an exponential backoff that starts at 1 second and is capped at 100 seconds. Ably errors that a retry cannot fix, such as most 4xx errors, are not retried. See [Which errors are retried](#which-errors-are-retried). Ably only deduplicates a retried call within its deduplication window of 2 minutes. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window).
 
 The options apply to every call made through a `TemporalAblyHttpClient`. To use different options for different calls, create more than one. For example, best-effort status updates can run as local activities with a few attempts, while the final reply uses durable retries:
 
@@ -308,7 +308,7 @@ On a namespace with server-side batching or conflation enabled, which is off by 
 
 ### Keeping retries within the deduplication window
 
-Ably only deduplicates a retry that arrives within its deduplication window, which by default is at least 130 seconds and up to about 150 seconds after Ably accepted the first attempt. Temporal's default retry policy keeps retrying for much longer: the waits between attempts alone add up to 127 seconds before the eighth attempt, and to 227 seconds before the ninth. A retry that arrives after the window is applied again. A message is published again with the same message IDs, an update or delete creates another version of the message, an annotation is published again, and a LiveObjects operation is applied again.
+Ably only deduplicates a retry that arrives within its deduplication window, which is 2 minutes after Ably accepted the first attempt. Temporal's default retry policy keeps retrying for much longer: the waits between attempts alone add up to 127 seconds before the eighth attempt, and to 227 seconds before the ninth. The eighth attempt therefore always arrives after the window, and an earlier attempt can too when the attempts before it ran for a long time. A retry that arrives after the window is applied again. A message is published again with the same message IDs, an update or delete creates another version of the message, an annotation is published again, and a LiveObjects operation is applied again.
 
 To keep every attempt within the window, set `scheduleToCloseTimeout` in `activityOptions`, and leave room for the last attempt to run for its `startToCloseTimeout`:
 

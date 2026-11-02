@@ -85,7 +85,7 @@ export class TemporalAblyHttpObject {
    *
    * When idempotent publishing is enabled, and provided that no operation already has an `id`, each operation is
    * assigned an ID that is the same on every attempt of the activity and every replay of the workflow. Ably uses these
-   * IDs to discard an operation that a retried activity publishes again, for at least 130 seconds after the first
+   * IDs to discard an operation that a retried activity publishes again, for at least 2 minutes after the first
    * attempt. `TemporalAblyHttpClientOptions.idempotentPublishing` enables it, unless `options.idempotentPublishing`
    * sets it for this call.
    *

@@ -11,7 +11,7 @@ import { expect } from 'chai';
 import { MockWebSocket, PendingWSConnection } from '../mock_websocket';
 import { Ably, installMockWebSocket, restoreAll, trackClient, flushAsync, pollUntil } from '../helpers';
 import { createRealtimeChannelPool } from '../../../../server/src/index';
-import { RealtimeChannelPool } from '../../../../server/src/channel-pool';
+import { DefaultRealtimeChannelPool } from '../../../../server/src/channel-pool';
 
 const MESSAGE = 15;
 const ACK = 1;
@@ -25,7 +25,7 @@ interface Sent {
 }
 
 interface Harness {
-  pool: RealtimeChannelPool;
+  pool: DefaultRealtimeChannelPool;
   clients: any[];
   /** The latest connection attempt of each client. */
   connections: Map<number, PendingWSConnection>;
@@ -51,7 +51,7 @@ function clientIndex(conn: PendingWSConnection): number {
 function setup(options: { size?: number; failedRetryTimeout?: number } = {}): Harness {
   const pendingAcks: (() => void)[] = [];
   const harness: Harness = {
-    pool: null as unknown as RealtimeChannelPool,
+    pool: null as unknown as DefaultRealtimeChannelPool,
     clients: [],
     connections: new Map(),
     attempts: [],
@@ -106,7 +106,7 @@ function setup(options: { size?: number; failedRetryTimeout?: number } = {}): Ha
   });
   installMockWebSocket(mock.constructorFn);
 
-  harness.pool = new RealtimeChannelPool(() => {
+  harness.pool = new DefaultRealtimeChannelPool(() => {
     const client = new Ably.Realtime({
       key: 'appId.keyId:keySecret',
       useBinaryProtocol: false,
@@ -145,7 +145,7 @@ describe('uts/server/channel_pool', function () {
       for (const options of [{ size: 0 }, { size: 1.5 }, { failedRetryTimeout: -1 }, { failedRetryTimeout: NaN }]) {
         let err: any;
         try {
-          new RealtimeChannelPool(() => null as any, options);
+          new DefaultRealtimeChannelPool(() => null as any, options);
         } catch (e) {
           err = e;
         }

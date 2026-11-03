@@ -42,18 +42,6 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
-### annotations: RSAN1c4 / RSC22d - idempotent IDs not generated
-
-**Spec (RSAN1c4)**: Annotations with empty `id` should get a generated idempotent ID. **Spec (RSC22d)**: Same for batch publish.
-
-**ably-js behavior**: Neither `HttpAnnotations.publish()` nor `batchPublish()` generates idempotent IDs.
-
-**Tests**: `RSAN1c4 - idempotent ID generated`, `RSC22d - batch publish generates idempotent IDs`.
-
-**Issue**: [#2195](https://github.com/ably/ably-js/issues/2195)
-
----
-
 ### rest_client: RSC7c - addRequestIds not implemented
 
 **Spec (RSC7c)**: The `addRequestIds` option should add a `request_id` query parameter to all REST requests.

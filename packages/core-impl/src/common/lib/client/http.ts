@@ -2,7 +2,7 @@ import * as Utils from '../util/utils';
 import Defaults from '../util/defaults';
 import Push from './push';
 import PaginatedResource, { HttpPaginatedResponse, PaginatedResult } from './paginatedresource';
-import HttpChannel from './httpchannel';
+import HttpChannel, { MSG_ID_ENTROPY_BYTES, allEmptyIds } from './httpchannel';
 import ErrorInfo from '../types/errorinfo';
 import Stats from '../types/stats';
 import HttpMethods from '../../constants/HttpMethods';
@@ -180,6 +180,23 @@ export class Http {
       headers = Defaults.defaultPostHeaders(this.client.options);
 
     if (this.client.options.headers) Utils.mixin(headers, this.client.options.headers);
+
+    /* RSC22d: apply RSL1k1 to each BatchPublishSpec separately, without mutating the caller's objects */
+    if (this.client.options.idempotentRestPublishing) {
+      requestBodyDTO = await Promise.all(
+        requestBodyDTO.map(async (spec) => {
+          if (!Array.isArray(spec.messages) || !allEmptyIds(spec.messages)) {
+            return spec;
+          }
+          const msgIdBase = await Utils.randomString(MSG_ID_ENTROPY_BYTES);
+          return Object.assign({}, spec, {
+            messages: spec.messages.map((message, index) =>
+              Object.assign({}, message, { id: msgIdBase + ':' + index.toString() }),
+            ),
+          });
+        }),
+      );
+    }
 
     const requestBody = Utils.encodeBody(requestBodyDTO, this.client._MsgPack, format);
 

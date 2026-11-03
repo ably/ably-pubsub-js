@@ -19,12 +19,12 @@ import type { PushChannel } from 'plugins/push';
 import type HttpAnnotations from './httpannotations';
 import type { HttpObject } from 'plugins/liveobjects';
 
-const MSG_ID_ENTROPY_BYTES = 9;
+export const MSG_ID_ENTROPY_BYTES = 9;
 
 type HttpPublishResponse = API.PublishResult & { channel?: string; messageId?: string };
 
-function allEmptyIds(messages: Array<Message>) {
-  return messages.every(function (message: Message) {
+export function allEmptyIds(messages: Array<Pick<Message, 'id'>>) {
+  return messages.every(function (message) {
     return !message.id;
   });
 }

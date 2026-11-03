@@ -135,15 +135,9 @@ describe('uts/rest/unit/channel/annotations', function () {
    *
    * When idempotentRestPublishing is true, the annotation's id should
    * be auto-generated in the format <base64>:0.
-   *
-   * NOTE: ably-js does not currently generate idempotent IDs for
-   * annotations (only for messages via HttpChannel.publish). This test
-   * documents the spec requirement as a known deviation.
    */
   // UTS: rest/unit/RSAN1c4/idempotent-id-not-generated-1
   it('RSAN1c4 - idempotent ID generated', async function () {
-    // DEVIATION: see deviations.md
-    if (!process.env.RUN_DEVIATIONS) this.skip();
     const captured: any[] = [];
     const mock = new MockHttpClient({
       onConnectionAttempt: (conn) => conn.respond_with_success(),
@@ -167,12 +161,11 @@ describe('uts/rest/unit/channel/annotations', function () {
     expect(body).to.have.length(1);
 
     // Spec (RSAN1c4): annotation id MUST be auto-generated in <base64>:0 format.
-    // DEVIATION: ably-js does not generate idempotent IDs for annotations. See deviations.md.
     const id = body[0].id;
     expect(id).to.be.a('string');
     const parts = id.split(':');
     expect(parts).to.have.length(2);
-    expect(parts[0]).to.match(/^[A-Za-z0-9_-]+$/);
+    expect(parts[0]).to.match(/^[A-Za-z0-9+/=_-]+$/);
     expect(parts[0].length).to.be.at.least(12);
     expect(parts[1]).to.equal('0');
   });

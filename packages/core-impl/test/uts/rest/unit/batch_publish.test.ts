@@ -820,8 +820,6 @@ describe('uts/rest/unit/batch_publish', function () {
      */
     // UTS: rest/unit/RSC22d/idempotent-ids-generated-0
     it('RSC22d - batch publish generates idempotent IDs', async function () {
-      // DEVIATION: see deviations.md
-      if (!process.env.RUN_DEVIATIONS) this.skip();
       const captured: any[] = [];
       const mock = new MockHttpClient({
         onConnectionAttempt: (conn) => conn.respond_with_success(),
@@ -922,6 +920,52 @@ describe('uts/rest/unit/batch_publish', function () {
       expect(captured).to.have.length(1);
       const body = JSON.parse(captured[0].body);
       expect(body[0].messages[0]).to.not.have.property('id');
+    });
+
+    it('RSC22d - IDs generated per spec without mutating the caller spec objects', async function () {
+      const captured: any[] = [];
+      const mock = new MockHttpClient({
+        onConnectionAttempt: (conn) => conn.respond_with_success(),
+        onRequest: (req) => {
+          captured.push(req);
+          req.respond_with(201, [
+            { successCount: 1, failureCount: 0, results: [{ channel: 'ch1', messageId: 'id1', serials: ['s1'] }] },
+            { successCount: 1, failureCount: 0, results: [{ channel: 'ch2', messageId: 'id2', serials: ['s2'] }] },
+            { successCount: 1, failureCount: 0, results: [{ channel: 'ch3', messageId: 'id3', serials: ['s3'] }] },
+          ]);
+        },
+      });
+      installMockHttp(mock);
+
+      const client = new Ably.Http({
+        key: 'appId.keyId:keySecret',
+        useBinaryProtocol: false,
+        idempotentRestPublishing: true,
+      });
+      const specs = [
+        { channels: ['ch1'], messages: [{ name: 'a' }, { name: 'b' }] },
+        { channels: ['ch2'], messages: [{ name: 'c' }] },
+        { channels: ['ch3'], messages: [{ name: 'd', id: 'explicit' }, { name: 'e' }] },
+      ];
+      await client.batchPublish(specs);
+
+      const body = JSON.parse(captured[0].body);
+      const [base1, index1a] = body[0].messages[0].id.split(':');
+      const [base1b, index1b] = body[0].messages[1].id.split(':');
+      const [base2, index2] = body[1].messages[0].id.split(':');
+      expect(index1a).to.equal('0');
+      expect(index1b).to.equal('1');
+      expect(base1b).to.equal(base1);
+      expect(index2).to.equal('0');
+      expect(base2).to.not.equal(base1);
+
+      // A spec with any explicit id is sent unchanged
+      expect(body[2].messages[0].id).to.equal('explicit');
+      expect(body[2].messages[1]).to.not.have.property('id');
+
+      // The caller's objects are not modified
+      expect(specs[0].messages[0]).to.not.have.property('id');
+      expect(specs[1].messages[0]).to.not.have.property('id');
     });
   });
 

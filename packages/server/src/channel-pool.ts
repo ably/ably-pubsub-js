@@ -197,7 +197,10 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
    * order of messages on it. Otherwise the name moves to the connected client with the fewest names
    * bound to it. If no client is connected, a bound name stays where it is, and an unbound name goes
    * to the client with the fewest names; the operation then meets that client's state, queueing
-   * while it is connecting or disconnected, and failing while it is suspended or failed.
+   * while it is connecting or disconnected, and failing while it is suspended or failed. With
+   * `queueMessages: false` in the client options, the connection manager does not queue it, and it
+   * fails while the connection is connecting or disconnected too, with the connection's
+   * `errorReason`, or with error 90000 if there is none.
    */
   private resolve(binding: Binding): PooledClient {
     const current = binding.client;

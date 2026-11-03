@@ -44,15 +44,19 @@ const pool = createRealtimeChannelPool({ key: 'your-ably-api-key' }, { size: 4 }
 await pool.open();
 
 async function streamReply(channelName, chunks) {
-  using channel = pool.get(channelName); // released when the block exits
-  await Promise.all(chunks.map((chunk) => channel.publish('chunk', chunk)));
+  const channel = pool.get(channelName);
+  try {
+    await Promise.all(chunks.map((chunk) => channel.publish('chunk', chunk)));
+  } finally {
+    channel.release();
+  }
 }
 
 // Once the work using the pool has finished
 await pool.close();
 ```
 
-A handle publishes, updates, deletes and appends messages, and publishes and deletes annotations, but cannot attach or subscribe. Without `using`, call `channel.release()` when finished with it. Typing `using` needs TypeScript 5.2 or later, and `@types/node` for `Symbol.dispose`.
+A handle publishes, updates, deletes and appends messages, and publishes and deletes annotations, but cannot attach or subscribe. Call `channel.release()` when finished with it. In TypeScript 5.2 or later, or in JavaScript on Node.js 24 or later, the handle can instead be declared with `using channel = pool.get(channelName)`, which releases it when the block exits.
 
 ## Entry points
 

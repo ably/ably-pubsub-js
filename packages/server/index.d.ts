@@ -17,6 +17,16 @@ import type {
  */
 export * from '@ably/pubsub-core/api';
 
+// `RealtimePublisherChannel` declares a `[Symbol.dispose]` method, and `Symbol.dispose` is declared
+// only by TypeScript's `esnext.disposable` lib and by `@types/node`. This declares it as they do, so
+// that the package type-checks for a consumer who has neither, and merges with their declarations
+// for a consumer who has either.
+declare global {
+  interface SymbolConstructor {
+    readonly dispose: unique symbol;
+  }
+}
+
 /**
  * Creates a stateless Pub/Sub client for a server, talking to Ably over HTTP.
  *
@@ -163,7 +173,10 @@ export interface RealtimePublisherAnnotations {
  * to it. If no client is connected, the call goes to the client the name is bound to, or to the
  * client with the fewest names if the name is not bound, and meets that client's connection state:
  * it is queued while the connection is connecting or disconnected and sent once it connects, and it
- * rejects with the client's `errorReason` while the connection is suspended or failed.
+ * rejects with the client's `errorReason` while the connection is suspended or failed. If
+ * `ClientOptions.queueMessages` is `false`, the call is not queued: while the connection is
+ * connecting or disconnected it rejects with the client's `errorReason`, or with error 90000 if the
+ * connection has none.
  *
  * Release the handle when finished with it, by calling {@link RealtimePublisherChannel.release} or
  * by declaring it with `using`. A method called after release rejects with error 40000.

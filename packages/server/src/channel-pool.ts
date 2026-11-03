@@ -1,7 +1,7 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { ErrorInfo } from '@ably/pubsub-core';
 import type {
-  PubSubRealtimeChannelPool,
+  RealtimeChannelPool,
   RealtimeChannelPoolOptions,
   RealtimePublisherAnnotations,
   RealtimePublisherChannel,
@@ -71,7 +71,7 @@ function invalidOptionError(name: string, value: unknown, requirement: string): 
   });
 }
 
-export class RealtimeChannelPool implements PubSubRealtimeChannelPool {
+export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
   private readonly size: number;
   private readonly failedRetryTimeout: number;
   private state: PoolState = 'initialized';
@@ -331,7 +331,7 @@ class PooledPublisherChannel implements RealtimePublisherChannel {
   private released = false;
 
   constructor(
-    private readonly pool: RealtimeChannelPool,
+    private readonly pool: DefaultRealtimeChannelPool,
     private readonly binding: Binding,
   ) {
     this.annotations = {

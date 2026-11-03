@@ -91,11 +91,11 @@ export interface RealtimeChannelPoolOptions {
  * the life of the process, so an operation does not wait for a new connection, and the client
  * state that speeds up later operations, such as the fallback host in use, is kept.
  *
- * Create one with {@link createRealtimeChannelPool}, call {@link PubSubRealtimeChannelPool.open}
- * when the process starts, and {@link PubSubRealtimeChannelPool.close} once the work using it has
+ * Create one with {@link createRealtimeChannelPool}, call {@link RealtimeChannelPool.open}
+ * when the process starts, and {@link RealtimeChannelPool.close} once the work using it has
  * finished.
  */
-export interface PubSubRealtimeChannelPool {
+export interface RealtimeChannelPool {
   /**
    * Returns a new handle on the publisher channel for a channel name. Each handle holds the channel
    * until it is released. Every handle on a name publishes through the same client while that
@@ -154,7 +154,7 @@ export interface RealtimePublisherAnnotations {
 }
 
 /**
- * A handle on a channel obtained from a {@link PubSubRealtimeChannelPool}. It publishes on the
+ * A handle on a channel obtained from a {@link RealtimeChannelPool}. It publishes on the
  * channel, but cannot attach to it or subscribe to it, so every publish is transient and the
  * channel holds no state between operations.
  *
@@ -200,9 +200,9 @@ export interface RealtimePublisherChannel {
 }
 
 /**
- * Creates a {@link PubSubRealtimeChannelPool}: a pool of publish-only channels, served by realtime
+ * Creates a {@link RealtimeChannelPool}: a pool of publish-only channels, served by realtime
  * clients that declare the server side, as those of {@link createRealtimeClient} do. The clients
- * are created and connected by {@link PubSubRealtimeChannelPool.open}.
+ * are created and connected by {@link RealtimeChannelPool.open}.
  *
  * Every client in the pool is created from the same `options`, so what the server side requires
  * of token auth, described on {@link createRealtimeClient}, applies to each of them.
@@ -213,4 +213,4 @@ export interface RealtimePublisherChannel {
 export declare function createRealtimeChannelPool(
   options: ClientOptions | string,
   pool?: RealtimeChannelPoolOptions,
-): PubSubRealtimeChannelPool;
+): RealtimeChannelPool;

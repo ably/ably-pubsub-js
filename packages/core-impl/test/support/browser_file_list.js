@@ -57,7 +57,6 @@ window.__testFiles__.files = {
   'test/rest/history.test.js': true,
   'test/rest/http.test.js': true,
   'test/rest/init.test.js': true,
-  'test/rest/liveobjects.test.js': true,
   'test/rest/message.test.js': true,
   'test/rest/presence.test.js': true,
   'test/rest/push.test.js': true,

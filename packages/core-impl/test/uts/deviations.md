@@ -100,6 +100,26 @@ These tests assert spec behavior but are skipped by default because they are kno
 
 ---
 
+### objects/rest_object_get: RSO2d - objectId also sent as a query parameter
+
+**Spec (RSO2c, RSO2d)**: `objectId` is appended to the request path; only `path` and `compact`, if provided, are sent as query parameters.
+
+**ably-js behavior**: `HttpObject.get` passes the whole `params` object as the query string, so `objectId` is sent both as a path segment and as an `objectId` query parameter.
+
+**Test**: `RSO2d - path and compact sent as query parameters alongside objectId` (`test/uts/objects/unit/rest_object_get.test.ts`).
+
+---
+
+### objects/rest_object_publish: RSO5b1 - operation body fields not validated
+
+**Spec (RSO5b1)**: an operation must have exactly one body field (`mapCreate`, `mapSet`, ...); otherwise the library must throw an `ErrorInfo` with code 40003 and status 400 before sending any request.
+
+**ably-js behavior**: `HttpObject.publish` does not count body fields; an operation with none or several is encoded as given and sent.
+
+**Tests**: `RSO5b1 - operation with no body field rejected before any request`, `RSO5b1 - operation with multiple body fields rejected; no partial batch sent` (`test/uts/objects/unit/rest_object_publish.test.ts`).
+
+---
+
 ## Adapted Deviations (tests modified to match ably-js behavior)
 
 These tests have been adapted from the UTS spec to account for ably-js API differences. The test still validates the underlying behavior but uses ably-js's actual API surface.

@@ -16,7 +16,7 @@ const defaultFailedRetryTimeout = 30000;
 type PoolState = 'initialized' | 'opening' | 'open' | 'closing' | 'closed';
 
 interface PooledClient {
-  readonly realtime: Ably.PubSubRealtimeClient;
+  readonly underlyingClient: Ably.PubSubRealtimeClient;
   /** The number of channel names bound to this client, which client selection balances. */
   boundNames: number;
   failedRetryTimer: ReturnType<typeof setTimeout> | null;
@@ -135,7 +135,7 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     const client = this.resolve(binding);
     let result: Promise<T>;
     try {
-      result = operation(client.realtime.channels.get(binding.name));
+      result = operation(client.underlyingClient.channels.get(binding.name));
     } catch (err) {
       result = Promise.reject(err);
     }
@@ -204,11 +204,11 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
    */
   private resolve(binding: Binding): PooledClient {
     const current = binding.client;
-    if (current && current.realtime.connection.state === 'connected') {
+    if (current && current.underlyingClient.connection.state === 'connected') {
       return current;
     }
 
-    const connected = this.clients.filter((client) => client.realtime.connection.state === 'connected');
+    const connected = this.clients.filter((client) => client.underlyingClient.connection.state === 'connected');
     if (connected.length === 0 && current) {
       return current;
     }
@@ -230,7 +230,7 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     // The channel object never attaches, so it stays in the initialized state, which `release()`
     // accepts. Operations already given to it are queued on the connection rather than the channel,
     // so they still complete.
-    client.realtime.channels.release(binding.name);
+    client.underlyingClient.channels.release(binding.name);
   }
 
   private async openClients(): Promise<void> {
@@ -240,10 +240,10 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     this.state = 'opening';
 
     for (let i = 0; i < this.size; i++) {
-      const client: PooledClient = { realtime: this.createClient(), boundNames: 0, failedRetryTimer: null };
-      client.realtime.connection.on('failed', () => this.scheduleReconnect(client));
+      const client: PooledClient = { underlyingClient: this.createClient(), boundNames: 0, failedRetryTimer: null };
+      client.underlyingClient.connection.on('failed', () => this.scheduleReconnect(client));
       this.clients.push(client);
-      client.realtime.connect();
+      client.underlyingClient.connect();
     }
 
     // Each client's first attempt decides the outcome. A failed client means a fault that retrying
@@ -252,7 +252,7 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     // from starting.
     const outcomes = await Promise.all(
       this.clients.map((client) =>
-        whenOneOf(client.realtime.connection, [
+        whenOneOf(client.underlyingClient.connection, [
           'connected',
           'disconnected',
           'suspended',
@@ -274,7 +274,7 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
 
     const failed = this.clients.find((_, i) => outcomes[i] === 'failed');
     if (failed) {
-      const reason = failed.realtime.connection.errorReason;
+      const reason = failed.underlyingClient.connection.errorReason;
       await this.close();
       // The client's own error, which already describes the fault and how to fix it.
       throw reason;
@@ -283,7 +283,7 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     this.state = 'open';
     // A client that failed after its first attempt failed while reconnects were not yet scheduled.
     for (const client of this.clients) {
-      if (client.realtime.connection.state === 'failed') {
+      if (client.underlyingClient.connection.state === 'failed') {
         this.scheduleReconnect(client);
       }
     }
@@ -300,8 +300,8 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
           clearTimeout(client.failedRetryTimer);
           client.failedRetryTimer = null;
         }
-        client.realtime.close();
-        return whenOneOf(client.realtime.connection, ['closed', 'failed']);
+        client.underlyingClient.close();
+        return whenOneOf(client.underlyingClient.connection, ['closed', 'failed']);
       }),
     );
 
@@ -322,8 +322,8 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     }
     client.failedRetryTimer = setTimeout(() => {
       client.failedRetryTimer = null;
-      if (this.state === 'open' && client.realtime.connection.state === 'failed') {
-        client.realtime.connect();
+      if (this.state === 'open' && client.underlyingClient.connection.state === 'failed') {
+        client.underlyingClient.connect();
       }
     }, this.failedRetryTimeout);
   }

@@ -100,7 +100,7 @@ const worker = await Worker.create({
 await worker.run();
 ```
 
-The plugin creates its own Ably HTTP client from the options, with `createHttpClient` from `@ably/pubsub-server`, and registers one activity per Ably operation. Every activity name starts with `ably.`, so they cannot collide with your own activities. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
+The plugin creates its own Ably HTTP client from the options, with `createHttpClient` from `@ably/pubsub-server`, and registers one activity per Ably operation. Every activity name starts with `ably.`. The worker adds the plugin's activities over the `activities` you pass to `Worker.create`, so an activity of yours with the same name as one of the plugin's is replaced without warning. Do not give your own activities names that start with `ably.`. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
 
 `AblyHttpPlugin` takes these options:
 
@@ -347,6 +347,8 @@ Ably cannot deduplicate these operations for the following reasons:
 
 The other operations in the same call are published without IDs too, because Ably needs every operation in a call to have an ID, or none. Publish create operations and wildcard operations in a call of their own, so that your other operations keep their IDs.
 
+A call in which an operation already has an `id` does not throw, and is sent with the IDs you set. This includes a `mapCreate` or `counterCreate` with an `id` of yours, which has the same problem: when Ably discards a retry of it as a duplicate, it responds with the ID of an object that it did not create. The `objectIds` in the result of the retried call can then name an object that does not exist. To create an object that a retry does not create again, publish a `mapCreateWithObjectId` or `counterCreateWithObjectId` operation instead.
+
 `mapCreateWithObjectId` and `counterCreateWithObjectId` operations get IDs, and a retry of them is deduplicated. Their object ID comes from `channel.object.generateObjectId()`, which the plugin does not support, so call it in an activity of your own.
 
 ### Push notifications
@@ -378,7 +380,7 @@ Set `idempotentPublishing: false` to send every call with the IDs and keys it ha
 const ably = new TemporalAblyHttpClient({ idempotentPublishing: false });
 ```
 
-Retried calls are then not deduplicated. `channel.object.publish()` takes the same option for a single call, as its second argument. A message without an ID gets a new one on each attempt, from the worker's Ably client for `channel.publish()` and from Ably for `batchPublish()` and `object.publish()`. A publish that reached Ably before its activity failed is therefore published again with a different ID, and a retried update or delete creates another version of the message.
+The plugin then adds no IDs or keys of its own, so only a retry of a call that carries IDs or keys you set is deduplicated. Ably still deduplicates such a retry, for example of a message with an `id` or an update with an `idempotencyKey`, within its [deduplication window](#keeping-retries-within-the-deduplication-window). A retried append is applied again either way, as described in [Appends are not deduplicated](#appends-are-not-deduplicated). `channel.object.publish()` takes the same option for a single call, as its second argument. A message without an ID gets a new one on each attempt, from the worker's Ably client for `channel.publish()` and from Ably for `batchPublish()` and `object.publish()`. A publish without IDs of your own that reached Ably before its activity failed is therefore published again with a different ID, and a retried update or delete without an `idempotencyKey` creates another version of the message.
 
 ## Errors
 

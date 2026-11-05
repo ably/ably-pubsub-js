@@ -706,7 +706,7 @@ describe('temporal/workflow proxy', function () {
     it('fails the workflow with an AblyError for invalid arguments, without running an activity', async function () {
       const { result, workflowId } = await execute('invalidArguments');
       const errors = result as Record<string, any>;
-      expect(Object.keys(errors)).to.have.length(14);
+      expect(Object.keys(errors)).to.have.length(15);
       for (const [method, error] of Object.entries(errors)) {
         expect(error, method).to.include({ isApplicationFailure: true, type: 'AblyError', nonRetryable: true });
         expect(error.details, method).to.include({ code: 40003, statusCode: 400 });
@@ -714,6 +714,9 @@ describe('temporal/workflow proxy', function () {
       }
       expect(errors.updateMessage.message).to.equal(
         'updateMessage() expects message to be an object, but was called with null',
+      );
+      expect(errors.objectPublishArrayMember.message).to.equal(
+        'object.publish() expects operations[1] to be an object, but was called with null',
       );
       expect(errors.channelOptions.message).to.equal(
         'channels.get() in workflow code does not support channel options such as cipher, but was called with options for channel "invalid"',

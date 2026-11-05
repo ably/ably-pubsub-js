@@ -25,7 +25,9 @@ export interface AblyHttpPluginOptions {
  * ```
  *
  * The plugin creates its own Ably HTTP client from `clientOptions`, which only its activities use. The activities are
- * registered under the names in {@link ActivityNames}, which all start with `ably.`.
+ * registered under the names in {@link ActivityNames}, which all start with `ably.`. The worker adds them over its own
+ * `activities`, replacing any activity with the same name, so do not give your own activities names that start with
+ * `ably.`.
  */
 export class AblyHttpPlugin extends SimplePlugin {
   /**

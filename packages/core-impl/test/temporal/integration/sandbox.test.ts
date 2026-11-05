@@ -136,12 +136,15 @@ describe('temporal sandbox integration', function () {
   });
 
   after(async function () {
-    for (const worker of workers) {
-      worker.shutdown();
-    }
     try {
-      await Promise.all(workerRuns);
-      await env?.teardown();
+      try {
+        for (const worker of workers) {
+          worker.shutdown();
+        }
+        await Promise.all(workerRuns);
+      } finally {
+        await env?.teardown();
+      }
     } finally {
       await teardownSandbox();
     }

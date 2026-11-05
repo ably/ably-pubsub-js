@@ -352,6 +352,9 @@ export async function invalidArguments(): Promise<unknown> {
     annotationsPublish: await captureError(() => channel.annotations.publish('s1', null)),
     annotationsGet: await captureError(() => channel.annotations.get(null, null)),
     objectPublish: await captureError(() => channel.object.publish(null)),
+    objectPublishArrayMember: await captureError(() =>
+      channel.object.publish([{ objectId: 'counter:1', counterInc: { number: 1 } }, null]),
+    ),
     batchPresence: await captureError(() => rest.batchPresence(undefined)),
     request: await captureError(() => rest.request(undefined, '/time', 3)),
     channelOptions: await captureError(async () => rest.channels.get('invalid', { cipher: { key: 'secret' } })),

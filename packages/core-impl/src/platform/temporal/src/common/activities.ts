@@ -18,8 +18,9 @@ import type {
 import type { WireHttpPaginatedResponse, WirePage } from './wire.js';
 
 /**
- * The names under which the Ably activities are registered on the worker. Every name is prefixed with `ably.`
- * so that it cannot collide with an application's own activities.
+ * The names under which the Ably activities are registered on the worker. Every name is prefixed with `ably.`.
+ * `AblyHttpPlugin` adds the Ably activities over the worker's own `activities`, so an application activity with
+ * the same name is replaced. Application activities must not use names that start with `ably.`.
  */
 export const ActivityNames = {
   publish: 'ably.channel.publish',

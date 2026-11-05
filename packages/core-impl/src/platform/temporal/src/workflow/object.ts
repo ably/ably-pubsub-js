@@ -101,6 +101,13 @@ export class TemporalAblyHttpObject {
    * the first attempt succeeded, because the path then holds an object. A wildcard operation is applied to each match
    * again. `mapCreateWithObjectId` and `counterCreateWithObjectId` operations can be deduplicated.
    *
+   * A call in which an operation already has an `id` is published with the IDs it has, and does not throw. A
+   * `mapCreate` or `counterCreate` with an `id` of the caller's has the same problem as above: when Ably discards a
+   * retry of it as a duplicate, it responds with the ID of an object that it did not create, so `objectIds` in the
+   * result of the retried call can name an object that does not exist. To create an object that a retry does not
+   * create again, generate its object ID with `channel.object.generateObjectId()` in an activity of your own, and
+   * publish a `mapCreateWithObjectId` or `counterCreateWithObjectId` operation instead.
+   *
    * @param op - The operation, or array of operations, to publish.
    * @param options - Options for this call.
    * @returns A promise which is fulfilled with the ID of the published message and the IDs of the affected objects.
@@ -111,13 +118,12 @@ export class TemporalAblyHttpObject {
     op: HttpObjectOperation | HttpObjectOperation[],
     options?: TemporalAblyHttpObjectPublishOptions,
   ): Promise<HttpObjectPublishResult> {
-    if (!Array.isArray(op)) {
-      requireObject(
-        'object.publish',
-        'the operation',
-        op,
-        'Pass an operation object, such as { objectId: "counter:abc", counterInc: { number: 1 } }, or an array of operation objects.',
+    if (Array.isArray(op)) {
+      op.forEach((operation, index) =>
+        requireObject('object.publish', `operations[${index}]`, operation, INVALID_OPERATION_REMEDIATION),
       );
+    } else {
+      requireObject('object.publish', 'the operation', op, INVALID_OPERATION_REMEDIATION);
     }
     const list = Array.isArray(op) ? op : [op];
     const idempotentPublishing = options?.idempotentPublishing ?? this.invoker.idempotentPublishing;
@@ -137,6 +143,9 @@ export class TemporalAblyHttpObject {
     });
   }
 }
+
+const INVALID_OPERATION_REMEDIATION =
+  'Pass an operation object, such as { objectId: "counter:abc", counterInc: { number: 1 } }, or an array of operation objects.';
 
 function encodeBytes(bytes: unknown): unknown {
   return isBinary(bytes) ? bytesToBase64(toBytes(bytes)) : bytes;

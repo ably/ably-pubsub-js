@@ -1,0 +1,64 @@
+{
+  "plugins": ["import"],
+  "rules": {
+    // The ES module build is loaded by Node and by the Temporal workflow bundler, both of which
+    // require fully specified relative imports. tsc does not add extensions, so the source must.
+    // see:
+    // https://github.com/microsoft/TypeScript/issues/16577#issuecomment-703190339
+    "import/extensions": [
+      "error",
+      "always",
+      {
+        "ignorePackages": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      // The workflow entry point and everything it imports are bundled into Temporal's deterministic
+      // workflow sandbox, so they must not import worker-only code at runtime.
+      "files": ["src/workflow.ts", "src/workflow/**/*.ts", "src/common/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@ably/*", "@ably/*/*"],
+                "allowTypeImports": true,
+                "message": "Workflow code runs in the Temporal workflow sandbox, which cannot load the Ably client. Use `import type`, and call Ably through the activities."
+              },
+              {
+                "group": [
+                  "@temporalio/activity",
+                  "@temporalio/activity/*",
+                  "@temporalio/client",
+                  "@temporalio/client/*",
+                  "@temporalio/common/lib/internal-non-workflow",
+                  "@temporalio/common/lib/internal-non-workflow/*",
+                  "@temporalio/core-bridge",
+                  "@temporalio/core-bridge/*",
+                  "@temporalio/plugin",
+                  "@temporalio/plugin/*",
+                  "@temporalio/testing",
+                  "@temporalio/testing/*",
+                  "@temporalio/worker",
+                  "@temporalio/worker/*"
+                ],
+                "allowTypeImports": true,
+                "message": "Temporal's workflow bundler rejects this module. Workflow code may import @temporalio/workflow and @temporalio/common at runtime, and other Temporal packages only with `import type`."
+              },
+              {
+                "group": ["./worker", "./worker/*", "../worker", "../worker/*", "./index.js", "../index.js"],
+                "message": "Workflow code must not import the worker entry point, even for types: its declarations would then depend on worker-only packages. Move shared code to src/common."
+              }
+            ]
+          }
+        ],
+        // Temporal's workflow bundler rejects Node built-in modules. Type imports are rejected as well,
+        // since they would make the workflow entry point's declarations depend on @types/node.
+        "import/no-nodejs-modules": "error"
+      }
+    }
+  ]
+}

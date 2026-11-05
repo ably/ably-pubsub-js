@@ -298,6 +298,15 @@ module.exports = function (grunt) {
     execExternal('npm run build:react'),
   );
 
+  // esbuild bundles the Temporal plugin's two entry points with the rest of `@ably/pubsub-server`, but emits no
+  // declarations, so tsc emits them from the plugin's source into dist/temporal-types, which the hand-written
+  // temporal/index.d.ts and temporal/workflow/index.d.ts re-export.
+  grunt.registerTask(
+    'build:packages:temporal-types',
+    'Emit the declarations of the Temporal plugin of @ably/pubsub-server',
+    execExternal('npm run build:temporal:types'),
+  );
+
   // The packages' bundles leave `@ably/pubsub-core` external, so they load its runtime from its build.
   //
   // packages/README.md lists every artifact these tasks publish, so update it when you change them.
@@ -307,6 +316,7 @@ module.exports = function (grunt) {
     'webpack:reactNative',
     'build:packages:cdn',
     'build:packages:react',
+    'build:packages:temporal-types',
     'build:packages:types',
   ]);
 

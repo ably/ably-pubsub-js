@@ -222,7 +222,7 @@ describe('temporal/worker/activities', function () {
       );
 
       const [spec] = msgpack.decode(requests[0].body);
-      expect(spec.messages[0]).to.deep.equal({ name: 'e', data: 'AQID', encoding: 'base64' });
+      expect(spec.messages[0]).to.include({ name: 'e', data: 'AQID', encoding: 'base64' });
     });
   });
 

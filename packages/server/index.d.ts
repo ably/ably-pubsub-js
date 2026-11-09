@@ -122,11 +122,12 @@ export interface RealtimeChannelPool {
   get(name: string): RealtimePublisherChannel;
 
   /**
-   * Creates and connects every client. It resolves once each client has made its first connection
-   * attempt, whether or not it connected: a client that cannot connect yet, such as during a network
-   * outage, keeps retrying by itself, and an operation on it waits or fails as described on
-   * {@link RealtimePublisherChannel}. It rejects with the client's `errorReason` if any client's
-   * connection fails, for example because the key is invalid, and the pool is then closed.
+   * Creates and connects every client. It resolves once each client's first connection attempt has
+   * an outcome, whether the client connected or cannot connect yet. A client that cannot connect yet,
+   * such as during a network outage, keeps retrying by itself, and an operation on it waits or fails
+   * as described on {@link RealtimePublisherChannel}. It rejects with the client's `errorReason` if
+   * any client's first attempt fails, for example because the key is invalid, and the pool is then
+   * closed.
    *
    * A second call does nothing, and returns the promise of the first.
    */

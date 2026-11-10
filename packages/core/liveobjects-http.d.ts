@@ -526,8 +526,12 @@ type HttpObjectData = Omit<ObjectData, 'value'>;
  * Module augmentation to add the `object` property to `HttpChannel` when
  * importing from '@ably/pubsub-core/liveobjects'. This ensures all LiveObjects types come from
  * the same module (CJS or ESM), avoiding type incompatibility issues.
+ *
+ * It names '@ably/pubsub-core/http', the module that declares `HttpChannel`, rather than the
+ * package root, for the reason given on the `RealtimeChannel` augmentation in
+ * liveobjects-types.d.ts.
  */
-declare module '@ably/pubsub-core' {
+declare module '@ably/pubsub-core/http' {
   interface HttpChannel {
     /**
      * A {@link HttpObject} object.

@@ -1778,8 +1778,15 @@ export declare const LiveObjects: any;
  * Module augmentation to add the `object` property to `RealtimeChannel` when
  * importing from '@ably/pubsub-core/liveobjects'. This ensures all LiveObjects types come from
  * the same module (CJS or ESM), avoiding type incompatibility issues.
+ *
+ * It names '@ably/pubsub-core/types', the module that declares `RealtimeChannel`, not the package
+ * root, which only re-exports it through `export *`. TypeScript merges an augmentation of a
+ * re-exporting module into the original declaration only when that module is otherwise part of
+ * the program, and neither per-side package loads the core root: `@ably/pubsub-server` reaches
+ * `RealtimeChannel` through '@ably/pubsub-core/api', and `@ably/pubsub-device` through
+ * '@ably/pubsub-core/device'. Augmenting the root left `channel.object` undeclared for them.
  */
-declare module '@ably/pubsub-core' {
+declare module '@ably/pubsub-core/types' {
   interface RealtimeChannel {
     /**
      * A {@link RealtimeObject} object.

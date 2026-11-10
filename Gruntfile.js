@@ -53,7 +53,8 @@ module.exports = function (grunt) {
     dirs: dirs,
     webpack: {
       reactNative: [webpackConfig.reactNative, webpackConfig.reactNativeDebug],
-      support: [webpackConfig.nativeScript, webpackConfig.mochaJUnitReporterBrowser],
+      nativeScript: webpackConfig.nativeScript,
+      support: [webpackConfig.mochaJUnitReporterBrowser],
     },
   };
 
@@ -314,6 +315,7 @@ module.exports = function (grunt) {
     'build:core',
     'build:packages:bundle',
     'webpack:reactNative',
+    'webpack:nativeScript',
     'build:packages:cdn',
     'build:packages:react',
     'build:packages:temporal-types',

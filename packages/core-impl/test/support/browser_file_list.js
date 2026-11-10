@@ -1,6 +1,5 @@
 window.__testFiles__ = { base: '../' };
 window.__testFiles__.files = {
-  'build/ably-nativescript.js': true,
   'build/ably-node.js': true,
   'build/ably-reactnative.js': true,
   'build/ably.js': true,

@@ -60,6 +60,10 @@
         "default": "./dist/debug.mjs"
       }
     },
+    "./nativescript": {
+      "types": "./nativescript/index.d.ts",
+      "default": "./dist/nativescript.js"
+    },
     "./modular": {
       "import": {
         "types": "./modular/index.d.mts",
@@ -145,6 +149,7 @@
     "liveobjects/**",
     "modular/**",
     "msgpack/**",
+    "nativescript/**",
     "react/**",
     "push/**",
     "react-native-push/**",

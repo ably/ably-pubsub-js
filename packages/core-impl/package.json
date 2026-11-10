@@ -8,6 +8,7 @@
     "./platform": {
       "types": "./side/types/platform.d.ts",
       "react-native": "./src/platform/react-native/index.ts",
+      "nativescript": "./src/platform/nativescript/index.ts",
       "node": "./src/platform/nodejs/index.ts",
       "default": "./src/platform/web/index.ts"
     },

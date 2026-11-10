@@ -1,0 +1,138 @@
+name: Release
+
+# Stages a release of @ably/pubsub-core, @ably/pubsub-device and @ably/pubsub-server to npm.
+#
+# Publishing uses npm trusted publishing (OIDC), so there is no npm token: npm trusts this
+# workflow file running in the `npm` environment. The packages are staged with
+# `npm stage publish`, not published. Each staged version goes live only once a maintainer
+# approves it with 2FA, on npmjs.com (Staged Packages tab) or with `npm stage approve <stage-id>`.
+# Approve @ably/pubsub-core first, because the device and server packages pin its exact version.
+#
+# It runs when a GitHub release is published, staging that release's tag, or on demand.
+#
+# The build runs in its own job, without `id-token: write`, so no dependency install script or
+# build plugin can request the OIDC token that npm exchanges for publish rights. The stage job
+# that holds that permission installs no project dependencies and runs no project scripts.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to stage, e.g. 3.0.0. It must match the version in every package.json'
+        required: true
+      dist-tag:
+        description: 'npm dist-tag. Leave empty to derive it from the version: latest, or the pre-release identifier (3.1.0-beta.2 is tagged beta)'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # A release event carries no inputs, so its version is the release's tag.
+  VERSION: ${{ inputs.version || github.event.release.tag_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      dist-tag: ${{ steps.dist-tag.outputs.dist-tag }}
+    steps:
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+        with:
+          ref: refs/tags/${{ env.VERSION }}
+          submodules: true
+          persist-credentials: false
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@f1f314fca9dfce2769ece7d933488f076716723e # v1
+        with:
+          node-version: 22.x
+      - name: Check the tag matches the package versions
+        run: |
+          npm run check:versions
+          actual="$(node -p "require('./packages/core/package.json').version")"
+          if [ "$actual" != "$VERSION" ]; then
+            echo "::error::Tag $VERSION does not match the package version $actual"
+            exit 1
+          fi
+      - name: Choose the dist-tag
+        id: dist-tag
+        env:
+          INPUT_DIST_TAG: ${{ inputs.dist-tag }}
+        run: |
+          if [ -n "$INPUT_DIST_TAG" ]; then
+            dist_tag="$INPUT_DIST_TAG"
+          elif [[ "$VERSION" == *-* ]]; then
+            # A pre-release takes the first identifier after the hyphen: 3.1.0-beta.2 is tagged
+            # beta. A numeric identifier (3.1.0-0) would be a semver range, which npm rejects as
+            # a tag, so it falls back to next.
+            prerelease="${VERSION#*-}"
+            dist_tag="${prerelease%%.*}"
+            [[ "$dist_tag" =~ ^[A-Za-z] ]] || dist_tag=next
+          else
+            dist_tag=latest
+          fi
+          if [[ "$VERSION" == *-* && "$dist_tag" == latest ]]; then
+            echo "::error::Pre-release $VERSION must not be tagged latest"
+            exit 1
+          fi
+          if ! [[ "$dist_tag" =~ ^[A-Za-z][A-Za-z0-9._-]*$ ]]; then
+            echo "::error::Invalid dist-tag '$dist_tag'"
+            exit 1
+          fi
+          echo "Staging $VERSION with dist-tag $dist_tag"
+          echo "dist-tag=$dist_tag" >> "$GITHUB_OUTPUT"
+      # npm ci runs the `prepare` script, which is the full build.
+      - run: npm ci
+      # The build writes outside dist/ too (the .d.mts declarations and the per-entry-point
+      # folders), so archive every file it generated in the published packages.
+      - name: Archive the build output
+        run: |
+          git ls-files -z --others --ignored --exclude-standard packages/core packages/device packages/server \
+            | grep -zv '/node_modules/' \
+            | tar --null -czf build.tgz --files-from=-
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build
+          path: build.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  stage:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # lets npm exchange a GitHub OIDC token for publish rights
+    steps:
+      # release.js reads the version sites and git status from the checkout, so the stage job
+      # needs the tag's sources, but not its dependencies: release.js uses only Node built-ins.
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+        with:
+          ref: refs/tags/${{ env.VERSION }}
+          persist-credentials: false
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@f1f314fca9dfce2769ece7d933488f076716723e # v1
+        with:
+          node-version: 22.x
+      # npm stage publish needs npm >= 11.15.0, newer than the npm bundled with Node 22.
+      - run: npm install -g npm@11.21.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: build
+      - name: Unpack the build output
+        run: |
+          tar -xzf build.tgz
+          rm build.tgz
+      - name: Stage the packages
+        env:
+          DIST_TAG: ${{ needs.build.outputs.dist-tag }}
+        run: npm run release:publish -- --stage --tag "$DIST_TAG"

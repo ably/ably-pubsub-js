@@ -20,12 +20,13 @@ The three packages (`@ably/pubsub-core`, `@ably/pubsub-device`, `@ably/pubsub-se
 3. Update the CHANGELOG.md with any customer-affecting changes since the last release and add this to the git index
 4. Run `npm run release:bump <VERSION_NUMBER>` with the new version and add the changes to the git index (this moves every version site together: the root and workspace `package.json` files, the exact `@ably/pubsub-core` dependency pins, the react-hooks version constant, and the lockfile)
 5. Create a PR for the release branch
-6. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes) and run `npm run build`
+6. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes)
 7. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)
-8. Run `npm run release:publish` (should require OTP) - publishes `@ably/pubsub-core`, `@ably/pubsub-device` and `@ably/pubsub-server` to NPM in that order. It refuses to start unless every version site agrees and the build artifacts exist, dry-run packs everything first, and if it fails partway, re-running it publishes only the remainder (`npm run release:publish -- --dry-run` previews without publishing)
-9. Run the GitHub action "Publish to CDN" with the new tag name
-10. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG)
-11. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
+8. Visit https://github.com/ably/ably-pubsub-js/tags and create a GitHub release based on the new tag (for release notes, you generally can just copy the notes you added to the CHANGELOG). Mark it as a pre-release if the version is one
+9. Publishing the GitHub release triggers the GitHub action "Release", which stages `@ably/pubsub-core`, `@ably/pubsub-device` and `@ably/pubsub-server` on npm through trusted publishing (OIDC, `npm` environment), so no npm token is involved.
+10. Approve the three staged versions with 2FA, `@ably/pubsub-core` first because the other two pin its exact version: on npmjs.com under each package's Staged Packages tab, or with `npm stage list` and `npm stage approve <stage-id>`.
+11. Run the GitHub action "Publish to CDN" with the new tag name
+12. Update the [Ably Changelog](https://changelog.ably.com/) (via [headwayapp](https://headwayapp.co/)) with these changes (again, you can just copy the notes you added to the CHANGELOG)
 
 ### Per-side packages
 

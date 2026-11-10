@@ -177,7 +177,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ably/ably-js.git",
+    "url": "git+https://github.com/ably/ably-pubsub-js.git",
     "directory": "packages/device"
   },
   "bugs": {

@@ -9,6 +9,11 @@
  *   node scripts/release.js bump <version>   move every version site to <version> atomically
  *   node scripts/release.js publish          publish all three packages, or resume a partial one
  *
+ * publish takes --stage to run `npm stage publish` instead (used by the release workflow, whose
+ * npm trusted publisher may only stage): each version then waits on npmjs.com for a maintainer
+ * to approve it with 2FA. Approve core before device and server, since they pin its version.
+ * Pass --tag <dist-tag> for a pre-release, which npm refuses to tag `latest` implicitly.
+ *
  * The publish subcommand makes a partial release as hard as practical, and recoverable when it
  * happens anyway:
  *
@@ -169,10 +174,29 @@ function isPublished(name, version) {
   }
 }
 
+/** Returns the value following `flag` in args, or null if the flag is absent. */
+function flagValue(args, flag, pattern) {
+  const index = args.indexOf(flag);
+  if (index === -1) {
+    return null;
+  }
+  const value = args[index + 1];
+  // The value reaches npm's argv, so accept only what a real one looks like. This also stops a
+  // following flag (`--tag --stage`) from being swallowed as the value.
+  if (value === undefined || value.startsWith('-') || !pattern.test(value)) {
+    fail(`${flag} requires a value matching ${pattern}, got '${value ?? ''}'`);
+  }
+  return value;
+}
+
 function publish(args) {
   const dryRun = args.includes('--dry-run');
-  const otpIndex = args.indexOf('--otp');
-  const otp = otpIndex !== -1 ? args[otpIndex + 1] : null;
+  const stage = args.includes('--stage');
+  const otp = flagValue(args, '--otp', /^\d+$/);
+  // A dist-tag that parses as a semver range (`1`, `1.2`) is rejected by npm, so require a
+  // leading letter.
+  const tag = flagValue(args, '--tag', /^[A-Za-z][A-Za-z0-9._-]*$/);
+  const tagArgs = tag ? ['--tag', tag] : [];
 
   const version = check();
 
@@ -215,22 +239,40 @@ function publish(args) {
     }
   }
 
-  // Every remaining package must pack cleanly before anything real is attempted.
+  // Every remaining package must pack cleanly before anything real is attempted. The dry run
+  // packs from the package directory, as the real publish and stage below do, so it validates
+  // the same tarball.
   for (const entry of toPublish) {
     console.log(`release: dry-run pack of ${entry.name}@${version}`);
-    execSync(`npm publish --dry-run ./${entry.dir}`, { cwd: repoRoot, stdio: 'inherit' });
+    execFileSync('npm', ['publish', '--dry-run', ...tagArgs], {
+      cwd: path.join(repoRoot, entry.dir),
+      stdio: 'inherit',
+    });
   }
   if (dryRun) {
-    console.log(`release: --dry-run: would publish, in order: ${toPublish.map((e) => e.name).join(', ')}`);
+    console.log(
+      `release: --dry-run: would ${stage ? 'stage' : 'publish'}, in order: ${toPublish.map((e) => e.name).join(', ')}`,
+    );
     return;
   }
 
+  // npm stage publish takes no folder argument and packs the current working directory, so both
+  // commands run from the package directory. Arguments go to npm as argv, never through a shell.
+  const command = stage ? ['stage', 'publish'] : ['publish'];
+  const commandArgs = [...command, ...tagArgs, ...(otp ? ['--otp', otp] : [])];
   for (const entry of toPublish) {
-    console.log(`release: publishing ${entry.name}@${version}`);
+    console.log(`release: ${stage ? 'staging' : 'publishing'} ${entry.name}@${version}`);
     try {
       // stdio must stay inherited so npm's interactive OTP prompt works.
-      execSync(`npm publish ./${entry.dir}${otp ? ` --otp ${otp}` : ''}`, { cwd: repoRoot, stdio: 'inherit' });
+      execFileSync('npm', commandArgs, { cwd: path.join(repoRoot, entry.dir), stdio: 'inherit' });
     } catch (err) {
+      if (stage) {
+        console.error(`release: staging ${entry.name}@${version} FAILED.`);
+        console.error('release: the packages staged before it are awaiting approval on npmjs.com.');
+        console.error('release: npm refuses to stage a version that is already staged, so to recover,');
+        console.error('release: reject the staged ones (npm stage reject <stage-id>) and re-run the release.');
+        process.exit(1);
+      }
       console.error(`release: publishing ${entry.name}@${version} FAILED.`);
       console.error('release: the packages published before it are live. To recover, either:');
       console.error(`  - fix the cause and re-run 'npm run release:publish' — already-published`);
@@ -241,6 +283,12 @@ function publish(args) {
     }
   }
 
+  if (stage) {
+    console.log(`release: staged ${toPublish.map((e) => e.name).join(', ')} at ${version}`);
+    console.log('release: next: approve them on npmjs.com (Staged Packages tab) or with npm stage approve,');
+    console.log("release: core first, then run the 'Publish to CDN' workflow (see CONTRIBUTING.md)");
+    return;
+  }
   console.log(`release: published core, device and server at ${version}`);
   console.log("release: next: run the 'Publish to CDN' workflow and create the GitHub release (see CONTRIBUTING.md)");
 }
@@ -257,5 +305,7 @@ switch (command) {
     publish(rest);
     break;
   default:
-    fail(`unknown command '${command ?? ''}': use check, bump <version>, or publish [--dry-run] [--otp <code>]`);
+    fail(
+      `unknown command '${command ?? ''}': use check, bump <version>, or publish [--dry-run] [--stage] [--tag <tag>] [--otp <code>]`,
+    );
 }

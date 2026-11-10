@@ -40,10 +40,12 @@ In production, prefer [token authentication](https://ably.com/docs/auth/token) o
 Everything a device needs is exported here, so you never need to add `@ably/pubsub-core` as a dependency of your own alongside this package.
 
 | Import from                             | What you get                                                            |
-| --------------------------------------- | ----------------------------------------------------------------------- | --- | ----------------------------- | ---------------------------------------------------------- |
+| --------------------------------------- | ----------------------------------------------------------------------- |
 | `@ably/pubsub-device`                   | `createClient`, plus the core's public API and type surface             |
 | `@ably/pubsub-device/debug`             | The same, for a build that keeps every log                              |
-| `@ably/pubsub-device/modular`           | `createClient` for a tree-shakable client, and its plugins              |     | `@ably/pubsub-device/msgpack` | The MessagePack plugin, for the binary protocol on the web |
+| `@ably/pubsub-device/modular`           | `createClient` for a tree-shakable client, and its plugins              |
+| `@ably/pubsub-device/msgpack`           | The MessagePack plugin, for the binary protocol on the web              |
+| `@ably/pubsub-device/nativescript`      | The same as the root, built for NativeScript apps                       |
 | `@ably/pubsub-device/react`             | The React hooks: `PubSubClientProvider`, `useChannel`, `usePresence`, … |
 | `@ably/pubsub-device/liveobjects`       | The LiveObjects plugin                                                  |
 | `@ably/pubsub-device/liveobjects/react` | The `useObject` React hook for LiveObjects                              |
@@ -110,6 +112,20 @@ Every subpath exports under a name, so the import spelling is the same whichever
 `@ably/pubsub-device/modular` can only be imported, not `require`d, because the core's modular variant is published behind an `import` condition alone. Every other subpath above works under both module systems.
 
 Use `@ably/pubsub-device/react-native-push` in a React Native application; the web push plugin is not a substitute for it.
+
+## NativeScript
+
+In a NativeScript app import from `@ably/pubsub-device/nativescript` instead. It exports everything the root does. It needs `@nativescript/core`, which every NativeScript app already has, and `nativescript-websockets`, which you install alongside it:
+
+```bash
+npm install @ably/pubsub-device nativescript-websockets
+```
+
+```javascript
+import { createClient } from '@ably/pubsub-device/nativescript';
+
+const client = createClient({ authUrl: 'https://your-server.example.com/ably-token', clientId: 'me' });
+```
 
 ## What declaring the device side means
 

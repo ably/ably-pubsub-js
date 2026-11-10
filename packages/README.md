@@ -10,7 +10,7 @@ Every artifact the ably-pubsub-js build publishes, by package. `npm run build` (
 
 Unless stated otherwise, every bundle:
 
-- targets ES2020 and ships a sourcemap (`.map`) next to it, except the React Native pair, which webpack builds without one,
+- targets ES2020 and ships a sourcemap (`.map`) next to it, except the React Native pair and the NativeScript bundle, which webpack builds without one,
 - comes as a CommonJS `.js` and an ESM `.mjs` pair,
 - imports its npm dependencies rather than inlining them: `@ably/pubsub-core`, so the app has one copy of `ErrorInfo` and the rest of the shared runtime, and `ws` and `got` on Node.js, `dequal` for LiveObjects and `ulid` for push. npm installs these with the package, so the app never declares them. `react` and `react-dom` are imported the same way, but they are optional peer dependencies, which the app provides when it uses the React hooks.
 
@@ -36,7 +36,7 @@ The rest of the package is hand-written declarations (`ably.d.ts`, `types.d.ts`,
 
 ### npm bundles
 
-Built by `grunt build:packages`. All are esbuild bundles, except the React Native pair (webpack) and the React hooks (`tsc`).
+Built by `grunt build:packages`. All are esbuild bundles, except the React Native pair and the NativeScript bundle (webpack) and the React hooks (`tsc`).
 
 | File                                    | Export                           | Condition                | Logs     | MessagePack |
 | --------------------------------------- | -------------------------------- | ------------------------ | -------- | ----------- |
@@ -45,6 +45,7 @@ Built by `grunt build:packages`. All are esbuild bundles, except the React Nativ
 | `dist/react-native.js` (CJS only)       | `.`                              | `react-native`           | Stripped | Plugin      |
 | `dist/debug.js`/`.mjs`                  | `./debug`                        | web (`require`/`import`) | Full     | Plugin      |
 | `dist/debug-react-native.js` (CJS only) | `./debug`                        | `react-native`           | Full     | Plugin      |
+| `dist/nativescript.js` (CJS only)       | `./nativescript`                 | —                        | Full     | Included    |
 | `dist/modular.mjs` (ESM only)           | `./modular`                      | `import`                 | Stripped | Plugin      |
 | `dist/msgpack.js`/`.mjs`                | `./msgpack`                      | web (`require`/`import`) | —        | The plugin  |
 | `dist/msgpack-node.js`/`.mjs`           | `./msgpack`                      | `node`                   | —        | The plugin  |

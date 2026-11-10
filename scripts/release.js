@@ -49,6 +49,7 @@ const requiredArtifacts = {
     'dist/index.mjs',
     'dist/node.js',
     'dist/react-native.js',
+    'dist/nativescript.js',
     'dist/react/cjs/index.js',
     'dist/cdn/ably.min.js',
     'dist/cdn/ably.debug.min.js',

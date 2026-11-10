@@ -7,7 +7,7 @@
 // this module.
 //
 // Which platform's entry point this resolves to is chosen when each package is bundled, by the
-// `node`, `react-native` or `default` condition of `@ably/pubsub-core-impl/platform`.
+// `node`, `react-native`, `nativescript` or `default` condition of `@ably/pubsub-core-impl/platform`.
 
 import platform from '@ably/pubsub-core-impl/platform';
 import type { ClientOptions, PubSubHttpClient, PubSubRealtimeClient } from '@ably/pubsub-core/api';

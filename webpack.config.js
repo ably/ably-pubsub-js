@@ -49,37 +49,6 @@ const baseConfig = {
   },
 };
 
-function platformPath(platform, ...dir) {
-  return path.resolve(implDir, 'src', 'platform', platform, ...dir);
-}
-
-const nativeScriptConfig = {
-  ...baseConfig,
-  output: {
-    ...baseConfig.output,
-    filename: 'ably-nativescript.js',
-    globalObject: 'global',
-  },
-  entry: {
-    index: platformPath('nativescript'),
-  },
-  resolve: {
-    ...baseConfig.resolve,
-    fallback: {
-      crypto: false,
-    },
-  },
-  externals: {
-    request: false,
-    ws: false,
-    'nativescript-websockets': true,
-    '@nativescript/core/application-settings': true,
-  },
-  optimization: {
-    minimize: false,
-  },
-};
-
 // The React Native bundles of `@ably/pubsub-device`. Built with webpack rather than esbuild, as the
 // React Native platform always has been. Each bundles the package's own entry point, which reaches
 // the React Native implementation through the `react-native` export condition of
@@ -140,6 +109,61 @@ function createReactNativeConfig({ debug }) {
   };
 }
 
+// The NativeScript bundle of `@ably/pubsub-device`, published as the `@ably/pubsub-device/nativescript`
+// subpath rather than behind an export condition, since NativeScript's bundler sets none that would
+// tell it apart from a browser. Built like the React Native bundle: it bundles the package's own
+// entry point, which reaches the NativeScript implementation through the `nativescript` export
+// condition of the private `@ably/pubsub-core-impl/platform`, and leaves `@ably/pubsub-core` external.
+//
+// Unlike the package root on the web and React Native it keeps every log, as there is no debug
+// counterpart to turn to for the full logs, and it includes MessagePack, as the NativeScript bundle
+// always has, rather than leaving it to the `MsgPack` plugin.
+//
+// The app provides `nativescript-websockets` and `@nativescript/core`, so both stay external.
+//
+// packages/README.md lists this bundle, so update it when you change it.
+function createNativeScriptConfig() {
+  return {
+    ...baseConfig,
+    entry: {
+      index: path.resolve(__dirname, 'packages', 'device', 'src', 'index.ts'),
+    },
+    output: {
+      path: path.resolve(__dirname, 'packages', 'device', 'dist'),
+      filename: 'nativescript.js',
+      library: { type: 'commonjs2' },
+    },
+    module: {
+      rules: [
+        // Type checking is left to `tsc`, for the reason given in createReactNativeConfig.
+        {
+          test: /\.ts$/,
+          loader: 'ts-loader',
+          options: { configFile: path.resolve(implDir, 'tsconfig.json'), transpileOnly: true },
+        },
+      ],
+    },
+    resolve: {
+      extensions: ['.js', '.ts'],
+      plugins: [tsconfigPathsPlugin()],
+      conditionNames: ['nativescript', 'require', 'default'],
+      fallback: {
+        crypto: false,
+      },
+    },
+    externals: {
+      request: false,
+      ws: false,
+      '@ably/pubsub-core': true,
+      'nativescript-websockets': true,
+      '@nativescript/core/application-settings': true,
+    },
+    optimization: {
+      minimize: false,
+    },
+  };
+}
+
 /**
  * We create a bundle that exposes the mocha-junit-reporter package to be able to use it in the browser. We need to do this for the following reasons:
  * - This package is designed for Node only and hence requires polyfills of Node libraries (e.g. `stream`, `path`) — webpack takes care of this for us.
@@ -180,7 +204,7 @@ function createMochaJUnitReporterConfig() {
 }
 
 module.exports = {
-  nativeScript: nativeScriptConfig,
+  nativeScript: createNativeScriptConfig(),
   reactNative: createReactNativeConfig({ debug: false }),
   reactNativeDebug: createReactNativeConfig({ debug: true }),
   mochaJUnitReporterBrowser: createMochaJUnitReporterConfig(),

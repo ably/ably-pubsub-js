@@ -2,6 +2,20 @@
 
 This contains only the most important and/or user-facing changes; for a full changelog, see the commit history.
 
+## [3.1.0](https://github.com/ably/ably-pubsub-js/tree/3.1.0) (2026-11-11)
+
+[Full Changelog](https://github.com/ably/ably-pubsub-js/compare/3.0.0...3.1.0)
+
+This release makes it easier to publish from backend workers. If your server publishes from many concurrent jobs, `createRealtimeChannelPool` lets them share a small, fixed set of connections instead of opening one per job. If you run Temporal workflows, the new Temporal plugin lets workflow code call the Ably HTTP API directly, and retries and replays don't send duplicate messages.
+
+### What's Changed
+
+- Add `createRealtimeChannelPool` to `@ably/pubsub-server`. A pool holds a fixed set of realtime clients and hands out publish-only channel handles, so a long-running process can publish from many concurrent operations without opening a connection per operation [#2340](https://github.com/ably/ably-pubsub-js/pull/2340)
+- Add a Temporal plugin to `@ably/pubsub-server`. `@ably/pubsub-server/temporal` exports `AblyHttpPlugin`, a worker plugin that registers an activity for each wrapped HTTP operation, and `@ably/pubsub-server/temporal/workflow` exports `TemporalAblyHttpClient` for workflow code. Message IDs and idempotency keys are derived deterministically, so retried activities and replays do not publish twice [#2325](https://github.com/ably/ably-pubsub-js/pull/2325)
+- Publish a NativeScript build of `@ably/pubsub-device` under the `@ably/pubsub-device/nativescript` subpath [#2342](https://github.com/ably/ably-pubsub-js/pull/2342)
+- Generate idempotent message IDs for `annotations.publish()`, `annotations.delete()` and `batchPublish()` when `idempotentRestPublishing` is enabled, so a retried request no longer publishes twice [#2330](https://github.com/ably/ably-pubsub-js/pull/2330)
+- Fix `channel.object` missing from the `RealtimeChannel` and `HttpChannel` types after importing the `liveobjects` entry point of `@ably/pubsub-device` or `@ably/pubsub-server` [#2344](https://github.com/ably/ably-pubsub-js/pull/2344)
+
 ## [3.0.0](https://github.com/ably/ably-pubsub-js/tree/3.0.0) (2026-10-29)
 
 The 3.0.0 release makes it clear what to use on a device and what to use on a server. The SDK is now split by where your code runs. Install `@ably/pubsub-device` for code that runs on an end user's device, such as a browser or a mobile app, or `@ably/pubsub-server` for code that runs on your own infrastructure. Each package offers only the clients and APIs that make sense on its side. The package names are also what coding assistants see in the install step and the import line, so they get the choice right too.

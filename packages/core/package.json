@@ -1,7 +1,7 @@
 {
   "name": "@ably/pubsub-core",
   "description": "Ably-internal core of the Ably Pub/Sub JavaScript SDK: the Pub/Sub API types and the runtime classes shared with the SDKs layered on it. Install @ably/pubsub-device or @ably/pubsub-server instead",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"

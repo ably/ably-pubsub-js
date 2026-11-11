@@ -30,6 +30,9 @@
     "./types": {
       "types": "./types.d.ts"
     },
+    "./http": {
+      "types": "./http.d.ts"
+    },
     "./device": {
       "types": "./device.d.ts"
     },

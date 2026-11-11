@@ -15,6 +15,7 @@
       "@ably/pubsub-core": ["./core"],
       "@ably/pubsub-core/api": ["./core/api.d.ts"],
       "@ably/pubsub-core/types": ["./core/types.d.ts"],
+      "@ably/pubsub-core/http": ["./core/http.d.ts"],
       "@ably/pubsub-core/modular": ["./core/modular.d.ts"],
       "@ably/pubsub-core/liveobjects": ["./core/liveobjects.d.ts"],
       "@ably/pubsub-core/liveobjects-types": ["./core/liveobjects-types.d.ts"],

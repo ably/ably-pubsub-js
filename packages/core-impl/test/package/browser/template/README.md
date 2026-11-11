@@ -29,4 +29,4 @@ This directory exposes three package scripts that are to be used for testing:
   2. a bundle containing `src/index-liveobjects.ts` and ably-js.
   3. a bundle containing `src/index-modular.ts` and ably-js.
 - `test`: Using the bundles created by `build` and playwright components setup, tests that the code that exercises ably-js’s functionality is working correctly in a browser.
-- `typecheck`: Type-checks the code that imports ably-js.
+- `typecheck`: Type-checks the code that imports ably-js: `src/`, then `isolated-typecheck/`, a separate program that checks the declarations in isolation from what `src/` loads.

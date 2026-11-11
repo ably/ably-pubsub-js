@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "esbuild --bundle src/index-default.ts --outdir=dist && esbuild --bundle src/index-liveobjects.ts --outdir=dist && esbuild --bundle src/index-modular.ts --outdir=dist && esbuild --bundle src/index-pubsub-side.ts --outdir=dist",
-    "typecheck": "tsc --project src -noEmit",
+    "typecheck": "tsc --project src -noEmit && tsc --project isolated-typecheck",
     "test-support:server": "ts-node server/server.ts",
     "test": "npm run test:lib && npm run test:hooks",
     "test:lib": "playwright test -c playwright-lib.config.js",

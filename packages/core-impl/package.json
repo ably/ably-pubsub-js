@@ -1,7 +1,7 @@
 {
   "name": "@ably/pubsub-core-impl",
   "description": "The Ably Pub/Sub implementation, bundled into @ably/pubsub-device and @ably/pubsub-server. Private: never published",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
   "license": "Apache-2.0",
   "exports": {
@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@ably/msgpack-js": "^0.4.0",
-    "@ably/pubsub-core": "3.0.0"
+    "@ably/pubsub-core": "3.1.0"
   },
   "typesVersions": {
     "*": {

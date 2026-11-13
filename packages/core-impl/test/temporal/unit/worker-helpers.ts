@@ -5,6 +5,7 @@
 
 import type * as AblyTypes from '@ably/pubsub-server';
 import type { Info } from '@temporalio/activity';
+import type { LogLevel, LogMetadata, Logger } from '@temporalio/common';
 import { MockActivityEnvironment } from '@temporalio/testing';
 import { DefaultLogger } from '@temporalio/worker';
 import { MockHttpClient, PendingRequest } from '../../uts/mock_http';
@@ -26,6 +27,56 @@ export const workflowActivityInfo: Partial<Info> = {
 /** An activity environment whose context has the given `Info`, and which does not log activity failures. */
 export function activityEnvironment(info: Partial<Info> = workflowActivityInfo): MockActivityEnvironment {
   return new MockActivityEnvironment(info, { logger: new DefaultLogger('ERROR') });
+}
+
+/** A line logged through a {@link CapturingLogger}. */
+export interface LogEntry {
+  level: LogLevel;
+  message: string;
+  meta: LogMetadata;
+}
+
+/** A Temporal logger that keeps every line logged through it. */
+export class CapturingLogger implements Logger {
+  readonly entries: LogEntry[] = [];
+
+  log(level: LogLevel, message: string, meta: LogMetadata = {}): void {
+    this.entries.push({ level, message, meta });
+  }
+
+  trace(message: string, meta?: LogMetadata): void {
+    this.log('TRACE', message, meta);
+  }
+
+  debug(message: string, meta?: LogMetadata): void {
+    this.log('DEBUG', message, meta);
+  }
+
+  info(message: string, meta?: LogMetadata): void {
+    this.log('INFO', message, meta);
+  }
+
+  warn(message: string, meta?: LogMetadata): void {
+    this.log('WARN', message, meta);
+  }
+
+  error(message: string, meta?: LogMetadata): void {
+    this.log('ERROR', message, meta);
+  }
+
+  /** The lines that the Ably plugin logged, which all start with `Ably: `. */
+  get ablyEntries(): LogEntry[] {
+    return this.entries.filter((entry) => entry.message.startsWith('Ably: '));
+  }
+}
+
+/** An activity environment whose context has the given `Info`, and whose logger keeps every line logged. */
+export function capturingActivityEnvironment(info: Partial<Info> = workflowActivityInfo): {
+  env: MockActivityEnvironment;
+  logger: CapturingLogger;
+} {
+  const logger = new CapturingLogger();
+  return { env: new MockActivityEnvironment(info, { logger }), logger };
 }
 
 /** Runs an activity in `env`, as the worker would. */

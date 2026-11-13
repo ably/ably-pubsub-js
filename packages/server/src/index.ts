@@ -1,8 +1,9 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { DefaultPubSubHttpClient, DefaultPubSubRealtimeClient } from '../../core-impl/side/core-clients';
 import { optionsWithSideAgent, serverAgentIdentifier } from '../../core-impl/side/side';
+import { logOptionsOf, optionsWithLogContext } from '../../core-impl/side/logger';
 import type { RealtimeChannelPool, RealtimeChannelPoolOptions } from '../index';
-import { DefaultRealtimeChannelPool } from './channel-pool';
+import { DefaultRealtimeChannelPool, poolClientLogContext } from './channel-pool';
 
 // The public value surface besides the factories. See ../../core-impl/side/core-exports.ts for why
 // the list is enumerated.
@@ -25,5 +26,14 @@ export function createRealtimeChannelPool(
   options: Ably.ClientOptions | string,
   pool?: RealtimeChannelPoolOptions,
 ): RealtimeChannelPool {
-  return new DefaultRealtimeChannelPool(() => createRealtimeClient(options), pool);
+  // The pool logs through its own logger, which follows the clients' logLevel and logHandler, and
+  // tags each client's own lines with the client's index, so that they can be told apart.
+  return new DefaultRealtimeChannelPool(
+    (index) =>
+      new DefaultPubSubRealtimeClient(
+        optionsWithLogContext(optionsWithSideAgent(options, serverAgentIdentifier), poolClientLogContext(index)),
+      ),
+    pool,
+    logOptionsOf(options),
+  );
 }

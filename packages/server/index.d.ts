@@ -87,7 +87,8 @@ export interface RealtimeChannelPoolOptions {
    * How long, in milliseconds, the pool waits before it reconnects a client whose connection has
    * failed. A failed connection does not retry by itself, because its cause, such as an invalid or
    * revoked key, would meet a retry again. The pool retries it so that a long-running process
-   * recovers once the cause is fixed. Defaults to 30000.
+   * recovers once the cause is fixed. The pool logs each reconnect it schedules at `logLevel` 2, with
+   * the connection's reason for failing. Defaults to 30000.
    */
   failedRetryTimeout?: number;
 }

@@ -7,6 +7,8 @@
  * See: specification/uts/rest/unit/helpers/mock_http.md
  */
 
+const msgpack = require('@ably/msgpack-js');
+
 interface ConnectionResult {
   success: boolean;
   error?: { code: string; statusCode: number; message: string };
@@ -14,7 +16,7 @@ interface ConnectionResult {
 
 interface RequestResult {
   error: { message: string; code: number; statusCode: number } | null;
-  body: string | null;
+  body: string | Buffer | null;
   headers: Record<string, string>;
   unpacked: boolean;
   statusCode: number;
@@ -106,8 +108,10 @@ class PendingRequest {
     let error: RequestResult['error'] = null;
 
     if (isError) {
-      // Extract error info from body if present
-      const errBody = typeof body === 'object' && body !== null && body.error ? body.error : null;
+      // Extract error info from body if present; a binary body is a msgpack-encoded response
+      const decodedBody = Buffer.isBuffer(body) ? msgpack.decode(body) : body;
+      const errBody =
+        typeof decodedBody === 'object' && decodedBody !== null && decodedBody.error ? decodedBody.error : null;
       error = {
         message: errBody ? errBody.message : `HTTP ${status}`,
         code: errBody ? errBody.code : status * 100,
@@ -117,7 +121,8 @@ class PendingRequest {
 
     this._resolve!({
       error: error,
-      body: typeof body === 'string' ? body : JSON.stringify(body),
+      // Strings and binary bodies (e.g. msgpack-encoded responses) are passed through as-is
+      body: typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body),
       headers: responseHeaders,
       unpacked: false,
       statusCode: status,

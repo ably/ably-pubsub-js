@@ -1,4 +1,5 @@
-import { ApplicationFailure } from '@temporalio/common';
+import { asyncLocalStorage } from '@temporalio/activity';
+import { ApplicationFailure, TemporalFailure } from '@temporalio/common';
 import { ABLY_ERROR_TYPE } from '../common/errors.js';
 import type { AblyErrorDetails } from '../common/errors.js';
 
@@ -30,18 +31,30 @@ function isErrorInfoLike(err: unknown): err is ErrorInfoLike {
 const TOKEN_CALLBACK_ERROR_CODE = 40170;
 
 /**
- * Whether a failed request is likely to succeed if retried: a server error, a timeout, a rate limit, or an error
- * with no status at all, such as a network failure. A failed `authUrl` or `authCallback` is also retryable, because
- * the cause is often a timeout or network error reaching the application's auth endpoint.
+ * The rule that decides whether a failed request is retried. A request is likely to succeed if retried after a
+ * server error (`5xx`), a timeout (`408`), a rate limit (`429`), or an error with no status at all (`noStatus`), such
+ * as a network failure. A failed `authUrl` or `authCallback` (`40170`) is also retryable, because the cause is often a
+ * timeout or network error reaching the application's auth endpoint. Any other error (`4xx`) is not retried.
  */
-function isRetryable(code: number | null, statusCode: number | undefined): boolean {
-  return (
-    statusCode === undefined ||
-    statusCode >= 500 ||
-    statusCode === 408 ||
-    statusCode === 429 ||
-    code === TOKEN_CALLBACK_ERROR_CODE
-  );
+type RetryRule = '5xx' | '408' | '429' | 'noStatus' | '40170' | '4xx';
+
+function retryRule(code: number | null, statusCode: number | undefined): RetryRule {
+  if (statusCode === undefined) {
+    return 'noStatus';
+  }
+  if (statusCode >= 500) {
+    return '5xx';
+  }
+  if (statusCode === 408) {
+    return '408';
+  }
+  if (statusCode === 429) {
+    return '429';
+  }
+  if (code === TOKEN_CALLBACK_ERROR_CODE) {
+    return '40170';
+  }
+  return '4xx';
 }
 
 /**
@@ -54,11 +67,30 @@ function isRetryable(code: number | null, statusCode: number | undefined): boole
  *
  * Any other error is returned unchanged, and Temporal retries the activity according to its retry policy.
  *
+ * When called from an activity, it logs how it classified an Ably error at DEBUG. It logs any other error, except a
+ * Temporal failure, at WARN on the activity's first attempt only, since Temporal logs every failed attempt itself. It
+ * logs through the activity context's logger, and does not log outside an activity.
+ *
  * @param err - The error thrown by the Ably HTTP client.
  * @returns The error for the activity to throw.
  */
 export function toActivityFailure(err: unknown): unknown {
+  // Undefined outside an activity, where `Context.current()` would throw.
+  const activity = asyncLocalStorage.getStore();
   if (!isErrorInfoLike(err)) {
+    // A Temporal failure, such as a cancellation, is Temporal's own, and Temporal decides whether to retry it.
+    if (activity?.info.attempt === 1 && !(err instanceof TemporalFailure)) {
+      const message = (err as { message?: unknown } | null)?.message;
+      // The stack is not logged. Temporal drops an undefined attribute, such as the message of a value that has none.
+      activity.log.warn(
+        'Ably: passing an error that is not an Ably error to Temporal, which retries it according to the retry policy',
+        {
+          errorName: err instanceof Error ? err.name : typeof err,
+          errorMessage: typeof message === 'string' ? message : undefined,
+          retriedByTemporal: true,
+        },
+      );
+    }
     return err;
   }
 
@@ -79,10 +111,21 @@ export function toActivityFailure(err: unknown): unknown {
     details.detail = err.detail as Record<string, string>;
   }
 
+  const rule = retryRule(code, statusCode);
+  const retryable = rule !== '4xx';
+  // The message and detail are not logged, since they can name channels or clients. Temporal drops a null code and
+  // an undefined status code from the attributes.
+  activity?.log.debug(`Ably: classified the Ably error as ${retryable ? 'retryable' : 'non-retryable'}`, {
+    code,
+    statusCode,
+    retryable,
+    rule,
+  });
+
   return ApplicationFailure.create({
     type: ABLY_ERROR_TYPE,
     message: err.message,
-    nonRetryable: !isRetryable(code, statusCode),
+    nonRetryable: !retryable,
     details: [details],
     cause: err instanceof Error ? err : undefined,
   });

@@ -39,6 +39,9 @@ The plugin ships in the `@ably/pubsub-server` package as two entry points:
   - [Errors from Ably](#errors-from-ably)
   - [Which errors are retried](#which-errors-are-retried)
   - [Errors raised in workflow code](#errors-raised-in-workflow-code)
+- [Logging](#logging)
+  - [What the plugin logs](#what-the-plugin-logs)
+  - [Forwarding the Ably client's logs to Temporal](#forwarding-the-ably-clients-logs-to-temporal)
 - [Binary data and results](#binary-data-and-results)
 - [Pagination](#pagination)
 - [Registering the activities without the plugin](#registering-the-activities-without-the-plugin)
@@ -457,6 +460,87 @@ Some errors are detected in workflow code, before any activity runs:
 - **Calling `first()` or `current()` on a page without a link to that page** throws an `ApplicationFailure` of type `AblyError` with code 40400 and status 404.
 - **Setting both `activityOptions` and `localActivityOptions`** throws a `TypeError` from the `TemporalAblyHttpClient` constructor. This fails the workflow task rather than the workflow, so Temporal retries the task: fix the options and redeploy the worker, and the workflow resumes.
 - **Publishing with idempotent publishing enabled on `@temporalio/workflow` earlier than 1.18.0** throws a `TypeError`, which also fails the workflow task. See [Requirements](#requirements).
+
+## Logging
+
+The plugin logs events on the worker that Temporal cannot see for itself, such as a retry that Ably may apply again. Temporal already logs when each activity starts, completes and fails, so the plugin does not log those again. The plugin logs nothing from workflow code.
+
+The plugin logs through the logger of each activity's context, so its lines go to the worker's `Runtime.logger` and are filtered by that logger's level. Temporal adds its usual activity attributes to each line, such as `activityType`, `attempt`, `workflowId` and `workflowRunId`. Every message starts with `Ably: `, and the plugin's own fields are in the line's attributes. The messages and attributes are diagnostic, and may change in any release, so do not parse them.
+
+`clientOptions.logLevel` and `clientOptions.logHandler` do not affect the plugin's lines. They control the Ably client's own log lines, as they do for any other Ably client, and by default the client only logs errors, to the console.
+
+### What the plugin logs
+
+| Level   | Event                                                                                                                                                                                                          | Attributes                                                                                           |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `WARN`  | A retry of a call that Ably applies again if an earlier attempt reached it, as listed below.                                                                                                                   | `operation`, and a `reason` of `not deduplicated by Ably` or `no message IDs or idempotencyKey`      |
+| `WARN`  | A retry of a call that Ably deduplicates, more than 2 minutes after the activity was first scheduled. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window). | `elapsedMs`, `deduplicationWindowMs`                                                                 |
+| `WARN`  | A call that took more than half of the activity's `startToCloseTimeout`, whether it succeeded or failed.                                                                                                       | `durationMs`, `startToCloseTimeoutMs`                                                                |
+| `WARN`  | An error that is not an Ably error, such as a network error, passed to Temporal unchanged. It is logged on the first attempt only, because Temporal logs every failed attempt.                                 | `errorName`, `errorMessage`, `retriedByTemporal`                                                     |
+| `DEBUG` | An Ably error, and whether the activity fails with it retryably. See [Which errors are retried](#which-errors-are-retried).                                                                                    | `code`, `statusCode`, `retryable`, and a `rule` of `5xx`, `408`, `429`, `noStatus`, `40170` or `4xx` |
+| `DEBUG` | A `request()` that resolved with `success` set to `false`.                                                                                                                                                     | `method`, `statusCode`, `errorCode`                                                                  |
+| `DEBUG` | A `batchPublish()` or `batchPresence()` that failed for some channels.                                                                                                                                         | `successCount`, `failureCount`, and the distinct `errorCodes`                                        |
+
+`operation` is the activity name, such as `ably.channel.appendMessage`. An attribute without a value, such as the `statusCode` of an error that has none, is left out.
+
+The plugin warns of a retry of these calls, with the reason `not deduplicated by Ably`:
+
+- `appendMessage()`. See [Appends are not deduplicated](#appends-are-not-deduplicated).
+- The push admin `publish()`, `createApnsBroadcast()`, `liveActivity.start()` and `liveActivity.update()`. See [Push notifications](#push-notifications).
+- `request()` with a method other than `GET`.
+
+It also warns of a retry of these calls, with the reason `no message IDs or idempotencyKey`, as happens with [`idempotentPublishing: false`](#turning-off-idempotent-publishing):
+
+- A `publish()` or `batchPublish()` in which a message has no `id`.
+- An `annotations.publish()` or `annotations.delete()` whose annotation has no `id`.
+- An `object.publish()` in which an operation has no `id`.
+- An `updateMessage()` or `deleteMessage()` without an `idempotencyKey`.
+
+The worker cannot see when Ably accepted the first attempt of a call, which is when Ably's deduplication window starts. The plugin measures the window from when the activity was first scheduled instead, so it can warn of a retry that Ably still deduplicates.
+
+The plugin does not log the client options, credentials, message or presence data, extras, client IDs, message IDs, idempotency keys, push recipients or payloads, or the path, params, headers or body of a `request()`. It does not log the message of an Ably error, or channel names. Message IDs and idempotency keys are left out because a publisher that learns one can make Ably discard the workflow's call as a duplicate.
+
+The `DEBUG` lines only appear when the worker's `Runtime.logger` logs at `DEBUG` or lower. Its default level is `INFO`:
+
+```typescript
+import { DefaultLogger, Runtime } from '@temporalio/worker';
+
+Runtime.install({ logger: new DefaultLogger('DEBUG') });
+```
+
+### Forwarding the Ably client's logs to Temporal
+
+To send the Ably client's own log lines to Temporal's logger as well, set a `logHandler` in `clientOptions`. The Ably client calls `logHandler` in the async context of the call that logged the line, so inside an activity `asyncLocalStorage.getStore()` from `@temporalio/activity` returns the activity's context, whose logger adds the activity's attributes to the line. Outside an activity, such as when the plugin creates its client, there is no activity context, so pass the logger to use there:
+
+```typescript
+// worker.ts
+import { asyncLocalStorage } from '@temporalio/activity';
+import type { LogLevel, Logger } from '@temporalio/common';
+import { DefaultLogger, Runtime } from '@temporalio/worker';
+import { AblyHttpPlugin } from '@ably/pubsub-server/temporal';
+
+const logger = new DefaultLogger('INFO');
+Runtime.install({ logger });
+
+// The Temporal level of each Ably log level: error, major, minor and micro.
+const temporalLevels: Record<number, LogLevel> = { 1: 'ERROR', 2: 'INFO', 3: 'DEBUG', 4: 'TRACE' };
+
+function forwardAblyLogs(fallback: Logger): (msg: string, level: number) => void {
+  return (msg, level) => {
+    const target = asyncLocalStorage.getStore()?.log ?? fallback;
+    target.log(temporalLevels[level] ?? 'DEBUG', msg);
+  };
+}
+
+const plugin = new AblyHttpPlugin({
+  clientOptions: { key: process.env.ABLY_API_KEY, logLevel: 2, logHandler: forwardAblyLogs(logger) },
+});
+```
+
+`logLevel` still decides which lines the Ably client logs, and `Runtime.logger` then filters them by their Temporal level. Work that the client shares between activities running at the same time, such as a single token request through `authUrl` or `authCallback`, is logged with the attributes of the activity that started it.
+
+> [!WARNING]
+> At `logLevel` 4, the Ably client logs its client options, including your API key, and the body of every request, including message and presence data. Use it only while debugging, and not where the logs are stored or shared.
 
 ## Binary data and results
 

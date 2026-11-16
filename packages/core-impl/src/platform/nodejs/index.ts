@@ -72,4 +72,5 @@ export default {
   DefaultPubSubRealtimeClient,
   msgpack: exportedMsgpack,
   makeProtocolMessageFromDeserialized,
+  Logger,
 };

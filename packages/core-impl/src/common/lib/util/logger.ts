@@ -74,6 +74,8 @@ class Logger {
   private logLevel: LogLevels;
   private logHandler: Function;
   private logErrorHandler: Function;
+  /** Inserted after the `Ably: ` prefix of every line, so that the lines of one client in a group of them can be told apart. Empty when there is no context. */
+  private contextPrefix = '';
 
   // public constants
   static readonly LOG_NONE: LogLevels = LogLevels.None;
@@ -124,13 +126,16 @@ class Logger {
 
   private logAction(level: LogLevels, action: string, message?: string) {
     if (this.shouldLog(level)) {
-      (level === LogLevels.Error ? this.logErrorHandler : this.logHandler)('Ably: ' + action + ': ' + message, level);
+      (level === LogLevels.Error ? this.logErrorHandler : this.logHandler)(
+        'Ably: ' + this.contextPrefix + action + ': ' + message,
+        level,
+      );
     }
   }
 
   deprecationWarning(message: string) {
     if (this.shouldLog(LogLevels.Error)) {
-      this.logErrorHandler(`Ably: Deprecation warning - ${message}`, LogLevels.Error);
+      this.logErrorHandler(`Ably: ${this.contextPrefix}Deprecation warning - ${message}`, LogLevels.Error);
     }
   }
 
@@ -143,6 +148,13 @@ class Logger {
   setLog = (level: LogLevels | undefined, handler?: Function | undefined) => {
     if (level !== undefined) this.logLevel = level;
     if (handler !== undefined) this.logHandler = this.logErrorHandler = handler;
+  };
+
+  /**
+   * Sets the context that tags each line, rendered in brackets after the `Ably: ` prefix, as in `Ably: [pool client 2] Connection state: failed`. With no context, or an empty one, lines are not tagged.
+   */
+  setContext = (context: string | undefined) => {
+    this.contextPrefix = context ? '[' + context + '] ' : '';
   };
 }
 

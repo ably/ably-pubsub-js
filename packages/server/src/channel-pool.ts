@@ -1,5 +1,7 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { ErrorInfo } from '@ably/pubsub-core';
+import { createLogger, Logger } from '../../core-impl/side/logger';
+import type { LoggerInstance, LogOptions } from '../../core-impl/side/logger';
 import type {
   RealtimeChannelPool,
   RealtimeChannelPoolOptions,
@@ -15,11 +17,46 @@ const defaultFailedRetryTimeout = 30000;
 
 type PoolState = 'initialized' | 'opening' | 'open' | 'closing' | 'closed';
 
+/**
+ * How the pool's clients serve calls: through a connected client, by queueing them while no client
+ * is connected, or not at all, rejecting them, while every client is suspended or failed. The pool
+ * logs each change of it, rather than each call it affects.
+ */
+type Availability = 'connected' | 'queueing' | 'rejecting';
+
+/** The connection states that end an attempt, which a client's availability is judged by. */
+const settledStates: readonly Ably.ConnectionState[] = ['connected', 'disconnected', 'suspended', 'failed'];
+
+/** The action of the pool's log lines, other than those of `open()` and `close()`. */
+const logAction = 'RealtimeChannelPool';
+
+/** The tag on each line a pool client logs, and on the pool's own lines about that client. */
+export function poolClientLogContext(index: number): string {
+  return `pool client ${index}`;
+}
+
 interface PooledClient {
+  readonly index: number;
   readonly underlyingClient: Ably.PubSubRealtimeClient;
+  /** Logs the pool's events about this client, tagged as the client's own lines are. */
+  readonly logger: LoggerInstance;
+  /** Follows the client's connection state until the pool closes. */
+  readonly onStateChange: (change: Ably.ConnectionStateChange) => void;
   /** The number of channel names bound to this client, which client selection balances. */
   boundNames: number;
   failedRetryTimer: ReturnType<typeof setTimeout> | null;
+  /**
+   * The state in which the client's latest connection attempt ended, so not `connecting`. A client
+   * that is suspended or failed then counts as unable to serve calls until an attempt connects or
+   * disconnects, rather than each time a retry starts.
+   */
+  settledState: Ably.ConnectionState;
+  /** The id of the client's latest connection, kept for the logs once the connection has gone. */
+  lastConnectionId: string | undefined;
+  /** When the connection failed, if it has not connected since. */
+  failedAt: number | null;
+  /** The number of times the pool has reconnected the client since its connection failed. */
+  reconnectAttempts: number;
 }
 
 /**
@@ -62,6 +99,14 @@ function leastBound(candidates: PooledClient[]): PooledClient {
   return tied[Math.floor(Math.random() * tied.length)];
 }
 
+/**
+ * An error's code and message, for a log line. Never its `toString()`, which includes its `cause`,
+ * and a cause can carry content from the app's `authCallback`.
+ */
+function describeError(err: Ably.ErrorInfo | null | undefined): string {
+  return err ? `${err.code}: ${err.message}` : 'no reason';
+}
+
 function invalidOptionError(name: string, value: unknown, requirement: string): ErrorInfo {
   return ErrorInfo.fromValues({
     message: `Invalid channel pool option ${name}: ${String(value)}`,
@@ -80,10 +125,21 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
   private readonly inFlight = new Set<Promise<void>>();
   private opened: Promise<void> | null = null;
   private closed: Promise<void> | null = null;
+  /** Logs the pool's events that concern no one client, once each, however many clients there are. */
+  private readonly logger: LoggerInstance;
+  /** Judged once the pool is open, from which time each change is logged. */
+  private availability: Availability = 'connected';
 
+  /**
+   * @param createClient - Creates the client at `index` in the pool, whose own lines are tagged with
+   * `poolClientLogContext(index)`.
+   * @param options - The pool's own options.
+   * @param logOptions - The log level and handler of the clients, which the pool's lines follow.
+   */
   constructor(
-    private readonly createClient: () => Ably.PubSubRealtimeClient,
+    private readonly createClient: (index: number) => Ably.PubSubRealtimeClient,
     options: RealtimeChannelPoolOptions = {},
+    private readonly logOptions: LogOptions = {},
   ) {
     const { size = defaultSize, failedRetryTimeout = defaultFailedRetryTimeout } = options;
     if (!Number.isInteger(size) || size < 1) {
@@ -94,6 +150,7 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     }
     this.size = size;
     this.failedRetryTimeout = failedRetryTimeout;
+    this.logger = createLogger(logOptions);
 
     // Bound so that `const { get } = pool` works.
     this.get = this.get.bind(this);
@@ -217,6 +274,16 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     this.unbind(binding);
     binding.client = chosen;
     chosen.boundNames++;
+    if (current) {
+      Logger.logAction(
+        current.logger,
+        Logger.LOG_MINOR,
+        logAction,
+        `channel ${binding.name} moved to ${poolClientLogContext(chosen.index)}, because this client is ${current.underlyingClient.connection.state}`,
+      );
+    } else {
+      Logger.logAction(chosen.logger, Logger.LOG_MICRO, logAction, `channel ${binding.name} bound to this client`);
+    }
     return chosen;
   }
 
@@ -240,8 +307,19 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     this.state = 'opening';
 
     for (let i = 0; i < this.size; i++) {
-      const client: PooledClient = { underlyingClient: this.createClient(), boundNames: 0, failedRetryTimer: null };
-      client.underlyingClient.connection.on('failed', () => this.scheduleReconnect(client));
+      const client: PooledClient = {
+        index: i,
+        underlyingClient: this.createClient(i),
+        logger: createLogger(this.logOptions, poolClientLogContext(i)),
+        onStateChange: (change) => this.onStateChange(client, change),
+        boundNames: 0,
+        failedRetryTimer: null,
+        settledState: 'initialized',
+        lastConnectionId: undefined,
+        failedAt: null,
+        reconnectAttempts: 0,
+      };
+      client.underlyingClient.connection.on(client.onStateChange);
       this.clients.push(client);
       client.underlyingClient.connect();
     }
@@ -264,6 +342,12 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     );
 
     if (this.state !== 'opening') {
+      Logger.logAction(
+        this.logger,
+        Logger.LOG_MINOR,
+        'RealtimeChannelPool.open()',
+        'the pool was closed while it was opening, so open() rejects',
+      );
       throw ErrorInfo.fromValues({
         message: 'Channel pool was closed while it was opening',
         code: 80017,
@@ -275,22 +359,56 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     const failed = this.clients.find((_, i) => outcomes[i] === 'failed');
     if (failed) {
       const reason = failed.underlyingClient.connection.errorReason;
+      Logger.logAction(
+        this.logger,
+        Logger.LOG_MAJOR,
+        'RealtimeChannelPool.open()',
+        `open failed, because a client failed, so the pool closes; ${this.describeClients()}`,
+      );
       await this.close();
       // The client's own error, which already describes the fault and how to fix it.
       throw reason;
     }
 
     this.state = 'open';
+    Logger.logAction(this.logger, Logger.LOG_MAJOR, 'RealtimeChannelPool.open()', `opened; ${this.describeClients()}`);
     // A client that failed after its first attempt failed while reconnects were not yet scheduled.
     for (const client of this.clients) {
       if (client.underlyingClient.connection.state === 'failed') {
         this.scheduleReconnect(client);
       }
     }
+    // If no client is connected, this logs the change from the `connected` availability the pool
+    // starts with.
+    this.updateAvailability();
+  }
+
+  /** How many clients are connected, and the state of each that is not, with its reason's code. */
+  private describeClients(): string {
+    const connected = this.clients.filter((client) => client.underlyingClient.connection.state === 'connected');
+    const others = this.clients
+      .filter((client) => client.underlyingClient.connection.state !== 'connected')
+      .map((client) => {
+        const { state, errorReason } = client.underlyingClient.connection;
+        return `${poolClientLogContext(client.index)} ${state}${errorReason ? ` (${errorReason.code})` : ''}`;
+      });
+    return `${connected.length} of ${this.size} clients connected${others.length > 0 ? `; ${others.join(', ')}` : ''}`;
   }
 
   private async closeClients(): Promise<void> {
     this.state = 'closing';
+    const closingAt = Date.now();
+    Logger.logAction(
+      this.logger,
+      Logger.LOG_MAJOR,
+      'RealtimeChannelPool.close()',
+      `closing; operations in flight=${this.inFlight.size}`,
+    );
+
+    // The pool makes no more decisions about its clients, so it stops following them.
+    for (const client of this.clients) {
+      client.underlyingClient.connection.off(client.onStateChange);
+    }
 
     await Promise.all(this.inFlight);
 
@@ -306,12 +424,107 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     );
 
     this.state = 'closed';
+    Logger.logAction(
+      this.logger,
+      Logger.LOG_MINOR,
+      'RealtimeChannelPool.close()',
+      `closed in ${Date.now() - closingAt} ms`,
+    );
+  }
+
+  private onStateChange(client: PooledClient, change: Ably.ConnectionStateChange): void {
+    const connection = client.underlyingClient.connection;
+    if (change.current === 'connected') {
+      client.lastConnectionId = connection.id;
+      if (client.failedAt !== null) {
+        if (client.reconnectAttempts > 0) {
+          Logger.logAction(
+            client.logger,
+            Logger.LOG_MAJOR,
+            logAction,
+            `connection recovered; connectionId=${connection.id}; pool reconnects=${client.reconnectAttempts}; failed for ${Date.now() - client.failedAt} ms`,
+          );
+        }
+        client.failedAt = null;
+        client.reconnectAttempts = 0;
+      }
+    } else if (change.current === 'failed') {
+      if (client.failedAt === null) {
+        client.failedAt = Date.now();
+      }
+      this.scheduleReconnect(client);
+    }
+
+    if (settledStates.includes(change.current)) {
+      client.settledState = change.current;
+      this.updateAvailability(client);
+    }
+  }
+
+  private judgeAvailability(): Availability {
+    if (this.clients.some((client) => client.settledState === 'connected')) {
+      return 'connected';
+    }
+    if (this.clients.every((client) => client.settledState === 'suspended' || client.settledState === 'failed')) {
+      return 'rejecting';
+    }
+    return 'queueing';
+  }
+
+  /**
+   * Logs a change of availability: at error level when calls start or stop rejecting, since that is
+   * when they fail, and at major level when they start or stop queueing. It runs on a change of a
+   * client's settled state, so its cost is not paid per call.
+   *
+   * @param changed - The client whose change of state this follows, if any.
+   */
+  private updateAvailability(changed?: PooledClient): void {
+    if (this.state !== 'open') {
+      return;
+    }
+    const previous = this.availability;
+    const current = this.judgeAvailability();
+    if (current === previous) {
+      return;
+    }
+    this.availability = current;
+
+    const cause = changed
+      ? `${poolClientLogContext(changed.index)} is ${changed.settledState}`
+      : 'a client changed state';
+    if (previous === 'rejecting') {
+      Logger.logAction(this.logger, Logger.LOG_ERROR, logAction, `calls no longer reject, because ${cause}`);
+    }
+    if (current === 'rejecting') {
+      const clients = this.clients.map(
+        (client) =>
+          `${poolClientLogContext(client.index)} ${client.settledState} (${describeError(client.underlyingClient.connection.errorReason)})`,
+      );
+      Logger.logAction(
+        this.logger,
+        Logger.LOG_ERROR,
+        logAction,
+        `every client is suspended or failed, so calls reject; ${clients.join(', ')}`,
+      );
+    } else if (current === 'queueing') {
+      const clients = this.clients.map((client) => `${poolClientLogContext(client.index)} ${client.settledState}`);
+      Logger.logAction(
+        this.logger,
+        Logger.LOG_MAJOR,
+        logAction,
+        `no client is connected, so calls queue until one connects, unless queueMessages is false; ${clients.join(', ')}`,
+      );
+    } else if (previous === 'queueing') {
+      Logger.logAction(this.logger, Logger.LOG_MAJOR, logAction, `calls no longer queue, because ${cause}`);
+    }
   }
 
   /**
    * A failed client does not retry by itself, so the pool calls `connect()` on it after
    * `failedRetryTimeout`. A long-running process then recovers once the cause, such as a revoked
    * key, is fixed, without a restart. The client logs each failure at error level with its reason.
+   * The pool logs each reconnect it schedules at major level, each attempt at minor level, and the
+   * recovery once the client connects at major level.
    */
   private scheduleReconnect(client: PooledClient): void {
     if (this.state !== 'open') {
@@ -320,11 +533,33 @@ export class DefaultRealtimeChannelPool implements RealtimeChannelPool {
     if (client.failedRetryTimer) {
       clearTimeout(client.failedRetryTimer);
     }
+    const connection = client.underlyingClient.connection;
+    const lastConnection = client.lastConnectionId ? `last connectionId=${client.lastConnectionId}; ` : '';
+    Logger.logAction(
+      client.logger,
+      Logger.LOG_MAJOR,
+      logAction,
+      `connection failed, so the pool reconnects it in ${this.failedRetryTimeout} ms; ${lastConnection}reason=${describeError(connection.errorReason)}`,
+    );
     client.failedRetryTimer = setTimeout(() => {
       client.failedRetryTimer = null;
-      if (this.state === 'open' && client.underlyingClient.connection.state === 'failed') {
-        client.underlyingClient.connect();
+      if (this.state !== 'open' || connection.state !== 'failed') {
+        Logger.logAction(
+          client.logger,
+          Logger.LOG_MICRO,
+          logAction,
+          `reconnect skipped; the pool is ${this.state} and the connection is ${connection.state}`,
+        );
+        return;
       }
+      client.reconnectAttempts++;
+      Logger.logAction(
+        client.logger,
+        Logger.LOG_MINOR,
+        logAction,
+        `reconnecting; attempt ${client.reconnectAttempts} since the connection failed`,
+      );
+      client.underlyingClient.connect();
     }, this.failedRetryTimeout);
   }
 }

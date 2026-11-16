@@ -14,6 +14,13 @@ export default interface ClientOptions
   restAgentOptions?: RestAgentOptions;
   pushFullWait?: boolean;
   agents?: Record<string, string | undefined>;
+  /**
+   * Tags every line this client logs, after the `Ably: ` prefix (see `Logger.setContext`), so that
+   * the lines of the clients in a group of them, such as the realtime channel pool of
+   * `@ably/pubsub-server`, can be told apart. Honoured at runtime, but absent from the public
+   * declarations, like `agents`.
+   */
+  logContext?: string;
 }
 
 export type NormalisedClientOptions = Modify<

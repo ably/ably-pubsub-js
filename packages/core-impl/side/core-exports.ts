@@ -16,8 +16,8 @@
  * classes through ./core-clients.ts.
  *
  * What remains is enumerated rather than spread from the platform entry point, which also exports
- * the client classes, `msgpack` and `makeProtocolMessageFromDeserialized`: those are internal, and
- * exporting them would make them public API of both packages.
+ * the client classes, `msgpack`, `makeProtocolMessageFromDeserialized` and `Logger`: those are
+ * internal, and exporting them would make them public API of both packages.
  *
  * The type surface is handled separately, in each package's hand-written `index.d.ts`.
  */

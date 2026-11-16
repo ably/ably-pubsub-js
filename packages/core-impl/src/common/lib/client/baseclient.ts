@@ -63,6 +63,7 @@ class BaseClient {
 
     this.logger = new Logger();
     this.logger.setLog(options.logLevel, options.logHandler);
+    this.logger.setContext(options.logContext);
     Logger.logAction(
       this.logger,
       Logger.LOG_MICRO,

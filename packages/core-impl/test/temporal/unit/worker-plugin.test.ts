@@ -1,6 +1,7 @@
 import * as http from 'http';
 import type { AddressInfo } from 'net';
 import { expect } from 'chai';
+import { CancelledFailure } from '@temporalio/common';
 import type { WorkerOptions } from '@temporalio/worker';
 import * as WorkerEntryPoint from '../../../src/platform/temporal/src/index';
 import { AblyHttpPlugin } from '../../../src/platform/temporal/src/worker/plugin';
@@ -27,6 +28,10 @@ describe('temporal/worker/plugin', function () {
   let server: http.Server;
   let port: number;
   const received: ReceivedRequest[] = [];
+  /** Whether the server leaves each request without a response. */
+  let hang = false;
+  /** Called once the server has received a request, before it responds. */
+  let onRequest: (() => void) | undefined;
 
   before(async function () {
     server = http.createServer((req, res) => {
@@ -34,6 +39,10 @@ describe('temporal/worker/plugin', function () {
       req.on('data', (chunk) => (body += chunk));
       req.on('end', () => {
         received.push({ method: req.method, url: req.url, headers: req.headers, body });
+        onRequest?.();
+        if (hang) {
+          return;
+        }
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ serials: ['s0'] }));
       });
@@ -43,16 +52,19 @@ describe('temporal/worker/plugin', function () {
   });
 
   after(async function () {
+    server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
   });
 
   beforeEach(function () {
     received.length = 0;
+    hang = false;
+    onRequest = undefined;
   });
 
-  function plugin(): AblyHttpPlugin {
+  function plugin(clientOptions: object = {}): AblyHttpPlugin {
     return new AblyHttpPlugin({
-      clientOptions: { key: KEY, endpoint: 'localhost', port, tls: false, useBinaryProtocol: false },
+      clientOptions: { key: KEY, endpoint: 'localhost', port, tls: false, useBinaryProtocol: false, ...clientOptions },
     });
   }
 
@@ -88,6 +100,35 @@ describe('temporal/worker/plugin', function () {
     const [message] = JSON.parse(received[0].body);
     expect(message).to.include({ name: 'e', data: 'AQID', encoding: 'base64' });
     expect(message).to.not.have.property('extras');
+  });
+
+  it('abandons its request when the activity is cancelled, and fails as cancelled', async function () {
+    hang = true;
+    const env = activityEnvironment();
+    // Cancel once the server holds the request, so that the cancellation always finds it in flight.
+    let cancelledAt = 0;
+    onRequest = () => {
+      cancelledAt = Date.now();
+      env.cancel();
+    };
+
+    let caught: unknown;
+    try {
+      await runActivity(
+        env,
+        configuredActivities(plugin({ fallbackHosts: ['127.0.0.1'], logLevel: 0 }))[ActivityNames.history],
+        toWire({ channel: 'chat' }),
+      );
+    } catch (err) {
+      caught = err;
+    }
+
+    // The request is abandoned at the cancellation, well before its 10 second httpRequestTimeout.
+    expect(cancelledAt).to.be.above(0);
+    expect(Date.now() - cancelledAt).to.be.below(1000);
+    expect(caught).to.be.instanceOf(CancelledFailure);
+    expect(received).to.have.length(1);
+    expect(received[0].headers.host).to.equal(`localhost:${port}`);
   });
 
   it('does not expose its client', function () {

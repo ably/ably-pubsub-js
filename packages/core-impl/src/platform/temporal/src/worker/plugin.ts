@@ -1,7 +1,7 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { createHttpClient } from '@ably/pubsub-server';
 import { SimplePlugin } from '@temporalio/plugin';
-import { createActivities } from './activities.js';
+import { createActivities, currentCancellationSignal } from './activities.js';
 
 /** Options for {@link AblyHttpPlugin}. */
 export interface AblyHttpPluginOptions {
@@ -38,9 +38,24 @@ export class AblyHttpPlugin extends SimplePlugin {
     const clientOptions = validateClientOptions(options);
     super({
       name: 'AblyHttpPlugin',
-      activities: createActivities(createHttpClient(clientOptions)),
+      activities: createActivities(createHttpClient(withCancellation(clientOptions))),
     });
   }
+}
+
+/**
+ * `requestSignal` is an internal option of the Ably client, absent from the public `ClientOptions`. The client calls it
+ * once for each request, and abandons the request once the signal it returns has aborted.
+ */
+type ClientOptionsWithRequestSignal = Ably.ClientOptions & { requestSignal: () => AbortSignal | undefined };
+
+/**
+ * Returns a copy of `clientOptions` that abandons each request once Temporal cancels the activity that makes it, or
+ * times its attempt out.
+ */
+function withCancellation(clientOptions: Ably.ClientOptions): Ably.ClientOptions {
+  const options: ClientOptionsWithRequestSignal = { ...clientOptions, requestSignal: currentCancellationSignal };
+  return options;
 }
 
 /** Returns `options.clientOptions`, after checking that it is an object. */

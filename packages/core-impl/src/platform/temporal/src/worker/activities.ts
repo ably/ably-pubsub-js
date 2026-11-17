@@ -73,7 +73,7 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
       run(async () => {
         const { channel: name, message, operation, options } = input;
         return encode(await leases.use(name, (channel) => channel.appendMessage(message, operation, options)));
-      }, NOT_DEDUPLICATED),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.getMessageVersions]: (input) =>
       run(async () => {
@@ -160,14 +160,6 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
       run(async () => {
         const { method, path, version, params, body, headers } = input;
         const response = await client.request(method, path, version, params, body, headers);
-        if (!response.success) {
-          // The path, params, headers and body are not logged, since they can hold identifiers or secrets.
-          asyncLocalStorage.getStore()?.log.debug('Ably: request() returned an unsuccessful response', {
-            method,
-            statusCode: response.statusCode,
-            errorCode: response.errorCode,
-          });
-        }
         const page: WireHttpPaginatedResponse<unknown> = {
           ...toWirePage(response),
           statusCode: response.statusCode,
@@ -180,47 +172,40 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
           page.errorDetail = response.errorDetail;
         }
         return encode(page);
-      }, requestRetry(input.method)),
+      }),
 
     [ActivityNames.batchPublish]: (input) =>
       run(async () => {
         const { specs } = input;
-        if (Array.isArray(specs)) {
-          const results = await client.batchPublish(specs);
-          logBatchFailures(results);
-          return encode(results);
-        }
-        const result = await client.batchPublish(specs);
-        logBatchFailures([result]);
-        return encode(result);
+        return Array.isArray(specs)
+          ? encode(await client.batchPublish(specs))
+          : encode(await client.batchPublish(specs));
       }, batchPublishRetry(input.specs)),
 
     [ActivityNames.batchPresence]: (input) =>
       run(async () => {
         const { channels } = input;
-        const results = await client.batchPresence(channels);
-        logBatchFailures(results);
-        return encode(results.map(encodeBatchPresenceData));
+        return encode((await client.batchPresence(channels)).map(encodeBatchPresenceData));
       }),
 
     [ActivityNames.pushPublish]: (input) =>
       run(async () => {
         const { recipient, payload } = input;
         await admin().publish(recipient, payload);
-      }, NOT_DEDUPLICATED),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.pushCreateApnsBroadcast]: (input) =>
-      run(async () => encode(await admin().createApnsBroadcast(input.argument)), NOT_DEDUPLICATED),
+      run(async () => encode(await admin().createApnsBroadcast(input.argument)), NOT_IDEMPOTENT),
 
     [ActivityNames.pushLiveActivityStart]: (input) =>
       run(async () => {
         await admin().liveActivity.start(input.argument);
-      }, NOT_DEDUPLICATED),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.pushLiveActivityUpdate]: (input) =>
       run(async () => {
         await admin().liveActivity.update(input.argument);
-      }, NOT_DEDUPLICATED),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.pushLiveActivityEnd]: (input) =>
       run(async () => {
@@ -326,8 +311,8 @@ class ChannelLeases {
  */
 const DEDUPLICATION_WINDOW_MS = 2 * 60 * 1000;
 
-/** The reasons why Ably applies a retried call again. */
-const NOT_DEDUPLICATED = 'not deduplicated by Ably';
+/** The reasons why Ably may apply a retried call more than once. */
+const NOT_IDEMPOTENT = 'operation is not idempotent';
 const NO_IDS = 'no message IDs or idempotencyKey';
 
 /**
@@ -335,40 +320,31 @@ const NO_IDS = 'no message IDs or idempotencyKey';
  * deduplication window. A reason means that Ably applies a retry again. A call whose retry has the same effect as one
  * attempt, such as a read, has none.
  */
-type RetryEffect = 'deduplicated' | typeof NOT_DEDUPLICATED | typeof NO_IDS;
+type RetryEffect = 'deduplicated' | typeof NOT_IDEMPOTENT | typeof NO_IDS;
 
 /**
- * Runs the body of an activity, converting any Ably error it throws into an activity failure.
- *
- * On a retry, it warns when Ably may apply the call again, as described by `retry`. It also warns when the call takes
- * more than half of the activity's `startToCloseTimeout`, because Temporal retries a call that takes longer than the
- * timeout while its attempt can still reach Ably.
+ * Runs the body of an activity, converting any Ably error it throws into an activity failure. On a retry, it warns
+ * when Ably may apply the call more than once, as described by `retry`.
  */
 async function run<T>(body: () => Promise<T>, retry?: RetryEffect): Promise<T> {
   const activity = asyncLocalStorage.getStore();
   if (activity) {
     warnOfRepeatedRetry(activity, retry);
   }
-  const startedAt = Date.now();
   try {
     return await body();
   } catch (err) {
     throw toActivityFailure(err);
-  } finally {
-    if (activity) {
-      warnIfSlow(activity, Date.now() - startedAt);
-    }
   }
 }
 
 function warnOfRepeatedRetry(activity: Context, retry: RetryEffect | undefined): void {
-  const { attempt, activityType, scheduledTimestampMs } = activity.info;
+  const { attempt, scheduledTimestampMs } = activity.info;
   if (attempt <= 1 || retry === undefined) {
     return;
   }
   if (retry !== 'deduplicated') {
-    activity.log.warn('Ably: retrying a call that Ably applies again if an earlier attempt reached it', {
-      operation: activityType,
+    activity.log.warn('Ably: retrying a call that Ably does not deduplicate, so it may be applied more than once', {
       reason: retry,
     });
     return;
@@ -376,19 +352,9 @@ function warnOfRepeatedRetry(activity: Context, retry: RetryEffect | undefined):
   const elapsedMs = Date.now() - scheduledTimestampMs;
   if (elapsedMs > DEDUPLICATION_WINDOW_MS) {
     activity.log.warn(
-      "Ably: retrying a call after Ably's deduplication window, so Ably may apply it again if an earlier attempt reached it",
-      { elapsedMs, deduplicationWindowMs: DEDUPLICATION_WINDOW_MS },
+      "Ably: retrying a call more than 2 minutes after it was first scheduled. Ably's deduplication window may have passed, so the call may be applied more than once. Set scheduleToCloseTimeout in activityOptions to keep retries within the window.",
+      { elapsedMs },
     );
-  }
-}
-
-function warnIfSlow(activity: Context, durationMs: number): void {
-  const { startToCloseTimeoutMs } = activity.info;
-  if (startToCloseTimeoutMs > 0 && durationMs > startToCloseTimeoutMs / 2) {
-    activity.log.warn('Ably: call took more than half of the activity startToCloseTimeout', {
-      durationMs,
-      startToCloseTimeoutMs,
-    });
   }
 }
 
@@ -410,11 +376,6 @@ function idempotencyKeyRetry(options: Ably.PublishOptions | undefined): RetryEff
   return hasString(options, 'idempotencyKey') ? 'deduplicated' : NO_IDS;
 }
 
-/** The retry effect of `request()`. A request other than a `GET` can change state, and Ably does not deduplicate it. */
-function requestRetry(method: string): RetryEffect | undefined {
-  return typeof method === 'string' && method.toUpperCase() === 'GET' ? undefined : NOT_DEDUPLICATED;
-}
-
 /** Whether `value` is an object whose `key` property is a non-empty string. */
 function hasString(value: unknown, key: string): boolean {
   if (typeof value !== 'object' || value === null) {
@@ -426,33 +387,6 @@ function hasString(value: unknown, key: string): boolean {
 
 function toArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value];
-}
-
-/**
- * Logs the counts and distinct error codes of a batch call in which some channels failed. Channel names are not
- * logged.
- */
-function logBatchFailures(batches: Ably.BatchResult<object>[]): void {
-  let successCount = 0;
-  let failureCount = 0;
-  const errorCodes = new Set<number>();
-  for (const batch of batches) {
-    successCount += batch.successCount;
-    failureCount += batch.failureCount;
-    for (const result of batch.results) {
-      const code = 'error' in result ? (result.error as { code?: unknown } | undefined)?.code : undefined;
-      if (typeof code === 'number') {
-        errorCodes.add(code);
-      }
-    }
-  }
-  if (failureCount > 0) {
-    asyncLocalStorage.getStore()?.log.debug('Ably: the batch call failed for some channels', {
-      successCount,
-      failureCount,
-      errorCodes: [...errorCodes].sort((a, b) => a - b),
-    });
-  }
 }
 
 function base64(bytes: Uint8Array): string {

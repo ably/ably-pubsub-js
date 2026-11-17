@@ -463,7 +463,7 @@ Some errors are detected in workflow code, before any activity runs:
 
 ## Logging
 
-The plugin logs events on the worker that Temporal cannot see for itself, such as a retry that Ably may apply again. Temporal already logs when each activity starts, completes and fails, so the plugin does not log those again. The plugin logs nothing from workflow code.
+The plugin logs a warning when Temporal retries a call that Ably may apply more than once, which Temporal cannot tell for itself. Temporal already logs when each activity completes and fails, with the error and the duration, so the plugin does not log those again. The plugin logs nothing from workflow code.
 
 The plugin logs through the logger of each activity's context, so its lines go to the worker's `Runtime.logger` and are filtered by that logger's level. Temporal adds its usual activity attributes to each line, such as `activityType`, `attempt`, `workflowId` and `workflowRunId`. Every message starts with `Ably: `, and the plugin's own fields are in the line's attributes. The messages and attributes are diagnostic, and may change in any release, so do not parse them.
 
@@ -471,23 +471,17 @@ The plugin logs through the logger of each activity's context, so its lines go t
 
 ### What the plugin logs
 
-| Level   | Event                                                                                                                                                                                                          | Attributes                                                                                           |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `WARN`  | A retry of a call that Ably applies again if an earlier attempt reached it, as listed below.                                                                                                                   | `operation`, and a `reason` of `not deduplicated by Ably` or `no message IDs or idempotencyKey`      |
-| `WARN`  | A retry of a call that Ably deduplicates, more than 2 minutes after the activity was first scheduled. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window). | `elapsedMs`, `deduplicationWindowMs`                                                                 |
-| `WARN`  | A call that took more than half of the activity's `startToCloseTimeout`, whether it succeeded or failed.                                                                                                       | `durationMs`, `startToCloseTimeoutMs`                                                                |
-| `WARN`  | An error that is not an Ably error, such as a network error, passed to Temporal unchanged. It is logged on the first attempt only, because Temporal logs every failed attempt.                                 | `errorName`, `errorMessage`, `retriedByTemporal`                                                     |
-| `DEBUG` | An Ably error, and whether the activity fails with it retryably. See [Which errors are retried](#which-errors-are-retried).                                                                                    | `code`, `statusCode`, `retryable`, and a `rule` of `5xx`, `408`, `429`, `noStatus`, `40170` or `4xx` |
-| `DEBUG` | A `request()` that resolved with `success` set to `false`.                                                                                                                                                     | `method`, `statusCode`, `errorCode`                                                                  |
-| `DEBUG` | A `batchPublish()` or `batchPresence()` that failed for some channels.                                                                                                                                         | `successCount`, `failureCount`, and the distinct `errorCodes`                                        |
+The plugin logs two warnings, both at `WARN` and only on an attempt after the first:
 
-`operation` is the activity name, such as `ably.channel.appendMessage`. An attribute without a value, such as the `statusCode` of an error that has none, is left out.
+| Event                                                                                                                                                                                                          | Attributes                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| A retry of a call that Ably does not deduplicate, as listed below.                                                                                                                                             | `reason`: `operation is not idempotent` or `no message IDs or idempotencyKey` |
+| A retry of a call that Ably deduplicates, more than 2 minutes after the activity was first scheduled. See [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window). | `elapsedMs`                                                                   |
 
-The plugin warns of a retry of these calls, with the reason `not deduplicated by Ably`:
+The plugin warns of a retry of these calls, with the reason `operation is not idempotent`:
 
 - `appendMessage()`. See [Appends are not deduplicated](#appends-are-not-deduplicated).
 - The push admin `publish()`, `createApnsBroadcast()`, `liveActivity.start()` and `liveActivity.update()`. See [Push notifications](#push-notifications).
-- `request()` with a method other than `GET`.
 
 It also warns of a retry of these calls, with the reason `no message IDs or idempotencyKey`, as happens with [`idempotentPublishing: false`](#turning-off-idempotent-publishing):
 
@@ -496,17 +490,11 @@ It also warns of a retry of these calls, with the reason `no message IDs or idem
 - An `object.publish()` in which an operation has no `id`.
 - An `updateMessage()` or `deleteMessage()` without an `idempotencyKey`.
 
+The plugin does not warn of a retry of `request()`, because it cannot tell whether Ably deduplicates the request.
+
 The worker cannot see when Ably accepted the first attempt of a call, which is when Ably's deduplication window starts. The plugin measures the window from when the activity was first scheduled instead, so it can warn of a retry that Ably still deduplicates.
 
 The plugin does not log the client options, credentials, message or presence data, extras, client IDs, message IDs, idempotency keys, push recipients or payloads, or the path, params, headers or body of a `request()`. It does not log the message of an Ably error, or channel names. Message IDs and idempotency keys are left out because a publisher that learns one can make Ably discard the workflow's call as a duplicate.
-
-The `DEBUG` lines only appear when the worker's `Runtime.logger` logs at `DEBUG` or lower. Its default level is `INFO`:
-
-```typescript
-import { DefaultLogger, Runtime } from '@temporalio/worker';
-
-Runtime.install({ logger: new DefaultLogger('DEBUG') });
-```
 
 ### Forwarding the Ably client's logs to Temporal
 

@@ -7,6 +7,7 @@ import * as WorkerEntryPoint from '../../../src/platform/temporal/src/index';
 import { AblyHttpPlugin } from '../../../src/platform/temporal/src/worker/plugin';
 import { ActivityNames } from '../../../src/platform/temporal/src/common/activities';
 import { activityEnvironment, runActivity, toWire } from './worker-helpers';
+import { version as serverVersion } from '../../../../server/package.json';
 
 const KEY = 'appId.keyId:keySecret';
 
@@ -70,6 +71,11 @@ describe('temporal/worker/plugin', function () {
 
   it('is named AblyHttpPlugin', function () {
     expect(plugin().name).to.equal('AblyHttpPlugin');
+  });
+
+  it('has the version of @ably/pubsub-server, for the worker to report', function () {
+    expect(serverVersion).to.match(/^\d+\.\d+\.\d+/);
+    expect(plugin().version).to.equal(serverVersion);
   });
 
   it('registers every Ably activity alongside the application activities', function () {

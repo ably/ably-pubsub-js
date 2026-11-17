@@ -18,7 +18,7 @@ The three packages (`@ably/pubsub-core`, `@ably/pubsub-device`, `@ably/pubsub-se
 1. Make sure the tests are passing in CI for the branch you're building
 2. Create a new branch for the release, for example `release/1.2.3`
 3. Update the CHANGELOG.md with any customer-affecting changes since the last release and add this to the git index
-4. Run `npm run release:bump <VERSION_NUMBER>` with the new version and add the changes to the git index (this moves every version site together: the root and workspace `package.json` files, the exact `@ably/pubsub-core` dependency pins, the react-hooks version constant, and the lockfile)
+4. Run `npm run release:bump <VERSION_NUMBER>` with the new version and add the changes to the git index (this moves every version site together: the root and workspace `package.json` files, the exact `@ably/pubsub-core` dependency pins, the version constants of the React hooks and the Temporal plugin, and the lockfile)
 5. Create a PR for the release branch
 6. Once the release PR is landed to the `main` branch, checkout the `main` branch locally (remember to pull the remote changes)
 7. Run `git tag <VERSION_NUMBER>` with the new version and push the tag to GitHub with `git push <REMOTE> <VERSION_NUMBER>` (usually `git push origin <VERSION_NUMBER>`)

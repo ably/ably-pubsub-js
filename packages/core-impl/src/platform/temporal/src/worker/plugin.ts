@@ -1,6 +1,7 @@
 import type * as Ably from '@ably/pubsub-core/api';
 import { createHttpClient } from '@ably/pubsub-server';
 import { SimplePlugin } from '@temporalio/plugin';
+import { version } from '../version.js';
 import { createActivities, currentCancellationSignal } from './activities.js';
 
 /** Options for {@link AblyHttpPlugin}. */
@@ -38,6 +39,7 @@ export class AblyHttpPlugin extends SimplePlugin {
     const clientOptions = validateClientOptions(options);
     super({
       name: 'AblyHttpPlugin',
+      version,
       activities: createActivities(createHttpClient(withCancellation(clientOptions))),
     });
   }

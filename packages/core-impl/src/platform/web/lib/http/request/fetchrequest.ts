@@ -33,6 +33,7 @@ export default async function fetchRequest(
   headers: Record<string, string> | null,
   params: RequestParams,
   body: RequestBody | null,
+  signal?: AbortSignal,
 ): Promise<RequestResult> {
   const fetchHeaders = new Headers(headers || {});
   const _method = method ? method.toUpperCase() : Utils.isNil(body) ? 'GET' : 'POST';
@@ -108,5 +109,11 @@ export default async function fetchRequest(
     }
   })();
 
-  return Promise.race([timeoutPromise, resultPromise]);
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  try {
+    return await Promise.race([timeoutPromise, resultPromise]);
+  } finally {
+    signal?.removeEventListener('abort', abort);
+  }
 }

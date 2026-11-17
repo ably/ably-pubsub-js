@@ -54,6 +54,7 @@ const Http: IPlatformHttpStatic = class {
     headers: Record<string, string> | null,
     body: RequestBody | null,
     params: RequestParams,
+    signal?: AbortSignal,
   ): Promise<RequestResult> {
     /* Will generally be making requests to one or two servers exclusively
      * (Ably and perhaps an auth server), so for efficiency, use the
@@ -94,14 +95,20 @@ const Http: IPlatformHttpStatic = class {
     // the same endpoint, inappropriately retrying 429s, etc
     doOptions.retry = { limit: 0 };
 
+    const request = got[method](doOptions) as CancelableRequest<Response>;
+    // This version of got takes no AbortSignal, so the request is cancelled when the signal aborts.
+    const cancel = () => request.cancel();
+    signal?.addEventListener('abort', cancel, { once: true });
     try {
-      const res = await (got[method](doOptions) as CancelableRequest<Response>);
+      const res = await request;
       return this._handler(null, res, res.body);
     } catch (err) {
       if (err instanceof got.HTTPError) {
         return this._handler(null, err.response, err.response.body);
       }
       return this._handler(err as ErrnoException);
+    } finally {
+      signal?.removeEventListener('abort', cancel);
     }
   }
 

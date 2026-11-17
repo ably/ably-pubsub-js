@@ -75,6 +75,8 @@ class PendingRequest {
   headers: Record<string, string>;
   body: any;
   params: Record<string, string> | null;
+  /** The signal that the client passed to abandon this request, if any. */
+  signal: AbortSignal | undefined;
   timestamp: number;
   _resolve: ((value: RequestResult) => void) | null;
   _promise: Promise<RequestResult>;
@@ -85,6 +87,7 @@ class PendingRequest {
     headers?: Record<string, string>,
     body?: any,
     params?: Record<string, string> | null,
+    signal?: AbortSignal,
   ) {
     this.method = method;
     this.url = new URL(uri);
@@ -92,6 +95,7 @@ class PendingRequest {
     this.headers = headers || {};
     this.body = body;
     this.params = params || null;
+    this.signal = signal;
     this.timestamp = Date.now();
     this._resolve = null;
     this._promise = new Promise((resolve) => {
@@ -122,6 +126,17 @@ class PendingRequest {
       unpacked: false,
       statusCode: status,
     });
+  }
+
+  /** Request cancelled by the client, as the Node.js HTTP client fails it once its signal aborts */
+  respond_with_cancel(): void {
+    // A cancelled request has no response, so no status code.
+    this._resolve!({
+      error: { name: 'CancelError', code: 'ERR_CANCELED', message: 'Promise was canceled' } as any,
+      body: null,
+      headers: {},
+      unpacked: false,
+    } as RequestResult);
   }
 
   /** Request times out after connection established */
@@ -234,6 +249,7 @@ class MockHttpClient {
         headers: Record<string, string>,
         body: any,
         params: Record<string, string>,
+        signal?: AbortSignal,
       ): Promise<RequestResult> {
         // Phase 1: Connection attempt
         let parsedUrl: URL;
@@ -283,7 +299,9 @@ class MockHttpClient {
         }
 
         // Phase 2: HTTP request (use parsedUrl which includes params)
-        const req = new PendingRequest(method, parsedUrl.href, headers, body, params);
+        const req = new PendingRequest(method, parsedUrl.href, headers, body, params, signal);
+        // Fails the request when the signal aborts, as the Node.js HTTP client does by cancelling it.
+        signal?.addEventListener('abort', () => req.respond_with_cancel(), { once: true });
         mock.captured_requests.push(req);
 
         // Notify handler or waiter

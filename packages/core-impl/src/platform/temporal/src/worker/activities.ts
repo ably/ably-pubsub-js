@@ -1,4 +1,6 @@
 import type * as Ably from '@ably/pubsub-core/api';
+import { asyncLocalStorage } from '@temporalio/activity';
+import type { Context } from '@temporalio/activity';
 import { ActivityNames } from '../common/activities.js';
 import type { AblyActivities } from '../common/activities.js';
 import { encodeBinaryData, mapOperationBytes, toWireValue } from '../common/wire.js';
@@ -34,7 +36,7 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
       run(async () => {
         const { channel: name, messages, options } = input;
         return encode(await leases.use(name, (channel) => channel.publish(messages, options)));
-      }),
+      }, idRetry(input.messages)),
 
     [ActivityNames.history]: (input) =>
       run(async () => {
@@ -59,19 +61,19 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
       run(async () => {
         const { channel: name, message, operation, options } = input;
         return encode(await leases.use(name, (channel) => channel.updateMessage(message, operation, options)));
-      }),
+      }, idempotencyKeyRetry(input.options)),
 
     [ActivityNames.deleteMessage]: (input) =>
       run(async () => {
         const { channel: name, message, operation, options } = input;
         return encode(await leases.use(name, (channel) => channel.deleteMessage(message, operation, options)));
-      }),
+      }, idempotencyKeyRetry(input.options)),
 
     [ActivityNames.appendMessage]: (input) =>
       run(async () => {
         const { channel: name, message, operation, options } = input;
         return encode(await leases.use(name, (channel) => channel.appendMessage(message, operation, options)));
-      }),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.getMessageVersions]: (input) =>
       run(async () => {
@@ -99,24 +101,30 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
       }),
 
     [ActivityNames.annotationsPublish]: (input) =>
-      run(async () => {
-        const { channel: name, messageOrSerial, annotation } = input;
-        await leases.use(name, ({ annotations }) =>
-          typeof messageOrSerial === 'string'
-            ? annotations.publish(messageOrSerial, annotation)
-            : annotations.publish(messageOrSerial, annotation),
-        );
-      }),
+      run(
+        async () => {
+          const { channel: name, messageOrSerial, annotation } = input;
+          await leases.use(name, ({ annotations }) =>
+            typeof messageOrSerial === 'string'
+              ? annotations.publish(messageOrSerial, annotation)
+              : annotations.publish(messageOrSerial, annotation),
+          );
+        },
+        idRetry([input.annotation]),
+      ),
 
     [ActivityNames.annotationsDelete]: (input) =>
-      run(async () => {
-        const { channel: name, messageOrSerial, annotation } = input;
-        await leases.use(name, ({ annotations }) =>
-          typeof messageOrSerial === 'string'
-            ? annotations.delete(messageOrSerial, annotation)
-            : annotations.delete(messageOrSerial, annotation),
-        );
-      }),
+      run(
+        async () => {
+          const { channel: name, messageOrSerial, annotation } = input;
+          await leases.use(name, ({ annotations }) =>
+            typeof messageOrSerial === 'string'
+              ? annotations.delete(messageOrSerial, annotation)
+              : annotations.delete(messageOrSerial, annotation),
+          );
+        },
+        idRetry([input.annotation]),
+      ),
 
     [ActivityNames.annotationsGet]: (input) =>
       run(async () => {
@@ -144,7 +152,7 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
           ? operations.map((operation) => mapOperationBytes(operation, decodeBytes))
           : mapOperationBytes(operations, decodeBytes);
         return encode(await leases.use(name, (channel) => channel.object.publish(decoded)));
-      }),
+      }, idRetry(input.operations)),
 
     [ActivityNames.time]: () => run(async () => encode(await client.time())),
 
@@ -172,7 +180,7 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
         return Array.isArray(specs)
           ? encode(await client.batchPublish(specs))
           : encode(await client.batchPublish(specs));
-      }),
+      }, batchPublishRetry(input.specs)),
 
     [ActivityNames.batchPresence]: (input) =>
       run(async () => {
@@ -184,20 +192,20 @@ export function createActivities(client: Ably.PubSubHttpClient): AblyActivities 
       run(async () => {
         const { recipient, payload } = input;
         await admin().publish(recipient, payload);
-      }),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.pushCreateApnsBroadcast]: (input) =>
-      run(async () => encode(await admin().createApnsBroadcast(input.argument))),
+      run(async () => encode(await admin().createApnsBroadcast(input.argument)), NOT_IDEMPOTENT),
 
     [ActivityNames.pushLiveActivityStart]: (input) =>
       run(async () => {
         await admin().liveActivity.start(input.argument);
-      }),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.pushLiveActivityUpdate]: (input) =>
       run(async () => {
         await admin().liveActivity.update(input.argument);
-      }),
+      }, NOT_IDEMPOTENT),
 
     [ActivityNames.pushLiveActivityEnd]: (input) =>
       run(async () => {
@@ -297,13 +305,88 @@ class ChannelLeases {
   }
 }
 
-/** Runs the body of an activity, converting any Ably error it throws into an activity failure. */
-async function run<T>(body: () => Promise<T>): Promise<T> {
+/**
+ * How long after Ably accepts a call it deduplicates a retry of it. The worker cannot see when Ably accepted the first
+ * attempt, so the activity's first scheduled time stands in for it.
+ */
+const DEDUPLICATION_WINDOW_MS = 2 * 60 * 1000;
+
+/** The reasons why Ably may apply a retried call more than once. */
+const NOT_IDEMPOTENT = 'operation is not idempotent';
+const NO_IDS = 'no message IDs or idempotencyKey';
+
+/**
+ * What Ably does with a retry of a call that reached it. `deduplicated` means that Ably discards a retry within its
+ * deduplication window. A reason means that Ably applies a retry again. A call whose retry has the same effect as one
+ * attempt, such as a read, has none.
+ */
+type RetryEffect = 'deduplicated' | typeof NOT_IDEMPOTENT | typeof NO_IDS;
+
+/**
+ * Runs the body of an activity, converting any Ably error it throws into an activity failure. On a retry, it warns
+ * when Ably may apply the call more than once, as described by `retry`.
+ */
+async function run<T>(body: () => Promise<T>, retry?: RetryEffect): Promise<T> {
+  const activity = asyncLocalStorage.getStore();
+  if (activity) {
+    warnOfRepeatedRetry(activity, retry);
+  }
   try {
     return await body();
   } catch (err) {
     throw toActivityFailure(err);
   }
+}
+
+function warnOfRepeatedRetry(activity: Context, retry: RetryEffect | undefined): void {
+  const { attempt, scheduledTimestampMs } = activity.info;
+  if (attempt <= 1 || retry === undefined) {
+    return;
+  }
+  if (retry !== 'deduplicated') {
+    activity.log.warn('Ably: retrying a call that Ably does not deduplicate, so it may be applied more than once', {
+      reason: retry,
+    });
+    return;
+  }
+  const elapsedMs = Date.now() - scheduledTimestampMs;
+  if (elapsedMs > DEDUPLICATION_WINDOW_MS) {
+    activity.log.warn(
+      "Ably: retrying a call more than 2 minutes after it was first scheduled. Ably's deduplication window may have passed, so the call may be applied more than once. Set scheduleToCloseTimeout in activityOptions to keep retries within the window.",
+      { elapsedMs },
+    );
+  }
+}
+
+/**
+ * The retry effect of a call that sends messages, annotations or LiveObjects operations, which Ably deduplicates only
+ * when every one of them has an ID.
+ */
+function idRetry(items: unknown): RetryEffect {
+  return toArray(items).every((item) => hasString(item, 'id')) ? 'deduplicated' : NO_IDS;
+}
+
+/** The retry effect of `batchPublish()`, which Ably deduplicates only when every message in every spec has an ID. */
+function batchPublishRetry(specs: Ably.BatchPublishSpec | Ably.BatchPublishSpec[]): RetryEffect {
+  return idRetry(toArray(specs).flatMap((spec) => toArray<unknown>(spec?.messages)));
+}
+
+/** The retry effect of an update or delete, which Ably deduplicates only when it has an `idempotencyKey`. */
+function idempotencyKeyRetry(options: Ably.PublishOptions | undefined): RetryEffect {
+  return hasString(options, 'idempotencyKey') ? 'deduplicated' : NO_IDS;
+}
+
+/** Whether `value` is an object whose `key` property is a non-empty string. */
+function hasString(value: unknown, key: string): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const property = (value as Record<string, unknown>)[key];
+  return typeof property === 'string' && property !== '';
+}
+
+function toArray<T>(value: T | T[]): T[] {
+  return Array.isArray(value) ? value : [value];
 }
 
 function base64(bytes: Uint8Array): string {

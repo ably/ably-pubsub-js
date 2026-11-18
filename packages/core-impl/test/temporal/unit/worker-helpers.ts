@@ -105,11 +105,17 @@ export interface MockAbly {
 
 /**
  * Installs a mock HTTP client that passes every request to `handler`, and returns an HTTP client built from source
- * that uses it. Call `restoreAll()` from the UTS helpers in `afterEach`.
+ * that uses it. `clientOptions` are added to the client's options. Call `restoreAll()` from the UTS helpers in
+ * `afterEach`.
  */
 export function mockAbly(
   handler: (req: PendingRequest) => void,
-  options: { liveObjects?: boolean; useBinaryProtocol?: boolean; refuseConnections?: boolean } = {},
+  options: {
+    liveObjects?: boolean;
+    useBinaryProtocol?: boolean;
+    refuseConnections?: boolean;
+    clientOptions?: Record<string, unknown>;
+  } = {},
 ): MockAbly {
   const requests: PendingRequest[] = [];
   installMockHttp(
@@ -127,6 +133,7 @@ export function mockAbly(
     logLevel: 0,
     useBinaryProtocol: options.useBinaryProtocol ?? false,
     ...(options.liveObjects ? { plugins: { LiveObjects: LiveObjectsPlugin } } : {}),
+    ...options.clientOptions,
   });
   return { client: client as unknown as AblyTypes.PubSubHttpClient, requests };
 }

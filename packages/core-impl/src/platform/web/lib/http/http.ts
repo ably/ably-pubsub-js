@@ -55,8 +55,9 @@ const Http = class {
         headers: Record<string, string> | null,
         params: RequestParams,
         body: RequestBody | null,
+        signal?: AbortSignal,
       ) {
-        return new Promise((resolve) => {
+        return new Promise<RequestResult>((resolve) => {
           const req = xhrRequestImplementation.createRequest(
             uri,
             headers,
@@ -67,6 +68,12 @@ const Http = class {
             this.logger,
             method,
           );
+          // XHRRequest.abort() discards the request without completing it, so the abort completes it here.
+          const abort = () => {
+            req.abort();
+            resolve({ error: new PartialErrorInfo('Request aborted', null, 400) });
+          };
+          signal?.addEventListener('abort', abort, { once: true });
           req.once(
             'complete',
             (
@@ -75,7 +82,10 @@ const Http = class {
               headers: RequestResult['headers'],
               unpacked: RequestResult['unpacked'],
               statusCode: RequestResult['statusCode'],
-            ) => resolve({ error, body, headers, unpacked, statusCode }),
+            ) => {
+              signal?.removeEventListener('abort', abort);
+              resolve({ error, body, headers, unpacked, statusCode });
+            },
           );
           req.exec();
         });
@@ -114,8 +124,8 @@ const Http = class {
       }
     } else if (Platform.Config.fetchSupported && fetchRequestImplementation) {
       this.supportsAuthHeaders = true;
-      this.Request = async (method, uri, headers, params, body) => {
-        return fetchRequestImplementation(method, client ?? null, uri, headers, params, body);
+      this.Request = async (method, uri, headers, params, body, signal) => {
+        return fetchRequestImplementation(method, client ?? null, uri, headers, params, body, signal);
       };
 
       if (client?.options.disableConnectivityCheck) {
@@ -156,11 +166,12 @@ const Http = class {
     headers: Record<string, string> | null,
     body: RequestBody | null,
     params: RequestParams,
+    signal?: AbortSignal,
   ): Promise<RequestResult> {
     if (!this.Request) {
       return { error: new PartialErrorInfo('Request invoked before assigned to', null, 500) };
     }
-    return this.Request(method, uri, headers, params, body);
+    return this.Request(method, uri, headers, params, body, signal);
   }
 
   private Request?: (
@@ -169,6 +180,7 @@ const Http = class {
     headers: Record<string, string> | null,
     params: RequestParams,
     body: RequestBody | null,
+    signal?: AbortSignal,
   ) => Promise<RequestResult>;
 
   checkConnectivity?: () => Promise<boolean> = undefined;

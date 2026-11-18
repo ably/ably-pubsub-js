@@ -63,8 +63,15 @@ const requiredArtifacts = {
   'packages/server': ['dist/index.js', 'dist/index.mjs', 'dist/node.js', 'index.d.mts'],
 };
 
-const reactHooksFile = 'packages/core-impl/src/platform/react-hooks/src/PubSubReactHooks.ts';
-const reactHooksVersionRe = /^export const version = '([^']+)';$/m;
+/**
+ * Source files that hold the release version as a constant, which `npm version` does not rewrite: the React hooks'
+ * agent string, and the version that the Temporal worker plugin reports to Temporal.
+ */
+const versionConstantFiles = [
+  'packages/core-impl/src/platform/react-hooks/src/PubSubReactHooks.ts',
+  'packages/core-impl/src/platform/temporal/src/version.ts',
+];
+const versionConstantRe = /^export const version = '([^']+)';$/m;
 
 function readJson(relPath) {
   return JSON.parse(fs.readFileSync(path.join(repoRoot, relPath), 'utf8'));
@@ -94,9 +101,10 @@ function versionSites() {
       version: readJson(`${dir}/package.json`).dependencies['@ably/pubsub-core'],
     });
   }
-  const reactHooksSource = fs.readFileSync(path.join(repoRoot, reactHooksFile), 'utf8');
-  const match = reactHooksSource.match(reactHooksVersionRe);
-  sites.push({ name: `${reactHooksFile} (version constant)`, version: match ? match[1] : '<not found>' });
+  for (const file of versionConstantFiles) {
+    const match = fs.readFileSync(path.join(repoRoot, file), 'utf8').match(versionConstantRe);
+    sites.push({ name: `${file} (version constant)`, version: match ? match[1] : '<not found>' });
+  }
   return sites;
 }
 
@@ -139,13 +147,15 @@ function bump(version) {
     writeJson(relPath, pkg);
   }
 
-  // The react-hooks agent constant is source, not package metadata, so npm version misses it.
-  const reactHooksPath = path.join(repoRoot, reactHooksFile);
-  const source = fs.readFileSync(reactHooksPath, 'utf8');
-  if (!reactHooksVersionRe.test(source)) {
-    fail(`could not find the version constant in ${reactHooksFile}; update versionSites() if it moved`);
+  // The version constants are source, not package metadata, so npm version misses them.
+  for (const file of versionConstantFiles) {
+    const filePath = path.join(repoRoot, file);
+    const source = fs.readFileSync(filePath, 'utf8');
+    if (!versionConstantRe.test(source)) {
+      fail(`could not find the version constant in ${file}; update versionConstantFiles if it moved`);
+    }
+    fs.writeFileSync(filePath, source.replace(versionConstantRe, `export const version = '${version}';`));
   }
-  fs.writeFileSync(reactHooksPath, source.replace(reactHooksVersionRe, `export const version = '${version}';`));
 
   // Refresh the lockfile's records of the workspace versions.
   execSync('npm install --package-lock-only', { cwd: repoRoot, stdio: 'inherit' });

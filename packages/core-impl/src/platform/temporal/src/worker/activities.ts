@@ -21,6 +21,11 @@ import { toActivityFailure } from './errors.js';
  * The failure is retryable only when the error is likely to be transient, such as a 5xx response, a timeout, a
  * rate limit or a network failure.
  *
+ * While an activity with a `heartbeatTimeout` waits for Ably, it heartbeats every half of that timeout. The client
+ * that {@link AblyHttpPlugin} creates also abandons its request, and tries no further host, once Temporal cancels the
+ * activity or times the attempt out, and the activity then fails as cancelled. A `client` that you create is not
+ * stopped, so one call can keep trying fallback hosts after Temporal has cancelled the activity.
+ *
  * Accessing `channel.object` requires `client` to have been constructed with the `LiveObjects` plugin from
  * `@ably/pubsub-server/liveobjects`. Without it, the `ably.channel.object.*` activities fail non-retryably.
  *
@@ -323,19 +328,54 @@ const NO_IDS = 'no message IDs or idempotencyKey';
 type RetryEffect = 'deduplicated' | typeof NOT_IDEMPOTENT | typeof NO_IDS;
 
 /**
- * Runs the body of an activity, converting any Ably error it throws into an activity failure. On a retry, it warns
- * when Ably may apply the call more than once, as described by `retry`.
+ * Returns the cancellation signal of the activity attempt making a request, or `undefined` outside an activity.
+ * {@link AblyHttpPlugin} passes it to its client as the internal `requestSignal` option, so that the client abandons
+ * the request once Temporal cancels the activity or times the attempt out.
+ */
+export function currentCancellationSignal(): AbortSignal | undefined {
+  return asyncLocalStorage.getStore()?.cancellationSignal;
+}
+
+/**
+ * Runs the body of an activity, converting any Ably error it throws into an activity failure. Once Temporal has
+ * cancelled the activity or timed the attempt out, it throws the cancellation instead, whatever the body threw, so
+ * that the worker reports the attempt as cancelled.
+ *
+ * While the body runs, it heartbeats as {@link heartbeatUntilSettled} describes.
+ *
+ * On a retry, it warns when Ably may apply the call more than once, as described by `retry`.
  */
 async function run<T>(body: () => Promise<T>, retry?: RetryEffect): Promise<T> {
   const activity = asyncLocalStorage.getStore();
   if (activity) {
     warnOfRepeatedRetry(activity, retry);
   }
+  const stopHeartbeating = activity ? heartbeatUntilSettled(activity) : undefined;
   try {
     return await body();
   } catch (err) {
+    if (activity?.cancellationSignal.aborted) {
+      throw activity.cancellationSignal.reason;
+    }
     throw toActivityFailure(err);
+  } finally {
+    stopHeartbeating?.();
   }
+}
+
+/**
+ * Heartbeats every half of the activity's `heartbeatTimeout` until the returned function is called, so that Temporal
+ * does not time out an attempt that is still waiting for Ably, and so that the activity learns of its cancellation,
+ * which Temporal delivers in the response to a heartbeat. An activity without a `heartbeatTimeout` must not heartbeat,
+ * so for one it does nothing.
+ */
+function heartbeatUntilSettled(activity: Context): () => void {
+  const { heartbeatTimeoutMs } = activity.info;
+  if (heartbeatTimeoutMs === undefined || heartbeatTimeoutMs <= 0) {
+    return () => {};
+  }
+  const timer = setInterval(() => activity.heartbeat(), heartbeatTimeoutMs / 2);
+  return () => clearInterval(timer);
 }
 
 function warnOfRepeatedRetry(activity: Context, retry: RetryEffect | undefined): void {

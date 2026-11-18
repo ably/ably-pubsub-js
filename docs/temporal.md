@@ -31,6 +31,7 @@ The plugin ships in the `@ably/pubsub-server` package as two entry points:
 - [Retries and idempotency](#retries-and-idempotency)
   - [Calls are deduplicated](#calls-are-deduplicated)
   - [Keeping retries within the deduplication window](#keeping-retries-within-the-deduplication-window)
+  - [Cancellation, timeouts and heartbeats](#cancellation-timeouts-and-heartbeats)
   - [Appends are not deduplicated](#appends-are-not-deduplicated)
   - [Retried LiveObjects operations](#retried-liveobjects-operations)
   - [Push notifications](#push-notifications)
@@ -323,6 +324,23 @@ const ably = new TemporalAblyHttpClient({
 
 Once that time is up, the activity fails with a timeout, and the workflow cannot tell whether the last attempt reached Ably.
 
+### Cancellation, timeouts and heartbeats
+
+Within an attempt, the worker's Ably client sends the request to Ably's primary host, and then to a fallback host after a timeout, a connection error or a 500 to 504 response, waiting up to the client's `httpRequestTimeout` for each.
+
+Once Temporal cancels an Ably activity, the client abandons the request in progress and tries no further host, and the activity fails as cancelled rather than with an Ably error. The activity is cancelled:
+
+- When the workflow cancels it. The activity learns of this only in the response to a heartbeat, so only an activity with a `heartbeatTimeout` stops its request.
+- When the attempt's `startToCloseTimeout` or `heartbeatTimeout` passes. The worker tracks these timeouts itself, and cancels the attempt shortly after the Temporal server times it out.
+
+A worker on `@temporalio/worker` older than 1.19.0 tracks only the shorter of the `startToCloseTimeout` and the `heartbeatTimeout`. When the `heartbeatTimeout` is the shorter, the activity's heartbeats keep that timeout from passing, so the worker does not cancel the attempt when its `startToCloseTimeout` passes, and the request continues alongside the next attempt. Use 1.19.0 or later if you set a `heartbeatTimeout`.
+
+The worker does not track the `scheduleToCloseTimeout`. When it passes, the attempt learns of it only in the response to a heartbeat.
+
+A request that the client abandons may still have reached Ably. Once Temporal has timed an attempt out, it starts the next attempt, which can overlap the end of the abandoned one. A retry is deduplicated only as described in [Calls are deduplicated](#calls-are-deduplicated).
+
+When `activityOptions` sets a `heartbeatTimeout`, each Ably activity heartbeats every half of the `heartbeatTimeout` while it waits for Ably. This keeps a request still in progress from timing out for lack of heartbeats, and lets the activity learn that the workflow has cancelled it. Without a `heartbeatTimeout`, the activities do not heartbeat.
+
 ### Appends are not deduplicated
 
 A retried `appendMessage` appends its data again, so the message can end up with duplicated content. This happens even when the retry has the same `idempotencyKey` as the first attempt, because Ably appends the data before it detects the duplicate. The plugin therefore sends appends without a key.
@@ -369,7 +387,7 @@ Ably's `collapseKey` sets FCM's collapse key, which only replaces a message that
 
 Within an attempt, the worker's Ably client can also send the request again to a fallback host after a timeout, a connection error or a 500 to 504 response, so even a single attempt can repeat a call. If a call fails with a timeout or a retryable error, it may or may not have reached Ably.
 
-Keep `startToCloseTimeout` longer than a request can take, which is about 25 seconds across fallback hosts with the default client options, so that Temporal does not retry an attempt that is still in progress. The default of 30 seconds allows for this.
+Keep `startToCloseTimeout` longer than a request can take, which is about 25 seconds across fallback hosts with the default client options, so that Temporal does not retry an attempt that is still in progress. The default of 30 seconds allows for this. If an attempt does time out, the client abandons its request shortly afterwards, as described in [Cancellation, timeouts and heartbeats](#cancellation-timeouts-and-heartbeats).
 
 `liveActivity.end()` is idempotent. Ably responds with success for a broadcast channel that it has already deleted. If deleting the channel fails, the call fails, and a retry attempts the delete again. A retry can also resend the end notification, which devices ignore.
 
@@ -589,7 +607,7 @@ const worker = await Worker.create({
 });
 ```
 
-Create the client for the Ably activities alone, and do not use it anywhere else, as for the plugin's client. The activities release each channel from the client once no activity is using it, so a channel that other code got from the client could be released while that code still uses it, and the channel options that other code sets, such as a `cipher`, would apply to the activities' requests.
+Create the client for the Ably activities alone, and do not use it anywhere else, as for the plugin's client. The activities heartbeat as the plugin's do, but a client you create does not abandon its request when Temporal cancels the activity, as described in [Cancellation, timeouts and heartbeats](#cancellation-timeouts-and-heartbeats), so one call can keep trying fallback hosts after Temporal has cancelled the activity or timed its attempt out. The activities release each channel from the client once no activity is using it, so a channel that other code got from the client could be released while that code still uses it, and the channel options that other code sets, such as a `cipher`, would apply to the activities' requests.
 
 Workflow code still calls the activities through `TemporalAblyHttpClient`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
 

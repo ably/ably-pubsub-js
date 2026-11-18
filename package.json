@@ -21,13 +21,13 @@
     "@babel/generator": "^7.23.6",
     "@babel/parser": "^7.23.6",
     "@babel/traverse": "^7.23.7",
-    "@temporalio/activity": "^1.24.0",
-    "@temporalio/client": "^1.24.0",
-    "@temporalio/common": "^1.24.0",
-    "@temporalio/plugin": "^1.24.0",
-    "@temporalio/testing": "^1.24.0",
-    "@temporalio/worker": "^1.24.0",
-    "@temporalio/workflow": "^1.24.0",
+    "@temporalio/activity": "^1.26.0",
+    "@temporalio/client": "^1.26.0",
+    "@temporalio/common": "^1.26.0",
+    "@temporalio/plugin": "^1.26.0",
+    "@temporalio/testing": "^1.26.0",
+    "@temporalio/worker": "^1.26.0",
+    "@temporalio/workflow": "^1.26.0",
     "@testing-library/react": "^13.3.0",
     "@types/cli-table": "^0.3.4",
     "@types/jmespath": "^0.15.2",
@@ -87,6 +87,11 @@
     "vitest": "^0.18.0",
     "webpack": "^5.79.0",
     "webpack-cli": "^5.0.1"
+  },
+  "overrides": {
+    "source-map-explorer": {
+      "source-map": "0.7.4"
+    }
   },
   "engines": {
     "node": ">=22"

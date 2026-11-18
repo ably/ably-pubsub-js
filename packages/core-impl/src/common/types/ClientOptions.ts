@@ -21,6 +21,15 @@ export default interface ClientOptions
    * declarations, like `agents`.
    */
   logContext?: string;
+  /**
+   * Internal, and absent from the public `ClientOptions`. Returns the signal that aborts the REST request being made in
+   * the current async context, or `undefined` if nothing can abort it. The Temporal worker plugin returns the
+   * cancellation signal of the current activity attempt.
+   *
+   * `HttpRequester.do` calls it once per request, before trying any host. Once the signal has aborted, it tries no
+   * further host, and the request in progress is abandoned. A hook that throws counts as no signal.
+   */
+  requestSignal?: () => AbortSignal | undefined;
 }
 
 export type NormalisedClientOptions = Modify<

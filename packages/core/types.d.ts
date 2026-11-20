@@ -2590,6 +2590,29 @@ export declare interface RealtimeChannel extends EventEmitter<channelEventCallba
    */
   appendMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
   /**
+   * Patches an existing message: atomically sets, appends to or removes values inside its JSON `data`, and sets or removes its headers. Only the `patches` field changes the message. Subscribers receive the patch as a `message.patch`, and apply it to their copy with {@link Message.applyPatch}.
+   *
+   * The channel must be configured to allow message appends, enabled by a [rule](https://ably.com/docs/channels#rules).
+   *
+   * The supplied {@link Message} must carry a populated `serial`. A newly constructed {@link Message} has none, so the call rejects with an {@link ErrorInfo}.
+   *
+   * @param message - A {@link Message} object containing a populated `serial` field and the `patches` to apply.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about the patch operation.
+   * @param options - Optional parameters to modify how the publish is made.
+   * @returns A promise which, upon success, will be fulfilled with an {@link UpdateDeleteResult} object containing the serial of the new version of the message. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
+   * @example
+   * ```ts
+   * const result = await channel.patchMessage({
+   *   serial: message.serial,
+   *   patches: {
+   *     data: [{ op: 'append', path: '/content/0/text', data: ' more text' }],
+   *     extras: { headers: [{ op: 'set', key: 'status', value: 'complete' }] },
+   *   },
+   * });
+   * ```
+   */
+  patchMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
+  /**
    * Retrieves all historical versions of a specific message, ordered by version. This includes the original message and all subsequent update, delete, or append operations.
    *
    * The supplied serial or {@link Message} must carry a populated `serial`. A newly constructed {@link Message} has none, so the call rejects with an {@link ErrorInfo}.
@@ -2814,6 +2837,101 @@ export interface Message {
    * Annotations associated with this message.
    */
   annotations?: MessageAnnotations;
+  /**
+   * The changes a `message.patch` makes to the message identified by `serial`. Use {@link Message.applyPatch} to apply them to your copy of the message.
+   */
+  patches?: MessagePatches;
+}
+
+/**
+ * The changes a `message.patch` makes to a message. Each member is optional.
+ */
+export interface MessagePatches {
+  /**
+   * Operations that change the message's `data`, applied in order.
+   */
+  data?: MessagePatchDataOperation[];
+  /**
+   * Operations that change fields of the message's `extras`.
+   */
+  extras?: {
+    /**
+     * Operations that change the message's `extras.headers`, applied in order after the data operations.
+     */
+    headers?: MessagePatchHeaderOperation[];
+    /**
+     * Sets or removes the message's `extras.userClaim`, to the claim of the patch's publisher. Only Ably sets this, on every patch it delivers.
+     */
+    userClaim?: MessagePatchUserClaimOperation;
+    /**
+     * Removes the message's `extras.privileged`, when the patch's publisher may not set privileged extras. Only Ably sets this.
+     */
+    privileged?: MessagePatchPrivilegedOperation;
+  };
+}
+
+/**
+ * An operation that removes the message's `extras.privileged`.
+ */
+export interface MessagePatchPrivilegedOperation {
+  /**
+   * The operation, which is always `remove`.
+   */
+  op: 'remove';
+}
+
+/**
+ * An operation that sets or removes the message's `extras.userClaim`.
+ */
+export interface MessagePatchUserClaimOperation {
+  /**
+   * The operation: `set` sets the claim to `value`, and `remove` deletes it.
+   */
+  op: 'set' | 'remove';
+  /**
+   * The claim, for `set`.
+   */
+  value?: string;
+}
+
+/**
+ * An operation that changes the message's `data`, or a value inside it.
+ */
+export interface MessagePatchDataOperation {
+  /**
+   * The operation: `set` puts a value at the location, `append` adds a string to the end of a string (or binary to the end of binary `data`), and `remove` deletes a field of an object or an element of an array.
+   */
+  op: 'set' | 'append' | 'remove';
+  /**
+   * A JSON Pointer (RFC 6901), such as `/content/0/text`, to a location inside `data` that holds a JSON object or array. Without a path, the operation applies to the whole of `data`. With `set`, the last token `-` adds an element after the last one in an array.
+   */
+  path?: string;
+  /**
+   * The value the operation uses. When publishing, objects, arrays, numbers, booleans and `null` are sent as JSON values. On a received patch, a JSON value stays as JSON text, with an `encoding` of `json`, so that you can parse it into the type of the field it changes.
+   */
+  data?: any;
+  /**
+   * `json` if `data` is JSON text, and otherwise typically empty, as the SDK encodes and decodes `data` as it does a message's `data`.
+   */
+  encoding?: string;
+}
+
+/**
+ * An operation that changes a header in the message's `extras.headers`.
+ */
+export interface MessagePatchHeaderOperation {
+  /**
+   * The operation: `set` sets the header, adding it if it is missing, and `remove` deletes it.
+   */
+  op: 'set' | 'remove';
+  /**
+   * The header's name.
+   */
+  key: string;
+  /**
+   * The header's new value, for `set`.
+   */
+  value?: string | number | boolean;
 }
 
 /**
@@ -3012,6 +3130,12 @@ declare namespace MessageActions {
    * all other fields replace the previous values.
    */
   type MESSAGE_APPEND = 'message.append';
+  /**
+   * Message action for a patched message. The `serial` field identifies the message being patched,
+   * and the `patches` field holds the changes to apply to it. Use {@link Message.applyPatch} to
+   * apply them to your copy of the message.
+   */
+  type MESSAGE_PATCH = 'message.patch';
 }
 
 /**
@@ -3023,7 +3147,8 @@ export type MessageAction =
   | MessageActions.MESSAGE_DELETE
   | MessageActions.META
   | MessageActions.MESSAGE_SUMMARY
-  | MessageActions.MESSAGE_APPEND;
+  | MessageActions.MESSAGE_APPEND
+  | MessageActions.MESSAGE_PATCH;
 
 /**
  * The namespace containing the different types of annotation actions.
@@ -3076,6 +3201,35 @@ export declare class Message {
    * @returns A promise which will be fulfilled with an array of {@link InboundMessage} objects.
    */
   static fromEncodedArray(JsonArray: any[], channelOptions?: ChannelOptions): Promise<InboundMessage[]>;
+
+  /**
+   * Applies a `message.patch` to your copy of the message it patches, and returns a new copy that looks as if you had received the latest version of the message as a `message.update`. The copy it is given is not changed, and the new copy shares with it only the parts of `data` that the patch does not change.
+   *
+   * ```javascript
+   * channel.subscribe((message) => {
+   *   switch (message.action) {
+   *     case 'message.create':
+   *     case 'message.update':
+   *       copies.set(message.serial, message);
+   *       break;
+   *     case 'message.patch':
+   *       copies.set(message.serial, Message.applyPatch(copies.get(message.serial), message));
+   *       break;
+   *   }
+   * });
+   * ```
+   *
+   * To patch JSON you keep outside an Ably message, such as in your own database, pass it as the copy's `data`, as a string or binary:
+   *
+   * ```javascript
+   * const patched = Message.applyPatch({ serial: patch.serial, data: json }, patch).data;
+   * ```
+   *
+   * @param message - Your copy of the message, received as a `message.create` or `message.update`, or returned by an earlier `applyPatch`.
+   * @param patch - The `message.patch` to apply.
+   * @returns The patched copy of the message. Throws an {@link ErrorInfo} if any operation of the patch cannot be applied, in which case none is.
+   */
+  static applyPatch<T extends Message>(message: T, patch: InboundMessage): T;
 }
 
 /**

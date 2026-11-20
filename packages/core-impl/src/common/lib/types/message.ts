@@ -1,10 +1,13 @@
 import Logger from '../util/logger';
+import Platform from 'common/platform';
 import {
   BaseMessage,
   encode,
   decode,
   wireToJSON,
   normalizeCipherOptions,
+  encodeDataForWire,
+  decodeData,
   EncodingDecodingContext,
   strMsg,
 } from './basemessage';
@@ -26,6 +29,7 @@ const actions: API.MessageAction[] = [
   'meta',
   'message.summary',
   'message.append',
+  'message.patch',
 ];
 
 export function stringifyAction(action: number | undefined): API.MessageAction {
@@ -98,6 +102,69 @@ export async function encodeArray(messages: Array<Message>, options: ChannelOpti
 
 export const serialize = Utils.encodeBody;
 
+// Returns patches with each data operation's value encoded as a message's data
+// is, by encodeData or encodeDataForWire
+function mapPatchData(
+  patches: API.MessagePatches,
+  fn: (data: any, encoding: string | null | undefined) => { data: any; encoding: string | null | undefined },
+): API.MessagePatches {
+  if (!patches.data) {
+    return patches;
+  }
+  return {
+    ...patches,
+    data: patches.data.map((op) => {
+      if (op.data === undefined) {
+        return op;
+      }
+      const { data, encoding } = fn(op.data, op.encoding);
+      return { ...op, data, encoding: encoding ?? undefined };
+    }),
+  };
+}
+
+// Encodes a data operation's value. Unlike a message's data, it can be any
+// JSON value, such as true, so everything but a string or binary is JSON.
+function encodePatchValue(data: any, encoding: string | null | undefined) {
+  if (typeof data === 'string' || Platform.BufferUtils.isBuffer(data)) {
+    return { data, encoding };
+  }
+  return { data: JSON.stringify(data), encoding: encoding ? encoding + '/json' : 'json' };
+}
+
+// Decodes each data operation's value as a message's data is decoded, except
+// that a JSON value stays as text with `encoding: json`: applyPatch splices the
+// text into JSON text, and parses it only to set it into decoded values
+async function decodePatches(patches: API.MessagePatches): Promise<API.MessagePatches> {
+  if (!patches.data) {
+    return patches;
+  }
+  const data = await Promise.all(
+    patches.data.map(async (wireOp) => {
+      const xforms = wireOp.encoding ? wireOp.encoding.split('/') : [];
+      const isJSON = xforms[0] === 'json';
+      const toDecode = (isJSON ? xforms.slice(1) : xforms).join('/');
+      if (!toDecode) {
+        return wireOp;
+      }
+      // encrypted channels do not support patches, so no cipher is needed
+      const decoded = await decodeData(wireOp.data, toDecode, { channelOptions: {}, plugins: {} });
+      if (decoded.error) {
+        throw decoded.error;
+      }
+      const op: API.MessagePatchDataOperation = { ...wireOp, data: decoded.data };
+      const encoding = isJSON ? ['json', decoded.encoding].filter(Boolean).join('/') : decoded.encoding;
+      if (encoding) {
+        op.encoding = encoding;
+      } else {
+        delete op.encoding;
+      }
+      return op;
+    }),
+  );
+  return { ...patches, data };
+}
+
 /* This should be called on encode()d (and encrypt()d) Messages (as it
  * assumes the data is a string or buffer) */
 export function getMessagesSize(messages: WireMessage[]): number {
@@ -117,6 +184,7 @@ class Message extends BaseMessage {
   serial?: string;
   version?: API.MessageVersion;
   annotations?: API.MessageAnnotations;
+  patches?: API.MessagePatches;
 
   expandFields() {
     // TM2s
@@ -166,6 +234,7 @@ class Message extends BaseMessage {
   async encode(options: ChannelOptions): Promise<WireMessage> {
     const res = Object.assign(new WireMessage(), this, {
       action: actions.indexOf(this.action || 'message.create'),
+      ...(this.patches && { patches: mapPatchData(this.patches, encodePatchValue) }),
     });
     return encode(res, options);
   }
@@ -190,10 +259,17 @@ export class WireMessage extends BaseMessage {
   serial?: string;
   version?: API.MessageVersion;
   annotations?: API.MessageAnnotations;
+  patches?: API.MessagePatches;
 
   // Overload toJSON() to intercept JSON.stringify()
   toJSON(...args: any[]) {
-    return wireToJSON.call(this, ...args);
+    const result = wireToJSON.call(this, ...args);
+    if (this.patches) {
+      // as wireToJSON does, infer the format from the arguments
+      const format = args.length > 0 ? Utils.Format.json : Utils.Format.msgpack;
+      result.patches = mapPatchData(this.patches, (data, encoding) => encodeDataForWire(data, encoding, format));
+    }
+    return result;
   }
 
   static fromValues(values: Properties<WireMessage>): WireMessage {
@@ -216,6 +292,9 @@ export class WireMessage extends BaseMessage {
     let err: ErrorInfo | undefined;
     try {
       await decode(res, inputContext);
+      if (res.patches) {
+        res.patches = await decodePatches(res.patches);
+      }
     } catch (e) {
       Logger.logAction(logger, Logger.LOG_ERROR, 'WireMessage.decode()', Utils.inspectError(e));
       err = e as ErrorInfo;

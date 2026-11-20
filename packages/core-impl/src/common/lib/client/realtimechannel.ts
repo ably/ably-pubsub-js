@@ -1194,9 +1194,18 @@ class RealtimeChannel extends EventEmitter {
     return this.sendUpdate(message, 'message.append', operation, params);
   }
 
+  async patchMessage(
+    message: Message,
+    operation?: API.MessageOperation,
+    params?: Record<string, any>,
+  ): Promise<API.UpdateDeleteResult> {
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RealtimeChannel.patchMessage()', 'channel = ' + this.name);
+    return this.sendUpdate(message, 'message.patch', operation, params);
+  }
+
   private async sendUpdate(
     message: Message,
-    action: 'message.update' | 'message.delete' | 'message.append',
+    action: 'message.update' | 'message.delete' | 'message.append' | 'message.patch',
     operation?: API.MessageOperation,
     params?: Record<string, any>,
   ): Promise<API.UpdateDeleteResult> {

@@ -16,6 +16,7 @@ import BaseRealtime from './baserealtime';
 import { ChannelOptions } from '../../types/channel';
 import { normaliseChannelOptions } from '../util/defaults';
 import { PaginatedResult } from './paginatedresource';
+import MessageStream, { type SequencedOperation } from './messagestream';
 import type { PushChannel } from 'plugins/push';
 import type { WirePresenceMessage } from '../types/presencemessage';
 import type { RealtimeObject, WireObjectMessage } from 'plugins/liveobjects';
@@ -1194,10 +1195,80 @@ class RealtimeChannel extends EventEmitter {
     return this.sendUpdate(message, 'message.append', operation, params);
   }
 
-  private async sendUpdate(
+  async newStream(message: API.Message): Promise<MessageStream> {
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RealtimeChannel.newStream()', 'channel = ' + this.name);
+    const { serials } = await this.publish(message);
+    const serial = serials[0];
+    if (!serial) {
+      throw new ErrorInfo({
+        message: 'Unable to open stream; the server discarded the message under a conflation rule, so it has no serial',
+        code: 40000,
+        statusCode: 400,
+        remediation:
+          'Remove conflation from the channel rule that matches this channel in your app settings, or open the stream on a channel without conflation.',
+      });
+    }
+    // a message starts at sequence 0 when it's created
+    return new MessageStream(this, serial, { name: message.name, data: message.data, extras: message.extras }, 0);
+  }
+
+  adoptStream(message: API.Message): MessageStream;
+  adoptStream(serial: string, sequence: number, content: API.MessageStreamContent): MessageStream;
+  adoptStream(
+    messageOrSerial: API.Message | string,
+    sequence?: number,
+    content?: API.MessageStreamContent,
+  ): MessageStream {
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'RealtimeChannel.adoptStream()', 'channel = ' + this.name);
+    let serial: string | undefined;
+    if (typeof messageOrSerial === 'string') {
+      serial = messageOrSerial;
+      if (!Utils.isObject(content)) {
+        throw new ErrorInfo({
+          message: 'Unable to adopt stream; content must be an object with the name, data and extras of the message',
+          code: 40003,
+          statusCode: 400,
+          remediation:
+            "Pass the message's current name, data and extras, so that a repair can rebuild the whole message. Or pass the Message itself: channel.adoptStream(message).",
+        });
+      }
+    } else {
+      serial = messageOrSerial?.serial;
+      // the server leaves version.sequence out while the stored sequence is 0
+      sequence = messageOrSerial?.version?.sequence ?? 0;
+      content = messageOrSerial ?? {};
+    }
+    if (!serial || typeof serial !== 'string') {
+      throw new ErrorInfo({
+        message: 'Unable to adopt stream; the message lacks a serial',
+        code: 40003,
+        statusCode: 400,
+        remediation:
+          'Pass a Message read from channel.getMessage(), history or a subscribe callback, which carries .serial. Or call channel.adoptStream(serial, sequence, content).',
+      });
+    }
+    if (!Number.isSafeInteger(sequence) || sequence! < 0) {
+      throw new ErrorInfo({
+        message: 'Unable to adopt stream; sequence must be a non-negative integer, was: ' + sequence,
+        code: 40003,
+        statusCode: 400,
+        remediation:
+          "Pass the message's version.sequence, read from channel.getMessage(), history or a subscribe callback. A message with no version.sequence is at sequence 0.",
+      });
+    }
+    return new MessageStream(
+      this,
+      serial,
+      { name: content.name, data: content.data, extras: content.extras },
+      sequence!,
+    );
+  }
+
+  /* Used by MessageStream, which numbers each write with operation.sequence */
+  async sendUpdate(
     message: Message,
     action: 'message.update' | 'message.delete' | 'message.append',
-    operation?: API.MessageOperation,
+    operation?: SequencedOperation,
     params?: Record<string, any>,
   ): Promise<API.UpdateDeleteResult> {
     if (!message.serial) {

@@ -2590,6 +2590,67 @@ export declare interface RealtimeChannel extends EventEmitter<channelEventCallba
    */
   appendMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
   /**
+   * Publishes a message and returns a {@link MessageStream} that writes appends, updates and a delete to it, such as a response streamed token by token.
+   *
+   * The channel must be configured to allow message updates and appends, enabled by a [rule](https://ably.com/docs/channels#rules).
+   *
+   * @param message - The {@link Message} to publish. The stream starts from its `name`, `data` and `extras`.
+   * @returns A promise which, upon success, will be fulfilled with a {@link MessageStream} once the message is published. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
+   * @example
+   * ```ts
+   * const stream = await channel.newStream({ name: 'ai', data: 'The' });
+   * stream.append({ data: ' cat' });
+   * stream.append({ data: ' sat' });
+   * await stream.close();
+   * ```
+   */
+  newStream(message: Message): Promise<MessageStream>;
+  /**
+   * {@label WITH_MESSAGE}
+   *
+   * Returns a {@link MessageStream} that writes to an existing message, such as one a stream on another client started. The stream carries on from the message you pass: its `serial`, its `version.sequence`, and its `name`, `data` and `extras`. A message with no `version.sequence` is at sequence 0. `adoptStream` makes no request, so read the message first, such as with {@link RealtimeChannel.getMessage}, and pass it straight in.
+   *
+   * Pass the message's latest version. If the message has changed since you read it, the stream's first write fails and the stream repairs the message from the content you passed, which overwrites the newer changes. Stop the previous writer before you adopt its message.
+   *
+   * The channel must be configured to allow message updates and appends, enabled by a [rule](https://ably.com/docs/channels#rules).
+   *
+   * Throws an {@link ErrorInfo} with code 40003 if the message has no `serial`, or its `version.sequence` is not a non-negative integer.
+   *
+   * @param message - The latest version of the {@link Message} to write to.
+   * @returns A {@link MessageStream} that writes to the message.
+   * @example
+   * ```ts
+   * const message = await channel.getMessage(serial);
+   * const stream = channel.adoptStream(message);
+   * stream.append({ data: ' and carried on' });
+   * await stream.close();
+   * ```
+   */
+  adoptStream(message: Message): MessageStream;
+  /**
+   * {@label WITH_SERIAL}
+   *
+   * Returns a {@link MessageStream} that writes to an existing message, such as one a stream on another client started. The stream carries on from the serial, sequence number and content you pass. Use this form when you hold those parts yourself but not as a {@link Message}, such as in a durable execution framework that keeps them in its own state. `adoptStream` makes no request, so read them first, such as with {@link RealtimeChannel.getMessage}.
+   *
+   * Pass the message's current sequence number and content. The stream numbers its first write as one more than `sequence`. If a write fails, the stream repairs the message from `content` plus what the stream has written, which replaces the message's content.
+   *
+   * The channel must be configured to allow message updates and appends, enabled by a [rule](https://ably.com/docs/channels#rules).
+   *
+   * Throws an {@link ErrorInfo} with code 40003 if `serial` is empty, `sequence` is not a non-negative integer, or `content` is not an object.
+   *
+   * @param serial - The serial of the message to write to.
+   * @param sequence - The message's current sequence number, from its `version.sequence`. A message with no `version.sequence` is at sequence 0.
+   * @param content - The message's current `name`, `data` and `extras`.
+   * @returns A {@link MessageStream} that writes to the message.
+   * @example
+   * ```ts
+   * const stream = channel.adoptStream(serial, sequence, { name: 'ai', data: 'The cat' });
+   * stream.append({ data: ' sat' });
+   * await stream.close();
+   * ```
+   */
+  adoptStream(serial: string, sequence: number, content: MessageStreamContent): MessageStream;
+  /**
    * Retrieves all historical versions of a specific message, ordered by version. This includes the original message and all subsequent update, delete, or append operations.
    *
    * The supplied serial or {@link Message} must carry a populated `serial`. A newly constructed {@link Message} has none, so the call rejects with an {@link ErrorInfo}.
@@ -2917,6 +2978,10 @@ export interface MessageVersion {
    * the message to this version.
    */
   metadata?: Record<string, string>;
+  /**
+   * The message's sequence number. A message starts at 0 when it is created. An update, delete or append made through a {@link MessageStream} sets it to one more than the previous sequence, and the server applies the change only if it follows on exactly. A change made without a sequence keeps the previous one.
+   */
+  sequence?: number;
 }
 
 /**
@@ -2974,6 +3039,116 @@ export interface UpdateDeleteResult {
    * Will be null if the message was superseded by a subsequent update before it could be published.
    */
   versionSerial: string | null;
+}
+
+/**
+ * Contains the result of {@link MessageStream.flush} or {@link MessageStream.close}.
+ */
+export interface MessageStreamResult {
+  /**
+   * The serial of the message the stream writes to.
+   */
+  serial: string;
+}
+
+/**
+ * The content of a message that {@link RealtimeChannel.adoptStream} carries on from. A repair rebuilds the message from it.
+ */
+export type MessageStreamContent = Pick<Message, 'name' | 'data' | 'extras'>;
+
+/**
+ * Writes a series of appends, updates and a delete to one message, such as a response streamed token by token. Get one from {@link RealtimeChannel.newStream} or {@link RealtimeChannel.adoptStream}.
+ *
+ * Writes are sent as soon as you make them, and the methods that write return without waiting for the server. The stream numbers each write with a sequence number, so the server applies the writes in order and never applies one twice. The stream keeps the content of the message in memory. If a write fails, the stream repairs the message by publishing that content as one update, and then carries on with the writes you made in the meantime.
+ *
+ * An error the stream can't repair stops it. The next write throws that error, and {@link MessageStream.flush} and {@link MessageStream.close} reject with it.
+ *
+ * The stream assumes it is the only writer to its message. A repair replaces the message's content, so it overwrites changes made by anyone else.
+ */
+export interface MessageStream {
+  /**
+   * The serial of the message the stream writes to.
+   */
+  readonly serial: string;
+  /**
+   * Appends to the message. The `data` is appended to the message's data, and must be the same type: a string to a string, or binary to binary. A non-null `name` or `extras` replaces the message's. Returns without waiting for the server.
+   *
+   * A message with `extras.ephemeral` set is sent without a sequence number and is not stored, so the stream does not repair it if it fails.
+   *
+   * Throws an {@link ErrorInfo} if the stream has stopped, is closed or aborted, or has deleted its message, or if the data's type does not match the message's.
+   *
+   * @param message - A {@link Message} with the data to append. Its `serial` is ignored.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about the append operation.
+   * @example
+   * ```ts
+   * stream.append({ data: ' sat' });
+   * ```
+   */
+  append(message: Message, operation?: MessageOperation): void;
+  /**
+   * Updates the message with patch semantics. Non-null `name`, `data`, and `extras` fields replace the message's. Returns without waiting for the server.
+   *
+   * Throws an {@link ErrorInfo} if the stream has stopped, is closed or aborted, or has deleted its message.
+   *
+   * @param message - A {@link Message} with the fields to update. Its `serial` is ignored.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about the update operation.
+   * @example
+   * ```ts
+   * stream.update({ data: 'The cat sat on the mat' });
+   * ```
+   */
+  update(message: Message, operation?: MessageOperation): void;
+  /**
+   * Marks the message as deleted. After this, the stream accepts no more writes. Call {@link MessageStream.close} to wait for the delete to apply. Returns without waiting for the server.
+   *
+   * Throws an {@link ErrorInfo} if the stream has stopped, is closed or aborted, or has already deleted its message.
+   *
+   * @param message - An optional {@link Message} with fields to set on the deleted message. Its `serial` is ignored.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about the delete operation.
+   */
+  delete(message?: Message, operation?: MessageOperation): void;
+  /**
+   * Waits until the server has applied every write made before this call, repairing the message first if a write failed. The stream stays open.
+   *
+   * @returns A promise which resolves with a {@link MessageStreamResult} once every write made before the call has applied. Upon failure, the promise is rejected with the {@link ErrorInfo} the stream could not repair.
+   * @example
+   * ```ts
+   * stream.append({ data: 'Calling the weather tool…' });
+   * await stream.flush(); // the text so far has applied
+   * await channel.publish({ name: 'tool-call', data: call });
+   * stream.append({ data: ' It is sunny.' });
+   * ```
+   */
+  flush(): Promise<MessageStreamResult>;
+  /**
+   * Ends the stream. If you pass a message, the stream appends it first. Then it waits until the server has applied every write, as {@link MessageStream.flush} does. After this, the stream accepts no more writes. Calling `close` again returns the same promise as the first call, and ignores its arguments.
+   *
+   * @param message - An optional {@link Message} to append as the last write, such as one that sets `extras.headers` to mark the end.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about that append.
+   * @returns A promise which resolves with a {@link MessageStreamResult} once every write has applied. Upon failure, the promise is rejected with the {@link ErrorInfo} the stream could not repair.
+   * @example
+   * ```ts
+   * const { serial } = await stream.close({ extras: { headers: { status: 'done' } } });
+   * ```
+   */
+  close(message?: Message, operation?: MessageOperation): Promise<MessageStreamResult>;
+  /**
+   * Ends the stream without waiting for the server. Writes already sent may still apply, but the stream ignores their outcomes and makes no repairs. Pending {@link MessageStream.flush} and {@link MessageStream.close} promises reject. After this, the stream accepts no more writes. Calling `abort` again does nothing.
+   *
+   * If you pass a message, the stream sends it as a last update, such as one that sets `extras.headers` to mark the message as aborted. It sends it even if the stream has stopped on an error. The update carries no sequence number, so the server applies it whatever writes before it failed. It uses patch semantics: non-null `name`, `data`, and `extras` fields replace the message's. The stream doesn't wait for it, and doesn't report or repair a failure.
+   *
+   * @param message - An optional {@link Message} to send as the last update. Its `serial` is ignored.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about that update.
+   * @example
+   * ```ts
+   * try {
+   *   await stream.close();
+   * } catch (err) {
+   *   stream.abort({ extras: { headers: { status: 'abort' } } });
+   * }
+   * ```
+   */
+  abort(message?: Message, operation?: MessageOperation): void;
 }
 
 /**

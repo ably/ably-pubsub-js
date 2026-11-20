@@ -1,5 +1,13 @@
 'use strict';
 
+/**
+ * REST LiveObjects (HttpObject) tests.
+ *
+ * The UTS RestObject tests (test/uts/objects/{unit,integration}/rest_object*.test.ts) cover the same
+ * behaviour, and each test below names the UTS test(s) that check it. This file is kept because the
+ * UTS tests run only on Node.js, while this one also runs in browsers.
+ */
+
 define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], function (
   Ably,
   Helper,
@@ -159,6 +167,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
     });
 
     describe('Http without LiveObjects plugin', () => {
+      // Covered by UTS:
+      // - uts/objects/unit/rest_object_get.test.ts > 'RSL16b - accessing channel.object without the plugin throws 40019'
       /** @nospec */
       it("throws an error when attempting to access the channel's `object` property", async function () {
         const helper = this.test.helper;
@@ -169,6 +179,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
     });
 
     describe('Http with LiveObjects plugin', () => {
+      // Covered by UTS:
+      // - uts/objects/unit/rest_object_get.test.ts > 'RSO1a - one HttpObject instance per channel'
       /** @nospec */
       it("returns HttpObject class instance when accessing channel's `object` property", async function () {
         const helper = this.test.helper;
@@ -180,6 +192,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
       describe('HttpObject.get()', () => {
         /** @nospec */
         const getScenarios = [
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2c - get() with no params sends GET to the channel object endpoint'
+          // - uts/objects/integration/rest_object.test.ts > 'RSL16, RSO2g - state written by a realtime client is readable via REST'
           {
             jsonMsgpack: true,
             description: 'returns root object by default (no params)',
@@ -192,6 +207,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f/RSO8 - compact response returned verbatim'
+          // - uts/objects/integration/rest_object.test.ts > 'RSL16, RSO2g - state written by a realtime client is readable via REST'
           {
             jsonMsgpack: true,
             description: 'defaults to compact format',
@@ -202,6 +220,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2d - path and compact sent as query parameters'
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5c3, RSO2g1 - mapCreate at a path is reachable from the channel object'
           {
             jsonMsgpack: true,
             description: 'with path parameter',
@@ -212,6 +233,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2c - get() with objectId appends a percent-encoded path segment'
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5i, RSO15 - counterCreate at a path, counterInc via path and objectId'
           {
             jsonMsgpack: true,
             description: 'with objectId parameter',
@@ -226,6 +250,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5c3, RSO2g1 - mapCreate at a path is reachable from the channel object'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2d - path and compact sent as query parameters alongside objectId' (skipped as a deviation)
           {
             jsonMsgpack: true,
             description: 'with objectId and path combined',
@@ -245,6 +272,10 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO3, RSO2 - mapSet primitives on the channel object, read back in compact and full modes' (compact bytes and JSON are server-defined and not asserted)
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f/RSO8 - compact response returned verbatim'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2e/RSO2f - compact msgpack response decoded and returned verbatim'
           {
             jsonMsgpack: true,
             description: '"compact: true" returns all data types correctly for entries within a map path',
@@ -262,6 +293,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5i, RSO15 - counterCreate at a path, counterInc via path and objectId'
           {
             jsonMsgpack: true,
             description: '"compact: true" returns number for counter path',
@@ -272,6 +305,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5c3, RSO2g1 - mapCreate at a path is reachable from the channel object'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f - compact scalar response returned verbatim'
           {
             jsonMsgpack: true,
             description: '"compact: true" returns string for string path',
@@ -282,6 +318,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f - compact scalar response returned verbatim' (mocked response only)
           {
             jsonMsgpack: true,
             description: '"compact: true" returns boolean for boolean path',
@@ -292,6 +330,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f/RSO8 - compact response returned verbatim' (mocked response only)
           {
             jsonMsgpack: true,
             description: '"compact: true" returns JSON string for json object path',
@@ -302,6 +342,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f/RSO8 - compact response returned verbatim' (mocked response only)
           {
             jsonMsgpack: true,
             description: '"compact: true" returns JSON string for json array path',
@@ -312,6 +354,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f/RSO8 - compact response returned verbatim' (JSON protocol, mocked response only)
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2e/RSO2f - compact msgpack response decoded and returned verbatim' (MessagePack protocol, mocked response only)
           {
             jsonMsgpack: true,
             description: '"compact: true" returns string or buffer for bytes path depending on protocol',
@@ -326,6 +371,10 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5f - mapRemove via path and via objectId'
+          // - uts/objects/integration/rest_object.test.ts > 'RSO6 - wildcard path passed through to the server'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2f/RSO8 - compact response returned verbatim'
           {
             jsonMsgpack: true,
             description: '"compact: true" returns object for map path',
@@ -336,6 +385,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO4, RSO5d, RSO5h - locally generated object IDs accepted in a single batch'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g1/RSO2g3 - empty map and empty leaf values in a full response'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns full map object with metadata for map path',
@@ -348,6 +400,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5i, RSO15 - counterCreate at a path, counterInc via path and objectId'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g2/RSO15 - full counter response'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns full counter object with metadata for counter path',
@@ -359,6 +414,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO3, RSO2 - mapSet primitives on the channel object, read back in compact and full modes'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g1/RSO2g2/RSO2g3 - full map response decoded recursively'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns all data types correctly for entries within a map path',
@@ -381,6 +439,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c - full leaf response decoded per OD5 (JSON protocol)'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c2 - full leaf response decoded per OD5 (MessagePack protocol)'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns decoded object data for string leaf',
@@ -390,6 +451,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c - full leaf response decoded per OD5 (JSON protocol)'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns decoded object data for number leaf',
@@ -399,6 +462,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c - full leaf response decoded per OD5 (JSON protocol)'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns decoded object data for boolean leaf',
@@ -408,6 +473,10 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO2g3 - full-mode get of a leaf value via path'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c - full leaf response decoded per OD5 (JSON protocol)'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c2 - full leaf response decoded per OD5 (MessagePack protocol)'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns decoded object data with buffer for bytes leaf',
@@ -421,6 +490,10 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO2g3 - full-mode get of a leaf value via path'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c - full leaf response decoded per OD5 (JSON protocol)'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c2 - full leaf response decoded per OD5 (MessagePack protocol)'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns decoded object data with parsed object for json leaf',
@@ -430,6 +503,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2g3/RSO9c - full leaf response decoded per OD5 (JSON protocol)'
           {
             jsonMsgpack: true,
             description: '"compact: false" returns decoded object data with parsed array for json array leaf',
@@ -439,6 +514,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO2h - server error for an unresolvable target surfaced as ErrorInfo'
+          // - uts/objects/unit/rest_object_get.test.ts > 'RSO2h - get() performs no client-side validation and surfaces server errors'
           {
             description: 'throws an error for non-existent objectId',
             action: async ({ channel }) => {
@@ -446,6 +524,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO2h - server error for an unresolvable target surfaced as ErrorInfo'
           {
             description: 'throws an error for non-existent path',
             action: async ({ channel }) => {
@@ -466,6 +546,11 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
       describe('HttpObject.publish()', () => {
         /** @nospec */
         const publishScenarios = [
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO3, RSO2 - mapSet primitives on the channel object, read back in compact and full modes'
+          // - uts/objects/unit/rest_object_publish.test.ts > 'RSO3d2, RSO7 - mapSet value encoded per OD4 (JSON protocol)'
+          // - uts/objects/unit/rest_object_publish.test.ts > 'RSO3d2 - mapSet value encoded per OD4 (MessagePack protocol)'
+          // - uts/objects/unit/rest_object_publish.test.ts > 'RSO3b, RSO10 - publish result decoded from the response'
           {
             jsonMsgpack: true,
             description: 'mapSet via objectId with all data types',
@@ -490,6 +575,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5e, RSO7 - mapSet with an objectId reference to an existing object'
           {
             jsonMsgpack: true,
             description: 'mapSet with objectId reference',
@@ -514,6 +601,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5e, RSO6 - mapSet targeted by a nested path'
           {
             jsonMsgpack: true,
             description: 'mapSet via path',
@@ -548,6 +637,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO6 - wildcard path passed through to the server'
           {
             jsonMsgpack: true,
             description: 'mapSet via wildcard path',
@@ -574,6 +665,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5f - mapRemove via path and via objectId'
           {
             jsonMsgpack: true,
             description: 'mapRemove via objectId',
@@ -596,6 +689,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5f - mapRemove via path and via objectId'
           {
             jsonMsgpack: true,
             description: 'mapRemove via path',
@@ -615,6 +710,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO6, RSO5f, RSO5i - wildcard path with mapRemove and counterInc'
           {
             jsonMsgpack: true,
             description: 'mapRemove via wildcard path',
@@ -644,6 +741,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5i, RSO15 - counterCreate at a path, counterInc via path and objectId'
           {
             jsonMsgpack: true,
             description: 'counterInc via objectId',
@@ -660,6 +759,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5i, RSO15 - counterCreate at a path, counterInc via path and objectId'
           {
             jsonMsgpack: true,
             description: 'counterInc via path',
@@ -672,6 +773,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO6, RSO5f, RSO5i - wildcard path with mapRemove and counterInc'
           {
             jsonMsgpack: true,
             description: 'counterInc via wildcard path',
@@ -694,6 +797,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5c3, RSO5j - standalone mapCreate returns a server-generated objectId'
           {
             jsonMsgpack: true,
             description: 'mapCreate without path creates standalone object',
@@ -709,6 +814,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5c3, RSO2g1 - mapCreate at a path is reachable from the channel object'
           {
             jsonMsgpack: true,
             description: 'mapCreate with path sets key on parent map with ref to a new map',
@@ -724,6 +831,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5c3, RSO5j - standalone mapCreate returns a server-generated objectId' (standalone, not at a path)
+          // - uts/objects/unit/rest_object_publish.test.ts > 'RSO3d2, RSO13 - mapCreate entries encoded per OD4'
           {
             jsonMsgpack: true,
             description: 'mapCreate with all data types',
@@ -746,6 +856,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO4, RSO5d, RSO5h - locally generated object IDs accepted in a single batch' (via mapCreateWithObjectId, not mapCreate)
+          // - uts/objects/unit/rest_object_publish.test.ts > 'RSO3d2, RSO13 - mapCreate entries encoded per OD4'
           {
             jsonMsgpack: true,
             description: 'mapCreate with objectId reference entry',
@@ -771,6 +884,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5j - standalone counterCreate returns a server-generated objectId'
           {
             jsonMsgpack: true,
             description: 'counterCreate without path creates standalone counter',
@@ -783,6 +898,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5g2, RSO5i, RSO15 - counterCreate at a path, counterInc via path and objectId'
           {
             jsonMsgpack: true,
             description: 'counterCreate with path sets key on parent map with ref to a new counter',
@@ -794,6 +911,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO4, RSO5d, RSO5h - locally generated object IDs accepted in a single batch'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4b, RSO5d, RSO5h - generated values publish verbatim in *WithObjectId operations'
           {
             jsonMsgpack: true,
             description: 'mapCreateWithObjectId creates map with pre-computed ID',
@@ -830,6 +950,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO4, RSO5d, RSO5h - locally generated object IDs accepted in a single batch'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4b, RSO5d, RSO5h - generated values publish verbatim in *WithObjectId operations'
           {
             jsonMsgpack: true,
             description: 'counterCreateWithObjectId creates counter with pre-computed ID',
@@ -863,6 +986,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO5a1 - operation id makes a publish idempotent'
           {
             jsonMsgpack: true,
             description: 'idempotent publish - duplicate counterInc with same id applied once',
@@ -897,6 +1022,10 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
       describe('HttpObject.generateObjectId()', () => {
         /** @nospec */
         const generateObjectIdScenarios = [
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4d - map create body yields a map objectId'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4f - nonce is a string of at least 16 characters'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4e1 - map initialValue encodes semantics and entry data with JSON protocol rules'
           {
             description: 'returns result with valid objectId, nonce and initialValue for mapCreate',
             action: async ({ channel }) => {
@@ -917,6 +1046,10 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4d - counter create body yields a counter objectId'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4f - nonce is a string of at least 16 characters'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4e2 - counter initialValue is the JSON representation of the counter create body'
           {
             description: 'returns result with valid objectId, nonce and initialValue for counterCreate',
             action: async ({ channel }) => {
@@ -932,6 +1065,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4j - repeated calls produce different objectId and nonce'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4k - initialValue is deterministic for a given create body'
           {
             description: 'generates different IDs for the same payload on each call',
             action: async ({ channel }) => {
@@ -945,6 +1081,8 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4c - missing create body rejected'
           {
             description: 'throws an error if neither mapCreate nor counterCreate is provided',
             action: async ({ channel }) => {
@@ -956,6 +1094,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO4, RSO5d, RSO5h - locally generated object IDs accepted in a single batch'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4b, RSO5d, RSO5h - generated values publish verbatim in *WithObjectId operations'
           {
             jsonMsgpack: true,
             description: 'generated map ID can be used with mapCreateWithObjectId in publish',
@@ -982,6 +1123,9 @@ define(['ably', 'shared_helper', 'chai', 'liveobjects', 'liveobjects_helper'], f
             },
           },
 
+          // Covered by UTS:
+          // - uts/objects/integration/rest_object.test.ts > 'RSO4, RSO5d, RSO5h - locally generated object IDs accepted in a single batch'
+          // - uts/objects/unit/rest_object_generate_id.test.ts > 'RSO4b, RSO5d, RSO5h - generated values publish verbatim in *WithObjectId operations'
           {
             jsonMsgpack: true,
             description: 'generated counter ID can be used with counterCreateWithObjectId in publish',

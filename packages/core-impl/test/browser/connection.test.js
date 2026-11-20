@@ -308,21 +308,69 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
       /** @nospec */
       it('page_refresh_with_close_on_unload', function (done) {
         var realtime = this.test.helper.AblyRealtime({ closeOnUnload: true }),
-          refreshEvent = new Event('beforeunload', { bubbles: true });
+          pagehideEvent = new PageTransitionEvent('pagehide', { persisted: false });
 
         this.test.helper.monitorConnection(done, realtime);
 
         realtime.connection.once('connected', function () {
           try {
-            var connectionKey = realtime.connection.key;
-            document.dispatchEvent(refreshEvent);
+            window.dispatchEvent(pagehideEvent);
             var state = realtime.connection.state;
-            expect(state == 'closing' || state == 'closed', 'check page refresh triggered a close').to.be.ok;
+            expect(state == 'closing' || state == 'closed', 'check pagehide triggered a close').to.be.ok;
           } catch (err) {
             done(err);
             return;
           }
           done();
+        });
+      });
+
+      /** @nospec */
+      it('page_entering_bfcache_with_close_on_unload', function (done) {
+        var realtime = this.test.helper.AblyRealtime({ closeOnUnload: true }),
+          pagehideEvent = new PageTransitionEvent('pagehide', { persisted: true });
+
+        this.test.helper.monitorConnection(done, realtime);
+
+        realtime.connection.once('connected', function () {
+          try {
+            window.dispatchEvent(pagehideEvent);
+            var state = realtime.connection.state;
+            expect(
+              state == 'closing' || state == 'closed',
+              'check pagehide for a page entering the back/forward cache triggered a close',
+            ).to.be.ok;
+          } catch (err) {
+            done(err);
+            return;
+          }
+          done();
+        });
+      });
+
+      /**
+       * beforeunload also fires when the page stays open, for example when a
+       * download starts or a mailto: link is followed, so it must not close
+       * the connection.
+       *
+       * @nospec
+       */
+      it('beforeunload_does_not_close_with_close_on_unload', function (done) {
+        const helper = this.test.helper;
+        var realtime = helper.AblyRealtime({ closeOnUnload: true }),
+          beforeunloadEvent = new Event('beforeunload', { bubbles: true });
+
+        helper.monitorConnection(done, realtime);
+
+        realtime.connection.once('connected', function () {
+          window.dispatchEvent(beforeunloadEvent);
+          try {
+            expect(realtime.connection.state).to.equal('connected', 'check beforeunload did not trigger a close');
+          } catch (err) {
+            helper.closeAndFinish(done, realtime, err);
+            return;
+          }
+          helper.closeAndFinish(done, realtime);
         });
       });
 
@@ -334,7 +382,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
         const helper = this.test.helper;
 
         var realtime = helper.AblyRealtime({ closeOnUnload: false }),
-          refreshEvent = new Event('beforeunload', { bubbles: true });
+          refreshEvent = new PageTransitionEvent('pagehide', { persisted: false });
 
         helper.monitorConnection(done, realtime);
 
@@ -342,7 +390,7 @@ define(['ably', 'shared_helper', 'chai'], function (Ably, Helper, chai) {
           var connectionId = realtime.connection.id,
             recoveryKey = realtime.connection.createRecoveryKey();
 
-          document.dispatchEvent(refreshEvent);
+          window.dispatchEvent(refreshEvent);
           try {
             expect(realtime.connection.state).to.equal(
               'connected',

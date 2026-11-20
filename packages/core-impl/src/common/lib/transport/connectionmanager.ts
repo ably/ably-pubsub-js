@@ -297,12 +297,24 @@ class ConnectionManager extends EventEmitter {
       }
 
       if (options.closeOnUnload === true) {
-        addEventListener('beforeunload', () => {
+        /* Close on pagehide rather than beforeunload. beforeunload also fires
+         * when the page is not going away: for a download (Content-Disposition:
+         * attachment), a mailto:/tel: or other external-scheme link, a 204
+         * response, a navigation the user stops, or a "Leave site?" prompt the
+         * user cancels. pagehide fires only when the page is actually being
+         * hidden or unloaded.
+         *
+         * We close even when event.persisted is true (the page is entering the
+         * back/forward cache), which is what happened previously too:
+         * beforeunload fired before the page was cached. Keeping the
+         * connection open there would leave the client present on its channels
+         * for as long as the page sits in the cache. */
+        addEventListener('pagehide', () => {
           Logger.logAction(
             this.logger,
             Logger.LOG_MAJOR,
             'Realtime.ConnectionManager()',
-            'beforeunload event has triggered the connection to close as closeOnUnload is true',
+            'pagehide event has triggered the connection to close as closeOnUnload is true',
           );
           this.requestState({ state: 'closing' });
         });

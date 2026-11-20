@@ -2,6 +2,17 @@
 
 This contains only the most important and/or user-facing changes; for a full changelog, see the commit history.
 
+## [3.2.0](https://github.com/ably/ably-pubsub-js/tree/3.2.0) (2026-11-20)
+
+[Full Changelog](https://github.com/ably/ably-pubsub-js/compare/3.1.0...3.2.0)
+
+### What's Changed
+
+- When `closeOnUnload` is `true`, the connection now closes on the `pagehide` event instead of `beforeunload`. `beforeunload` also fires when the page stays open, for example when a download starts, a `mailto:` or `tel:` link is followed, or the user cancels a "Leave site?" prompt, which closed the connection and detached its channels. In Firefox, the close request sent on `pagehide` doesn't reach Ably when the page unloads, so a Firefox user who navigates away, reloads or closes the tab now leaves presence after 15 seconds rather than immediately [#2351](https://github.com/ably/ably-pubsub-js/pull/2351)
+- The Temporal plugin's activities now abandon their Ably requests, including any fallback hosts and token renewal still to come, once Temporal cancels the activity or times out the attempt, and fail as cancelled. When the activity has a `heartbeatTimeout`, it heartbeats while a request is outstanding, so slow requests are not timed out and cancellations from the workflow reach the activity. `AblyHttpPlugin` also reports its version to Temporal, which workers from `@temporalio/worker` 1.26.0 include in their heartbeats [#2348](https://github.com/ably/ably-pubsub-js/pull/2348)
+- The Temporal plugin logs a warning through the activity's logger when a retried activity may make Ably apply a call more than once: when the call isn't deduplicated by Ably, or when the retry comes more than 2 minutes after the activity was first scheduled. See the Logging section of `docs/temporal.md` [#2347](https://github.com/ably/ably-pubsub-js/pull/2347)
+- The realtime channel pool in `@ably/pubsub-server` now logs its decisions and connection state transitions through the `logLevel` and `logHandler` its clients are created with, such as the outcome of `open()`, reconnects of failed clients, and when every client is suspended or failed. Each line about one client is tagged with that client's index in the pool [#2346](https://github.com/ably/ably-pubsub-js/pull/2346)
+
 ## [3.1.0](https://github.com/ably/ably-pubsub-js/tree/3.1.0) (2026-11-11)
 
 [Full Changelog](https://github.com/ably/ably-pubsub-js/compare/3.0.0...3.1.0)

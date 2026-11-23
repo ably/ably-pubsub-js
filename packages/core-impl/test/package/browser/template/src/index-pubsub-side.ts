@@ -64,6 +64,75 @@ function logsOfConstruction(createClient: typeof PubSubDevice.createClient) {
   return logs;
 }
 
+// Typed message patches (Message.buildPatch) only check types: the operations each call builds are
+// asserted in packages/core-impl/test/unit/message_patch.test.js. As with LiveObjects' typed paths,
+// the type parameter decides which operations compile.
+type ToolCall = { name: string; arguments?: Record<string, string> };
+type Reply = {
+  text: string;
+  status: 'streaming' | 'complete';
+  toolCalls: ToolCall[];
+  usage?: { inputTokens: number; outputTokens: number };
+  scores: Record<string, number>;
+  model: string;
+};
+
+async function patchReply(channel: PubSubServer.RealtimeChannel, serial: string) {
+  await channel.patchMessage({
+    serial,
+    patches: PubSubServer.Message.buildPatch<Reply>((reply, headers) => {
+      reply.get('text').append('lo');
+      reply.get('status').set('complete');
+      reply.get('toolCalls').push({ name: 'search' });
+      reply.get('toolCalls').get(0).get('name').append('es');
+      reply.get('toolCalls').removeAt(1);
+      reply.get('usage').get('inputTokens').set(10);
+      reply.get('usage').set({ inputTokens: 1, outputTokens: 2 });
+      reply.remove('usage');
+      reply.get('scores').get('alice').set(1.5);
+      reply.get('scores').remove('bob');
+      reply.at('/model').set('m2');
+      headers.set('stage', 'done');
+      headers.remove('old');
+      // @ts-expect-error a string is set with a string
+      reply.get('text').set(42);
+      // @ts-expect-error a literal union takes only its members
+      reply.get('status').set('done');
+      // @ts-expect-error a number has no append
+      reply.get('usage').get('inputTokens').append('1');
+      // @ts-expect-error an array has no append
+      reply.get('toolCalls').append('x');
+      // @ts-expect-error an element must be a ToolCall
+      reply.get('toolCalls').push('search');
+      // @ts-expect-error a required key cannot be removed
+      reply.remove('text');
+      // @ts-expect-error not a key of Reply
+      reply.get('modle');
+      // @ts-expect-error a header is a string, number or boolean
+      headers.set('h', { nested: true });
+    }),
+  });
+
+  // Untyped, every operation is available, as on an AnyPathObject.
+  const untyped: PubSubServer.MessagePatches = PubSubServer.Message.buildPatch((data) => {
+    data.get('anything').get(0).append('x');
+  });
+  void untyped;
+
+  // A copy kept typed, and patched with Message.applyPatch.
+  let latest: PubSubServer.TypedInboundMessage<Reply> | undefined;
+  channel.subscribe((message) => {
+    if (message.action === 'message.create') {
+      latest = message as PubSubServer.TypedInboundMessage<Reply>;
+    } else if (message.action === 'message.patch' && latest) {
+      latest = PubSubServer.Message.applyPatch(latest, message);
+      const text: string = latest.data.text;
+      void text;
+    }
+  });
+}
+void patchReply;
+
 globalThis.testAblyPackage = async function () {
   const device = PubSubDevice.createClient({ key: 'app.key:secret', autoConnect: false, clientId: 'someone' });
   const serverRealtime = PubSubServer.createRealtimeClient({ key: 'app.key:secret', autoConnect: false });

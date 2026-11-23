@@ -287,4 +287,104 @@ define(['chai', 'ably'], function (chai, Ably) {
       expect({}.polluted).to.equal(undefined);
     });
   });
+
+  describe('Message.buildPatch', function () {
+    // The operations as a subscriber receives them: JSON values as text, with encoding json, as
+    // patchMessage sends them
+    function received(patches) {
+      return decodePatch({
+        ...patches,
+        data: (patches.data || []).map((op) =>
+          op.data === undefined || typeof op.data === 'string'
+            ? op
+            : { ...op, data: JSON.stringify(op.data), encoding: 'json' },
+        ),
+      });
+    }
+
+    it('adds each operation at its JSON Pointer', function () {
+      const patches = Message.buildPatch((reply, headers) => {
+        reply.get('text').append('lo');
+        reply.get('toolCalls').push({ name: 'search' });
+        reply.get('toolCalls').get(0).get('name').set('fetch');
+        reply.get('toolCalls').removeAt(1);
+        reply.get('usage').get('inputTokens').set(10);
+        reply.remove('usage');
+        reply.at('/model').set('m2');
+        headers.set('stage', 'done');
+        headers.remove('old');
+      });
+
+      expect(patches).to.deep.equal({
+        data: [
+          { op: 'append', path: '/text', data: 'lo' },
+          { op: 'set', path: '/toolCalls/-', data: { name: 'search' } },
+          { op: 'set', path: '/toolCalls/0/name', data: 'fetch' },
+          { op: 'remove', path: '/toolCalls/1' },
+          { op: 'set', path: '/usage/inputTokens', data: 10 },
+          { op: 'remove', path: '/usage' },
+          { op: 'set', path: '/model', data: 'm2' },
+        ],
+        extras: {
+          headers: [
+            { op: 'set', key: 'stage', value: 'done' },
+            { op: 'remove', key: 'old' },
+          ],
+        },
+      });
+    });
+
+    it('escapes keys as RFC 6901 says', function () {
+      const patches = Message.buildPatch((data) => data.get('a/b~c').get('d').set(null));
+
+      expect(patches).to.deep.equal({ data: [{ op: 'set', path: '/a~1b~0c/d', data: null }] });
+    });
+
+    it('operates on the whole of the data at the root', function () {
+      const patches = Message.buildPatch((data) => {
+        data.set({ text: '' });
+        data.append('x');
+      });
+
+      expect(patches).to.deep.equal({
+        data: [
+          { op: 'set', data: { text: '' } },
+          { op: 'append', data: 'x' },
+        ],
+      });
+    });
+
+    it('builds no members for no operations', function () {
+      expect(Message.buildPatch(() => {})).to.deep.equal({});
+    });
+
+    it('rejects what no patch can hold', function () {
+      expectError(() => Message.buildPatch((data) => data.get('a').set(undefined)), 'JSON has no undefined value');
+      expectError(() => Message.buildPatch((data) => data.get('a').push(undefined)), 'JSON has no undefined value');
+      expectError(() => Message.buildPatch((data) => data.get('a').removeAt(-1)), 'invalid array index -1');
+      expectError(() => Message.buildPatch((data) => data.get('a').removeAt(1.5)), 'invalid array index 1.5');
+      expectError(() => Message.buildPatch((data) => data.at('model')), 'invalid path "model"');
+    });
+
+    it('gives what a subscriber applies to its copy', async function () {
+      const message = await decode({
+        data: JSON.stringify({ text: 'Hel', toolCalls: [{ name: 'a' }], usage: { inputTokens: 1 }, model: 'm1' }),
+        encoding: 'json',
+      });
+      const patch = await received(
+        Message.buildPatch((reply, headers) => {
+          reply.get('text').append('lo');
+          reply.get('toolCalls').push({ name: 'b' });
+          reply.get('toolCalls').get(0).get('name').set('c');
+          reply.remove('usage');
+          headers.set('stage', 'done');
+        }),
+      );
+
+      const patched = Message.applyPatch(message, patch);
+
+      expect(patched.data).to.deep.equal({ text: 'Hello', toolCalls: [{ name: 'c' }, { name: 'b' }], model: 'm1' });
+      expect(patched.extras).to.deep.equal({ headers: { stage: 'done' } });
+    });
+  });
 });

@@ -653,3 +653,114 @@ function skipContainer(doc: string, i: number): number {
   }
   throw errInvalidData();
 }
+
+/**
+ * Builds a patch's operations with typed paths (Message.buildPatch). The types
+ * are compile-time only: one untyped path class backs every view, as one
+ * PathObject class backs LiveObjects' typed views, and each call adds the
+ * operation a hand-written patch would, at its JSON Pointer.
+ */
+export function buildPatch(
+  build: (data: API.AnyPatchPath, headers: API.MessagePatchHeaders) => void,
+): API.MessagePatches {
+  const data: API.MessagePatchDataOperation[] = [];
+  const headerOps: API.MessagePatchHeaderOperation[] = [];
+  build(new PatchPathBuilder(data, ''), {
+    set(key, value) {
+      headerOps.push({ op: 'set', key, value });
+    },
+    remove(key) {
+      headerOps.push({ op: 'remove', key });
+    },
+  });
+  const patches: API.MessagePatches = {};
+  if (data.length > 0) {
+    patches.data = data;
+  }
+  if (headerOps.length > 0) {
+    patches.extras = { headers: headerOps };
+  }
+  return patches;
+}
+
+class PatchPathBuilder implements API.AnyPatchPath {
+  constructor(
+    private readonly ops: API.MessagePatchDataOperation[],
+    readonly path: string,
+  ) {}
+
+  set(value: any): void {
+    this.add('set', this.path, requireValue(value, 'set'));
+  }
+
+  append(value: string): void {
+    this.add('append', this.path, value);
+  }
+
+  get(keyOrIndex: string | number): PatchPathBuilder {
+    return new PatchPathBuilder(this.ops, this.child(keyOrIndex));
+  }
+
+  push(value: any): void {
+    this.add('set', this.path + '/' + endOfArrayToken, requireValue(value, 'push'));
+  }
+
+  removeAt(index: number): void {
+    this.add('remove', this.child(requireIndex(index)));
+  }
+
+  remove(key: string): void {
+    this.add('remove', this.child(key));
+  }
+
+  at(pointer: string): PatchPathBuilder {
+    if (pointer !== '' && pointer[0] !== '/') {
+      throw new ErrorInfo({
+        message: `invalid path ${JSON.stringify(pointer)}; at() takes a JSON Pointer relative to the path, such as /content/0/text`,
+        code: 40000,
+        statusCode: 400,
+        remediation: 'Start the pointer with "/", and escape "~" as "~0" and "/" within a key as "~1".',
+      });
+    }
+    return new PatchPathBuilder(this.ops, this.path + pointer);
+  }
+
+  // A JSON Pointer token, escaped as RFC 6901 says
+  private child(keyOrIndex: string | number): string {
+    return this.path + '/' + String(keyOrIndex).replace(/~/g, '~0').replace(/\//g, '~1');
+  }
+
+  private add(op: API.MessagePatchDataOperation['op'], path: string, value?: unknown) {
+    // An empty path is the whole of the data, an operation without a path
+    const operation: API.MessagePatchDataOperation = path ? { op, path } : { op };
+    if (value !== undefined) {
+      operation.data = value;
+    }
+    this.ops.push(operation);
+  }
+}
+
+// JSON has no undefined, so a set or push of it has no value to send
+function requireValue(value: unknown, method: string): unknown {
+  if (value === undefined) {
+    throw new ErrorInfo({
+      message: `unable to ${method} undefined in a message patch; JSON has no undefined value`,
+      code: 40000,
+      statusCode: 400,
+      remediation: 'Pass null to set a JSON null, or remove the key with remove() on its object.',
+    });
+  }
+  return value;
+}
+
+function requireIndex(index: number): number {
+  if (!Number.isInteger(index) || index < 0) {
+    throw new ErrorInfo({
+      message: `invalid array index ${index} in a message patch; an index must be a non-negative integer`,
+      code: 40000,
+      statusCode: 400,
+      remediation: 'Pass the position of an existing element, counting from 0.',
+    });
+  }
+  return index;
+}

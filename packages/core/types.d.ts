@@ -2935,6 +2935,210 @@ export interface MessagePatchHeaderOperation {
 }
 
 /**
+ * A place in a message's JSON `data`, viewed as the type `T` expected there, with only the patch operations that type supports, for {@link Message.buildPatch}. As `PathObject` does for LiveObjects, the type parameter decides the methods: a string can be appended to, an array pushed to, an object navigated by its keys, and anything else, including a union of string literals, only set.
+ *
+ * The type is a compile-time description of the data and is not checked at run time.
+ */
+export type PatchPath<T = any> = 0 extends 1 & T
+  ? AnyPatchPath
+  : [T] extends [string]
+    ? string extends T
+      ? StringPatchPath
+      : ValuePatchPath<T> // a union of literals, such as 'streaming' | 'complete', is only set
+    : [T] extends [ArrayBuffer | ArrayBufferView]
+      ? ValuePatchPath<T>
+      : [T] extends [ReadonlyArray<infer E>]
+        ? ArrayPatchPath<E>
+        : [T] extends [object]
+          ? ObjectPatchPath<T>
+          : ValuePatchPath<T>;
+
+/**
+ * The keys of `T` that a patch may remove: its optional keys, and any key of an index signature such as `Record<string, V>`.
+ */
+export type RemovableKeys<T> = {
+  [K in keyof T & string]-?: string extends K ? K : undefined extends T[K] ? K : never;
+}[keyof T & string];
+
+/**
+ * A received message whose `data` is described by `T`, such as your copy of a message kept up to date with {@link Message.applyPatch}. The type is a compile-time assertion, as the type parameter of `channel.object.get()` is: the SDK does not check the data.
+ */
+export type TypedInboundMessage<T> = Omit<InboundMessage, 'data'> & TypedMessageData<T>;
+
+/**
+ * The typed `data` of a {@link TypedInboundMessage}.
+ */
+export interface TypedMessageData<T> {
+  /**
+   * The message's data, as `T` describes it.
+   */
+  data: T;
+}
+
+/**
+ * A function passed to {@link Message.buildPatch} to add a patch's operations, in order. It must be synchronous.
+ *
+ * @param data - The {@link PatchPath} of the whole of the message's data.
+ * @param headers - The operations on the message's headers.
+ */
+export type MessagePatchBuildFunction<T> = (data: PatchPath<T>, headers: MessagePatchHeaders) => void;
+
+/**
+ * The common members of every {@link PatchPath}.
+ */
+export interface PatchPathBase {
+  /**
+   * The JSON Pointer (RFC 6901) of this place in the data, such as `/content/0/text`; empty for the whole of the data.
+   */
+  readonly path: string;
+}
+
+/**
+ * A value in the data that is only ever set as a whole.
+ */
+export interface ValuePatchPath<T> extends PatchPathBase {
+  /**
+   * Sets the value. At a key the data does not have, adds it.
+   *
+   * @param value - The new value, sent as a string if it is one, binary if it is binary, and otherwise as JSON.
+   */
+  set(value: T): void;
+}
+
+/**
+ * A string in the data.
+ */
+export interface StringPatchPath extends ValuePatchPath<string> {
+  /**
+   * Adds `value` to the end of the string.
+   *
+   * @param value - The string to append.
+   */
+  append(value: string): void;
+}
+
+/**
+ * A JSON array of `E` in the data.
+ */
+export interface ArrayPatchPath<E> extends ValuePatchPath<E[]> {
+  /**
+   * The element at `index`, as the type it holds.
+   *
+   * @param index - A non-negative integer.
+   */
+  get(index: number): PatchPath<E>;
+  /**
+   * Adds `value` after the last element, with the last path token `-`.
+   *
+   * @param value - The element to add.
+   */
+  push(value: E): void;
+  /**
+   * Removes the element at `index`, moving the ones after it down.
+   *
+   * @param index - A non-negative integer.
+   */
+  removeAt(index: number): void;
+  /**
+   * A place below this one, by a JSON Pointer relative to it, such as `/0/text`. Using this method loses compile-time type information.
+   *
+   * @param pointer - A JSON Pointer, starting with `/`.
+   */
+  at(pointer: string): AnyPatchPath;
+}
+
+/**
+ * A JSON object in the data, whose keys and values `T` describes.
+ */
+export interface ObjectPatchPath<T> extends ValuePatchPath<T> {
+  /**
+   * The value of `key`, as the type it holds. For an optional key, the value's type without `undefined`; remove the key with {@link ObjectPatchPath.remove}.
+   *
+   * @param key - A key of `T`.
+   */
+  get<K extends keyof T & string>(key: K): PatchPath<NonNullable<T[K]>>;
+  /**
+   * Removes `key`, which must be optional in `T`, or a key of an index signature.
+   *
+   * @param key - The key to remove.
+   */
+  remove<K extends RemovableKeys<T>>(key: K): void;
+  /**
+   * A place below this one, by a JSON Pointer relative to it, such as `/content/0/text`. Using this method loses compile-time type information.
+   *
+   * @param pointer - A JSON Pointer, starting with `/`.
+   */
+  at(pointer: string): AnyPatchPath;
+}
+
+/**
+ * A {@link PatchPath} whose type is not known, with every operation. Each operation fails only when the patch is applied, if the data does not support it.
+ */
+export interface AnyPatchPath extends PatchPathBase {
+  /**
+   * Sets the value, as {@link ValuePatchPath.set}.
+   *
+   * @param value - The new value.
+   */
+  set(value: any): void;
+  /**
+   * Adds `value` to the end of the string here, as {@link StringPatchPath.append}.
+   *
+   * @param value - The string to append.
+   */
+  append(value: string): void;
+  /**
+   * The value of an object's key, or an array's element.
+   *
+   * @param keyOrIndex - The key, or the element's index.
+   */
+  get(keyOrIndex: string | number): AnyPatchPath;
+  /**
+   * Adds `value` after the last element of the array here, as {@link ArrayPatchPath.push}.
+   *
+   * @param value - The element to add.
+   */
+  push(value: any): void;
+  /**
+   * Removes the element at `index` of the array here, as {@link ArrayPatchPath.removeAt}.
+   *
+   * @param index - A non-negative integer.
+   */
+  removeAt(index: number): void;
+  /**
+   * Removes `key` of the object here, as {@link ObjectPatchPath.remove}.
+   *
+   * @param key - The key to remove.
+   */
+  remove(key: string): void;
+  /**
+   * A place below this one, by a JSON Pointer relative to it.
+   *
+   * @param pointer - A JSON Pointer, starting with `/`.
+   */
+  at(pointer: string): AnyPatchPath;
+}
+
+/**
+ * The header operations of a patch built with {@link Message.buildPatch}.
+ */
+export interface MessagePatchHeaders {
+  /**
+   * Sets the header `key`, adding it if the message does not have it.
+   *
+   * @param key - The header's name.
+   * @param value - The header's new value.
+   */
+  set(key: string, value: string | number | boolean): void;
+  /**
+   * Removes the header `key`, which the message must have.
+   *
+   * @param key - The header's name.
+   */
+  remove(key: string): void;
+}
+
+/**
  * An annotation to a message, received from Ably
  */
 export interface Annotation {
@@ -3230,6 +3434,31 @@ export declare class Message {
    * @returns The patched copy of the message. Throws an {@link ErrorInfo} if any operation of the patch cannot be applied, in which case none is.
    */
   static applyPatch<T extends Message>(message: T, patch: InboundMessage): T;
+
+  /**
+   * Builds the {@link MessagePatches} for {@link RealtimeChannel.patchMessage} with typed operations, which follow the shape of the message's `data` that the type parameter describes, so that an operation the shape does not allow does not compile. Each operation is the one you would write by hand, at its JSON Pointer.
+   *
+   * ```typescript
+   * type Reply = { text: string; toolCalls: ToolCall[]; usage?: { inputTokens: number }; model: string };
+   *
+   * await channel.patchMessage({
+   *   serial,
+   *   patches: Message.buildPatch<Reply>((reply, headers) => {
+   *     reply.get('text').append(delta); // { op: 'append', path: '/text', data: delta }
+   *     reply.get('toolCalls').push({ name: 'search' }); // { op: 'set', path: '/toolCalls/-', ... }
+   *     reply.get('usage').get('inputTokens').set(10);
+   *     reply.remove('usage'); // only optional keys
+   *     headers.set('stage', 'streaming');
+   *   }),
+   * });
+   * ```
+   *
+   * The type parameter is a compile-time description of the data, as the one of `channel.object.get()` is; keep received copies as {@link TypedInboundMessage}, and patch them with {@link Message.applyPatch}.
+   *
+   * @param build - A synchronous function that adds the operations, in order, through the {@link PatchPath} of the whole of the data and the {@link MessagePatchHeaders}.
+   * @returns The patch's operations.
+   */
+  static buildPatch<T = any>(build: MessagePatchBuildFunction<T>): MessagePatches;
 }
 
 /**

@@ -104,7 +104,7 @@ const worker = await Worker.create({
 await worker.run();
 ```
 
-The plugin creates its own Ably HTTP client from the options, with `createHttpClient` from `@ably/pubsub-server`, and registers one activity per Ably operation. Every activity name starts with `ably.`. The worker adds the plugin's activities over the `activities` you pass to `Worker.create`, so an activity of yours with the same name as one of the plugin's is replaced without warning. Do not give your own activities names that start with `ably.`. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
+The plugin creates its own Ably HTTP client from the options, with `createHttpClient` from `@ably/pubsub-server`, and registers one activity per Ably operation. Every activity name starts with `ably.`, so do not give your own activities names that start with `ably.`. `Worker.create` throws a `TypeError` if the `activities` you pass to it already have an activity under one of the plugin's names, or if the worker has more than one `AblyHttpPlugin`. To use Ably with different client options, add each `AblyHttpPlugin` to a worker on its own task queue, and set `activityOptions.taskQueue` in the `TemporalAblyHttpClient` options to choose the task queue in workflow code. All workflows on the worker share the plugin's client, and the client's credentials stay on the worker: workflow code never sees them.
 
 `AblyHttpPlugin` takes these options:
 
@@ -607,7 +607,7 @@ const worker = await Worker.create({
 });
 ```
 
-Create the client for the Ably activities alone, and do not use it anywhere else, as for the plugin's client. The activities heartbeat as the plugin's do, but a client you create does not abandon its request when Temporal cancels the activity, as described in [Cancellation, timeouts and heartbeats](#cancellation-timeouts-and-heartbeats), so one call can keep trying fallback hosts after Temporal has cancelled the activity or timed its attempt out. The activities release each channel from the client once no activity is using it, so a channel that other code got from the client could be released while that code still uses it, and the channel options that other code sets, such as a `cipher`, would apply to the activities' requests.
+Do not also add `AblyHttpPlugin` to the worker, because `Worker.create` then throws a `TypeError`. Create the client for the Ably activities alone, and do not use it anywhere else, as for the plugin's client. The activities heartbeat as the plugin's do, but a client you create does not abandon its request when Temporal cancels the activity, as described in [Cancellation, timeouts and heartbeats](#cancellation-timeouts-and-heartbeats), so one call can keep trying fallback hosts after Temporal has cancelled the activity or timed its attempt out. The activities release each channel from the client once no activity is using it, so a channel that other code got from the client could be released while that code still uses it, and the channel options that other code sets, such as a `cipher`, would apply to the activities' requests.
 
 Workflow code still calls the activities through `TemporalAblyHttpClient`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
 

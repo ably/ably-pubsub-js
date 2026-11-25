@@ -450,6 +450,27 @@ define(['shared_helper', 'async', 'chai', 'ably'], function (Helper, async, chai
           });
           helper.monitorConnection(done, realtime);
         });
+
+        /** @nospec */
+        it('transport_preference_ws_check_emits_connectivitycheck_event', function (done) {
+          const helper = this.test.helper;
+          window.localStorage.setItem(transportPreferenceName, JSON.stringify({ value: baseTransport(helper) }));
+          // Deterministic ws check result; this test doesn't need a websocket to Ably.
+          Config.WebSocket = rejectingWebSocket({ allowConnectivityCheck: true });
+          const realtime = helper.AblyRealtime(options(helper));
+
+          // With a base transport preference, the first check is the one connectImpl runs before connecting.
+          helper.recordPrivateApi('listen.connectionManager.connectivitycheck');
+          realtime.connection.connectionManager.once('connectivitycheck', function (check) {
+            try {
+              expect(check).to.deep.equal({ type: 'ws', available: true });
+            } catch (err) {
+              helper.closeAndFinish(done, realtime, err);
+              return;
+            }
+            helper.closeAndFinish(done, realtime);
+          });
+        });
       }
     }
   });

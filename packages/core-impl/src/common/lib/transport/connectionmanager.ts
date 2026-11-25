@@ -1080,7 +1080,7 @@ class ConnectionManager extends EventEmitter {
         }
       });
       if (this.realtime.httpRequester.checkConnectivity) {
-        Utils.whenPromiseSettles(this.realtime.httpRequester.checkConnectivity(), (err, connectivity) => {
+        Utils.whenPromiseSettles(this.checkHttpConnectivity(), (err, connectivity) => {
           if (err || !connectivity) {
             Logger.logAction(
               this.logger,
@@ -1607,32 +1607,29 @@ class ConnectionManager extends EventEmitter {
         giveUp(new PartialErrorInfo('Internal error: HttpRequester.checkConnectivity not set', null, 500));
         return;
       }
-      Utils.whenPromiseSettles(
-        this.realtime.httpRequester.checkConnectivity(),
-        (err?: ErrorInfo | null, connectivity?: boolean) => {
-          if (connectCount !== this.connectCounter) {
-            return;
-          }
-          if (!shouldContinue()) {
-            return;
-          }
-          /* we know err won't happen but handle it here anyway */
-          if (err) {
-            giveUp(err);
-            return;
-          }
-          if (!connectivity) {
-            /* the internet isn't reachable, so don't try the fallback hosts */
-            giveUp(new ErrorInfo('Unable to connect (network unreachable)', 80003, 404));
-            return;
-          }
-          /* the network is there, so there's a problem with the main host, or
-           * its dns. Try the fallback hosts. We could try them simultaneously but
-           * that would potentially cause a huge spike in load on the load balancer */
-          transportParams.host = Utils.arrPopRandomElement(candidateHosts);
-          this.tryATransport(transportParams, transportName, hostAttemptCb);
-        },
-      );
+      Utils.whenPromiseSettles(this.checkHttpConnectivity(), (err?: ErrorInfo | null, connectivity?: boolean) => {
+        if (connectCount !== this.connectCounter) {
+          return;
+        }
+        if (!shouldContinue()) {
+          return;
+        }
+        /* we know err won't happen but handle it here anyway */
+        if (err) {
+          giveUp(err);
+          return;
+        }
+        if (!connectivity) {
+          /* the internet isn't reachable, so don't try the fallback hosts */
+          giveUp(new ErrorInfo('Unable to connect (network unreachable)', 80003, 404));
+          return;
+        }
+        /* the network is there, so there's a problem with the main host, or
+         * its dns. Try the fallback hosts. We could try them simultaneously but
+         * that would potentially cause a huge spike in load on the load balancer */
+        transportParams.host = Utils.arrPopRandomElement(candidateHosts);
+        this.tryATransport(transportParams, transportName, hostAttemptCb);
+      });
     };
 
     if (this.forceFallbackHost && candidateHosts.length) {
@@ -2092,6 +2089,25 @@ class ConnectionManager extends EventEmitter {
     this.emit('connectiondetails', connectionDetails);
   }
 
+  // A ws check that never settles emits nothing; the give-up timer still falls back to the base transport.
+  private emitConnectivityCheck(type: 'http' | 'ws', available: boolean) {
+    this.emit('connectivitycheck', { type, available });
+  }
+
+  // Callers must first confirm httpRequester.checkConnectivity is set.
+  private async checkHttpConnectivity(): Promise<boolean> {
+    if (this.options.disableConnectivityCheck) {
+      return true;
+    }
+    let available = false;
+    try {
+      available = await this.realtime.httpRequester.checkConnectivity!();
+      return available;
+    } finally {
+      this.emitConnectivityCheck('http', available);
+    }
+  }
+
   checkWsConnectivity() {
     const wsConnectivityCheckUrl = this.options.wsConnectivityCheckUrl || Defaults.wsConnectivityCheckUrl;
     const ws = new Platform.Config.WebSocket(wsConnectivityCheckUrl);
@@ -2100,6 +2116,7 @@ class ConnectionManager extends EventEmitter {
       ws.onopen = () => {
         if (!finished) {
           finished = true;
+          this.emitConnectivityCheck('ws', true);
           resolve();
           ws.close();
         }
@@ -2108,6 +2125,7 @@ class ConnectionManager extends EventEmitter {
       ws.onclose = ws.onerror = () => {
         if (!finished) {
           finished = true;
+          this.emitConnectivityCheck('ws', false);
           reject();
         }
       };

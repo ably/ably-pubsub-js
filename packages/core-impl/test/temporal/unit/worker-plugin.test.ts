@@ -153,7 +153,15 @@ describe('temporal/worker/plugin', function () {
 
   it('exports the worker API from the entry point', function () {
     expect(Object.keys(WorkerEntryPoint).sort()).to.deep.equal(
-      ['ABLY_ERROR_TYPE', 'AblyHttpPlugin', 'ActivityNames', 'createActivities', 'getAblyErrorDetails'].sort(),
+      [
+        'ABLY_ERROR_TYPE',
+        'AblyHttpPlugin',
+        'AblyRelayPlugin',
+        'ActivityNames',
+        'createActivities',
+        'getAblyErrorDetails',
+        'publishPerEvent',
+      ].sort(),
     );
   });
 });

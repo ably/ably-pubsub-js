@@ -15,3 +15,6 @@ export {
 } from './workflow/push.js';
 export type { TemporalAblyPaginatedResult, TemporalAblyHttpPaginatedResponse } from './workflow/paginated.js';
 export { ABLY_ERROR_TYPE, type AblyErrorDetails, getAblyErrorDetails } from './common/errors.js';
+export { startAblyRelay, type AblyRelay, type AblyRelayOptions } from './workflow/relay/start.js';
+export { ablyRelayWorkflow } from './workflow/relay/workflow.js';
+export type { RelayCheckpointOptions, RelayRoute } from './common/relay.js';

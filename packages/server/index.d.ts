@@ -167,8 +167,8 @@ export interface RealtimePublisherAnnotations {
 
 /**
  * A handle on a channel obtained from a {@link RealtimeChannelPool}. It publishes on the
- * channel, but cannot attach to it or subscribe to it, so every publish is transient and the
- * channel holds no state between operations.
+ * channel, and reads a published message back, but cannot attach to it or subscribe to it, so
+ * every publish is transient and the channel holds no state between operations.
  *
  * Each method call runs on the client that the channel name is bound to while that client is
  * connected. Otherwise the name moves to the connected client with the fewest channel names bound
@@ -178,7 +178,8 @@ export interface RealtimePublisherAnnotations {
  * rejects with the client's `errorReason` while the connection is suspended or failed. If
  * `ClientOptions.queueMessages` is `false`, the call is not queued: while the connection is
  * connecting or disconnected it rejects with the client's `errorReason`, or with error 90000 if the
- * connection has none.
+ * connection has none. {@link RealtimePublisherChannel.getMessage} is the exception: it makes a
+ * REST request, which does not wait for or depend on the client's connection.
  *
  * Release the handle when finished with it, by calling {@link RealtimePublisherChannel.release} or
  * by declaring it with `using`. A method called after release rejects with error 40000.
@@ -200,6 +201,12 @@ export interface RealtimePublisherChannel {
   deleteMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
   /** Appends to a message, as `RealtimeChannel.appendMessage` does. */
   appendMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
+
+  /**
+   * Retrieves the latest version of a message by its serial, as `RealtimeChannel.getMessage` does.
+   * It makes a REST request, so it neither attaches to the channel nor depends on the connection.
+   */
+  getMessage(serialOrMessage: string | Message): Promise<Message>;
 
   /** Publishes and deletes annotations on the channel's messages. */
   readonly annotations: RealtimePublisherAnnotations;

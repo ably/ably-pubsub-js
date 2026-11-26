@@ -615,6 +615,10 @@ class PooledPublisherChannel implements RealtimePublisherChannel {
     return this.run((channel) => channel.appendMessage(message, operation, options));
   }
 
+  getMessage(serialOrMessage: string | Ably.Message): Promise<Ably.Message> {
+    return this.run((channel) => channel.getMessage(serialOrMessage));
+  }
+
   release(): void {
     if (this.released) {
       return;

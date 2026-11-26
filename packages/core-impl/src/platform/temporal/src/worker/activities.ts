@@ -369,7 +369,7 @@ async function run<T>(body: () => Promise<T>, retry?: RetryEffect): Promise<T> {
  * which Temporal delivers in the response to a heartbeat. An activity without a `heartbeatTimeout` must not heartbeat,
  * so for one it does nothing.
  */
-function heartbeatUntilSettled(activity: Context): () => void {
+export function heartbeatUntilSettled(activity: Context): () => void {
   const { heartbeatTimeoutMs } = activity.info;
   if (heartbeatTimeoutMs === undefined || heartbeatTimeoutMs <= 0) {
     return () => {};

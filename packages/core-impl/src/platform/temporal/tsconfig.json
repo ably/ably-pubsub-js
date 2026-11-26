@@ -9,6 +9,7 @@
   "include": ["./src/**/*.ts", "../../../../core/index.d.ts"],
   "compilerOptions": {
     "target": "ES2020",
+    "module": "ES2020",
     "lib": ["ES2020"],
     "rootDir": "./src",
     "strict": true,

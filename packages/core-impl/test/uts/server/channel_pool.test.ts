@@ -9,7 +9,16 @@
 
 import { expect } from 'chai';
 import { MockWebSocket, PendingWSConnection } from '../mock_websocket';
-import { Ably, installMockWebSocket, restoreAll, trackClient, flushAsync, pollUntil } from '../helpers';
+import { MockHttpClient } from '../mock_http';
+import {
+  Ably,
+  installMockHttp,
+  installMockWebSocket,
+  restoreAll,
+  trackClient,
+  flushAsync,
+  pollUntil,
+} from '../helpers';
 import { createRealtimeChannelPool, createRealtimeClient } from '../../../../server/src/index';
 import { DefaultRealtimeChannelPool, poolClientLogContext } from '../../../../server/src/channel-pool';
 import { createLogger, Logger } from '../../../side/logger';
@@ -268,6 +277,31 @@ describe('uts/server/channel_pool', function () {
       expect(sent[0].msg.messages.map((m: any) => m.name)).to.deep.equal(['a', 'b']);
       expect(sent.slice(2, 5).map((s) => s.msg.messages[0].action)).to.deep.equal([1, 5, 2]);
     });
+    it('reads a message back over REST, without attaching', async function () {
+      const { pool, sent } = setup({ size: 1 });
+      const paths: string[] = [];
+      installMockHttp(
+        new MockHttpClient({
+          onConnectionAttempt: (conn) => conn.respond_with_success(),
+          onRequest: (req) => {
+            paths.push(req.path);
+            req.respond_with(
+              200,
+              { name: 'reply', data: 'hello', serial: 's1' },
+              { 'content-type': 'application/json' },
+            );
+          },
+        }),
+      );
+      await pool.open();
+      const channel = pool.get('chat');
+
+      const message = await channel.getMessage('s1');
+
+      expect(message).to.include({ name: 'reply', data: 'hello', serial: 's1' });
+      expect(paths).to.deep.equal(['/channels/chat/messages/s1']);
+      expect(sent.some((s) => s.msg.action === ATTACH)).to.equal(false);
+    });
   });
 
   describe('client selection', function () {
@@ -423,10 +457,15 @@ describe('uts/server/channel_pool', function () {
       const channel = pool.get('chat');
       channel.release();
 
-      const err = await expectRejection(channel.publish('e', 'd'));
+      const errors = [
+        await expectRejection(channel.publish('e', 'd')),
+        await expectRejection(channel.getMessage('s1')),
+      ];
 
-      expect(err.code).to.equal(40000);
-      expect(err.message).to.contain('released');
+      for (const err of errors) {
+        expect(err.code).to.equal(40000);
+        expect(err.message).to.contain('released');
+      }
     });
 
     it('counts a second release of a handle once', async function () {

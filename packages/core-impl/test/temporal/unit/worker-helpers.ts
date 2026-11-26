@@ -147,3 +147,13 @@ export function jsonBody(req: PendingRequest): any {
 export function queryParams(req: PendingRequest): Record<string, string> {
   return Object.fromEntries(req.url.searchParams.entries());
 }
+
+/** The error that `promise` rejects with. Fails the test if it resolves instead. */
+export async function rejection(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (err) {
+    return err;
+  }
+  throw new Error('expected the promise to reject, but it resolved');
+}

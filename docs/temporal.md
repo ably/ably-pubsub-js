@@ -6,8 +6,8 @@ Temporal workflow code must be deterministic, so any I/O, including a request to
 
 The plugin ships in the `@ably/pubsub-server` package as two entry points:
 
-- `@ably/pubsub-server/temporal` is the worker entry point. It provides `AblyHttpPlugin`, which registers the Ably activities on a Temporal worker.
-- `@ably/pubsub-server/temporal/workflow` is the workflow entry point. It provides `TemporalAblyHttpClient`, the client you use in workflow code.
+- `@ably/pubsub-server/temporal` is the worker entry point. It provides `AblyHttpPlugin`, which registers the Ably activities on a Temporal worker, and `AblyRelayPlugin`, which registers the activity that [relays a Workflow Stream](#relaying-workflow-streams) to Ably.
+- `@ably/pubsub-server/temporal/workflow` is the workflow entry point. It provides `TemporalAblyHttpClient`, the client you use in workflow code, and `startAblyRelay`, which starts the relay.
 
 > [!NOTE]
 > For more information about Ably and the concepts used here, see the official [Ably documentation](https://ably.com/docs/). For Temporal concepts such as workflows, activities, retry policies and plugins, see the [Temporal TypeScript SDK documentation](https://docs.temporal.io/develop/typescript).
@@ -46,6 +46,14 @@ The plugin ships in the `@ably/pubsub-server` package as two entry points:
 - [Binary data and results](#binary-data-and-results)
 - [Pagination](#pagination)
 - [Registering the activities without the plugin](#registering-the-activities-without-the-plugin)
+- [Relaying Workflow Streams](#relaying-workflow-streams)
+  - [Relay requirements](#relay-requirements)
+  - [Relay worker setup](#relay-worker-setup)
+  - [Starting the relay](#starting-the-relay)
+  - [Relay options](#relay-options)
+  - [Completion](#completion)
+  - [Delivery](#delivery)
+  - [Adaptors](#adaptors)
 - [Exports](#exports)
 
 ## <!-- /code_chunk_output -->
@@ -59,7 +67,7 @@ Use the plugin for the non-streamed content that an agent workflow delivers to i
 - Presence checks, for example to find out whether the user is still online before notifying them.
 - Reading and updating [LiveObjects](https://ably.com/docs/liveobjects) state on a channel.
 
-The plugin is not designed for token streaming. Each call is a separate activity, which adds latency and a workflow history event per call. To stream tokens as a model produces them, publish from inside your own activity, for example with a realtime client from `createRealtimeClient`, in the same activity that makes the model call.
+The HTTP client is not designed for token streaming. Each call is a separate activity, which adds latency and a workflow history event per call. To stream tokens as a model produces them, either publish them to a Workflow Stream and [relay it to Ably](#relaying-workflow-streams), or publish from inside your own activity, for example with a realtime client from `createRealtimeClient`, in the same activity that makes the model call.
 
 ## Requirements
 
@@ -68,6 +76,7 @@ The plugin is not designed for token streaming. Each call is a separate activity
   - On an earlier version, the first workflow task that publishes fails with a `TypeError` that names the required version. The workflow resumes once the worker is redeployed with 1.18.0 or later.
   - The workflow only uses named random streams for idempotent publishing, so with [`idempotentPublishing: false`](#turning-off-idempotent-publishing) it does not throw this error on earlier versions. 1.18.0 remains the supported minimum.
   - The worker entry point also requires `@temporalio/plugin`, which was first released in 1.13.2. Without it, `@ably/pubsub-server/temporal` fails to load with Node.js's module-not-found error.
+- **`@temporalio/*` 1.27.0 or later, and `@temporalio/workflow-streams`, for the relay only.** See [Relay requirements](#relay-requirements).
 
 ## Installation
 
@@ -611,9 +620,163 @@ Create the client for the Ably activities alone, and do not use it anywhere else
 
 Workflow code still calls the activities through `TemporalAblyHttpClient`, which encodes their arguments and results. Their input and result formats are internal to the plugin, so do not call them directly with `proxyActivities`. Use `ActivityNames` to recognise the Ably activities elsewhere, for example in the workflow history or in an interceptor.
 
+## Relaying Workflow Streams
+
+A [Workflow Stream](https://github.com/temporalio/sdk-typescript/tree/main/contrib/workflow-streams) is an append-only log of events that a workflow publishes to, from `@temporalio/workflow-streams`. The relay reads a workflow's stream and publishes its events to Ably channels, so that clients can subscribe to what an agent workflow streams, token by token, without the workflow making an Ably call per event.
+
+The relay runs as a child workflow, `ablyRelayWorkflow`, of the workflow that owns the stream. For each route, it runs an activity on your worker that reads the route's topics from the stream and publishes each event to the route's channel. Each activity checkpoints its progress, so a failed activity, or a Continue-As-New of either workflow, resumes from the last checkpoint.
+
+### Relay requirements
+
+- **`@temporalio/*` 1.27.0 or later**, and `@temporalio/workflow-streams`, whose first release is 1.27.0. Install it at exactly the version of your other Temporal packages, for example:
+
+  ```sh
+  npm install @temporalio/workflow-streams@1.27.0
+  ```
+
+  It depends on exact versions of the other `@temporalio/*` packages, so a different version installs a second copy of them, which Temporal's workflow bundle does not accept.
+
+  The HTTP plugin does not need it. The relay activity loads it only when it runs.
+
+- A realtime channel pool, from `createRealtimeChannelPool` in `@ably/pubsub-server`, on each worker that runs relay activities.
+
+### Relay worker setup
+
+Add an `AblyRelayPlugin` to the worker, with an open channel pool and the adaptors that your routes use. Register `ablyRelayWorkflow` with your workflows by re-exporting it from your workflows module:
+
+```typescript
+// worker.ts
+import { fileURLToPath } from 'node:url';
+import { NativeConnection, Worker } from '@temporalio/worker';
+import { createRealtimeChannelPool } from '@ably/pubsub-server';
+import { AblyRelayPlugin, publishPerEvent } from '@ably/pubsub-server/temporal';
+
+const pool = createRealtimeChannelPool({ key: process.env.ABLY_API_KEY });
+await pool.open();
+
+const worker = await Worker.create({
+  connection: await NativeConnection.connect({ address: 'localhost:7233' }),
+  taskQueue: 'agents',
+  workflowsPath: fileURLToPath(new URL('./workflows.ts', import.meta.url)),
+  plugins: [new AblyRelayPlugin({ pool, adaptors: { events: publishPerEvent() } })],
+});
+
+await worker.run();
+await pool.close();
+```
+
+```typescript
+// workflows.ts
+export { ablyRelayWorkflow } from '@ably/pubsub-server/temporal/workflow';
+```
+
+The plugin borrows the pool: open it before the worker runs, and close it once the worker has shut down. Register the same adaptor names on every worker that polls the task queue. The relay activity is registered under a name that starts with `ably.`, as the HTTP plugin's activities are.
+
+### Starting the relay
+
+In the workflow that owns the stream, call `startAblyRelay` with the stream and the routes. Call `relay.complete()` once the workflow has published its last event, before it returns:
+
+```typescript
+// workflows.ts
+import { WorkflowStream, type WorkflowStreamState } from '@temporalio/workflow-streams/workflow';
+import { startAblyRelay } from '@ably/pubsub-server/temporal/workflow';
+
+export { ablyRelayWorkflow } from '@ably/pubsub-server/temporal/workflow';
+
+interface AgentInput {
+  chatId: string;
+  /** The stream's state, passed on by Continue-As-New. */
+  streamState?: WorkflowStreamState;
+}
+
+export async function agentWorkflow(input: AgentInput): Promise<void> {
+  const stream = new WorkflowStream(input.streamState);
+  const relay = await startAblyRelay(stream, {
+    routes: [{ topics: ['agent'], adaptor: 'events', channel: `chat:${input.chatId}` }],
+  });
+
+  stream.topic('agent').publish({ type: 'text', text: 'Hello' });
+  // ... publish the rest of the response. To continue as new, pass the stream's state on:
+  // await stream.continueAsNew<typeof agentWorkflow>((streamState) => [{ ...input, streamState }]);
+
+  await relay.complete();
+}
+```
+
+A route has these fields:
+
+| Field     | Description                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------- |
+| `topics`  | The stream topics whose events the route relays. Events on other topics are not published.              |
+| `adaptor` | The name of the adaptor that turns the events into Ably messages, as registered with `AblyRelayPlugin`. |
+| `channel` | The Ably channel to publish to.                                                                         |
+
+The topic `__ably` is reserved for the relay. Do not publish to it, and do not route it.
+
+On the workflow's first run, `startAblyRelay` starts `ablyRelayWorkflow` as a child workflow with the ID `<workflowId>:ably`, which outlives the workflow that started it. After a Continue-As-New, the relay is still running and follows the stream into the new run, so call `startAblyRelay` again only to get the handle for `complete()`. Continue as new with `stream.continueAsNew()`, and construct the new run's stream from the state it passes on, as in the example. A new run whose stream starts empty restarts its offsets at 0, so the relay, which reads on from its own offset, skips that run's events until the log passes that offset. The routes and options passed on a later run are checked but otherwise ignored.
+
+`startAblyRelay` fails the workflow with an `ApplicationFailure` of type `AblyError`, code 40003, if a route or an option is invalid.
+
+### Relay options
+
+| Option              | Default | Description                                                                                                                                                                                                                                                                                                                                        |
+| ------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `routes`            |         | Required. The routes to relay.                                                                                                                                                                                                                                                                                                                     |
+| `checkpointBudget`  | 100     | The number of route events an activity relays before it returns a checkpoint to the relay workflow.                                                                                                                                                                                                                                                |
+| `idleCheckpointMs`  | 30000   | How long a route must be quiet, after an event, before its activity returns a checkpoint to the relay workflow.                                                                                                                                                                                                                                    |
+| `completeTimeoutMs` | 60000   | How long `relay.complete()` waits for the relay to confirm that it has relayed every event.                                                                                                                                                                                                                                                        |
+| `activityOptions`   |         | Options for the relay activities, applied over the defaults: a `startToCloseTimeout` of 1 hour, a `heartbeatTimeout` of 30 seconds, and a `retry` policy without a limit on attempts, from 1 second to at most 1 minute apart. The fields of `retry` are applied over the default policy one by one. Set `taskQueue` to run them on other workers. |
+
+Each checkpoint is an activity result, so it is recorded in the relay workflow's history, and a retry carries on from the last one. The `startToCloseTimeout` is long because an activity on a route that publishes nothing returns only shortly before that deadline. Keep a `heartbeatTimeout`, so that Temporal notices a lost worker quickly.
+
+### Completion
+
+`relay.complete()` publishes an end-of-stream event to the stream, then waits until every route has relayed it, so every event published before `complete()` is on its channel when it returns. If the relay does not confirm within `completeTimeoutMs`, it logs a warning and returns. The relay carries on, but a workflow that then returns closes its stream, and the relay cannot read any event that it had not read by then.
+
+If the workflow fails, is terminated or returns without calling `complete()`, the relay relays what it can still read, then finishes.
+
+Do not start another workflow with the same ID while its relay is running. The relay finds the workflow by its ID, so it would read the new workflow's stream instead, and the new workflow could not start its own relay. The relay is also not started again when a workflow is retried or runs on a cron schedule, so use it only in workflows that do neither.
+
+### Delivery
+
+The relay publishes each route's events in stream order, at least once. If a relay activity fails with a retryable error, Temporal retries it from the route's last checkpoint, and the events since that checkpoint are published again. A transient Ably error, such as a lost connection or a 5xx response, is retryable, as described in [Which errors are retried](#which-errors-are-retried). So is any error that is not an Ably error and not a non-retryable `ApplicationFailure`.
+
+A non-retryable error, such as an Ably error for a missing capability, fails the relay workflow, and with it every route. `relay.complete()` then waits for `completeTimeoutMs`, logs a warning and returns. An unknown adaptor name, or an adaptor factory that returns no adaptor, fails the relay in the same way. Publishes that the failed attempt still had in flight may arrive after the retry's first ones, so order is kept within an attempt but not across attempts.
+
+The relay reads from the stream's current offset onward. Do not call `truncate()` on a stream that is being relayed: if the stream is truncated past the relay's offset, the relay skips to the start of what remains, and the events in between are lost.
+
+When an activity stops in the middle of a read, for example at an idle checkpoint, it publishes an event to `__ably` to release the read that the source workflow is holding for it. Relays ignore these events. So each quiet spell on a route adds one event to the source's stream, and one signal to its history.
+
+### Adaptors
+
+An adaptor turns a route's events into Ably messages. `publishPerEvent()` publishes each event as one message, named after its topic, with the event as its data. To shape messages differently, for example to stream a model's response into one message with appends, register your own `RelayAdaptorFactory`:
+
+```typescript
+import type { RelayAdaptorFactory } from '@ably/pubsub-server/temporal';
+
+const myAdaptor: RelayAdaptorFactory = (channel, handoff) => {
+  // `handoff` is what flush() or close() last resolved with, or null when the route starts.
+  return {
+    write(event) {
+      // Called for each event, in stream order. Start publishing, but return at once.
+    },
+    async flush() {
+      // Resolve once everything written is on the channel.
+      return { handoff: null };
+    },
+    async close() {
+      // As flush(). Called once the route has finished.
+      return { handoff: null };
+    },
+  };
+};
+```
+
+The relay creates an adaptor for each activity attempt, and passes it the handoff from the route's last checkpoint. Use the handoff to carry on across checkpoints, for example to keep appending to a message that a previous attempt started. The relay stores the handoff in the workflow history, so keep it small: a JSON value such as message serials, never event content. If the channel refuses a publish, stop, and throw the channel's error from the next call. The relay then fails the activity, and Temporal retries it from the last checkpoint if the error is retryable, as described in [Delivery](#delivery). For an event that the adaptor can never handle, throw `ApplicationFailure.nonRetryable()` from `@temporalio/common`, which fails the relay. Any other error is retried without a limit on attempts, and a retry meets the same event again.
+
 ## Exports
 
-| Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `ActivityNames`, `ActivityName`, `AblyActivities`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`                                                                                                                                                                                                                                                                                                                                                                                  |
-| `@ably/pubsub-server/temporal/workflow` | `TemporalAblyHttpClient`, `TemporalAblyHttpClientOptions`, `TemporalAblyHttpChannels`, `TemporalAblyHttpChannel`, `TemporalAblyHttpPresence`, `TemporalAblyHttpAnnotations`, `TemporalAblyHttpObject`, `TemporalAblyHttpObjectPublishOptions`, `TemporalAblyHttpPush`, `TemporalAblyHttpPushAdmin`, `TemporalAblyHttpPushDeviceRegistrations`, `TemporalAblyHttpPushChannelSubscriptions`, `TemporalAblyHttpPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails` |
+| Entry point                             | Exports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ably/pubsub-server/temporal`          | `AblyHttpPlugin`, `AblyHttpPluginOptions`, `createActivities`, `ActivityNames`, `ActivityName`, `AblyActivities`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`, `AblyRelayPlugin`, `AblyRelayPluginOptions`, `publishPerEvent`, `RelayAdaptor`, `RelayAdaptorFactory`, `RelayAdaptorResult`, `RelayEvent`, `RelayRoute`, `JsonValue`                                                                                                                                                                                                                                                                                                                            |
+| `@ably/pubsub-server/temporal/workflow` | `TemporalAblyHttpClient`, `TemporalAblyHttpClientOptions`, `TemporalAblyHttpChannels`, `TemporalAblyHttpChannel`, `TemporalAblyHttpPresence`, `TemporalAblyHttpAnnotations`, `TemporalAblyHttpObject`, `TemporalAblyHttpObjectPublishOptions`, `TemporalAblyHttpPush`, `TemporalAblyHttpPushAdmin`, `TemporalAblyHttpPushDeviceRegistrations`, `TemporalAblyHttpPushChannelSubscriptions`, `TemporalAblyHttpPushLiveActivity`, `TemporalAblyPaginatedResult`, `TemporalAblyHttpPaginatedResponse`, `ABLY_ERROR_TYPE`, `getAblyErrorDetails`, `AblyErrorDetails`, `startAblyRelay`, `AblyRelay`, `AblyRelayOptions`, `ablyRelayWorkflow`, `RelayRoute`, `RelayCheckpointOptions` |

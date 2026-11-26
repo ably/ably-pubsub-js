@@ -61,7 +61,7 @@ export function applyPatch<T extends Properties<Message>>(message: T, patch: Pro
         data = applyAtPath(data, op);
       } else if (op.op === 'set') {
         // decoded, as a message.update's data would be
-        data = op.encoding === 'json' ? JSON.parse(op.data) : op.data;
+        data = op.encoding === 'json' ? parseWholeData(op.data) : op.data;
         encoding = op.encoding === 'json' ? undefined : op.encoding;
       } else {
         data = applyToWhole(data, encoding, op);
@@ -93,9 +93,27 @@ export function applyPatch<T extends Properties<Message>>(message: T, patch: Pro
   });
 }
 
+/** A message's data holds only a JSON object or array, not any other JSON value */
+function parseWholeData(text: string): object {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw patchError('a set patch operation has data that is not valid JSON');
+  }
+  if (typeof value !== 'object' || value === null) {
+    throw patchError('a set patch operation without a path requires a JSON object or array, or a string or binary');
+  }
+  return value;
+}
+
 function applyToWhole(data: any, encoding: string | null | undefined, op: API.MessagePatchDataOperation): any {
   switch (op.op) {
     case 'append':
+      if (op.encoding) {
+        // a JSON value, which is not a string or binary to append
+        throw patchError('an append patch operation requires data that is a string or binary, not a JSON value');
+      }
       if (data == null && (typeof op.data === 'string' || Platform.BufferUtils.isBuffer(op.data))) {
         // as with message.append, appending to no data gives the value
         return op.data;
@@ -277,7 +295,7 @@ function appendString(value: unknown, op: API.MessagePatchDataOperation, path: s
   if (typeof value !== 'string') {
     throw patchError(`unable to append at path ${JSON.stringify(path)}; the value there is not a string`);
   }
-  if (typeof op.data !== 'string') {
+  if (typeof op.data !== 'string' || op.encoding) {
     throw patchError('an append patch operation with a path requires data that is a string');
   }
   return value + op.data;
@@ -360,7 +378,7 @@ function applyToText(doc: string, op: API.MessagePatchDataOperation): string {
       return setText(doc, path, JSON.stringify(op.data));
     }
     case 'append': {
-      if (typeof op.data !== 'string') {
+      if (typeof op.data !== 'string' || op.encoding) {
         throw patchError('an append patch operation with a path requires data that is a string');
       }
       const [, loc] = locate(doc, path, 'append');

@@ -33,7 +33,10 @@ export interface AblyRelayWorkflowInput {
   sourceRunId: string;
   routes: RelayRoute[];
   checkpoints?: RelayCheckpointOptions;
-  /** Options for the relay activities, applied over {@link DEFAULT_RELAY_ACTIVITY_OPTIONS}. */
+  /**
+   * Options for the relay activities, applied over {@link DEFAULT_RELAY_ACTIVITY_OPTIONS}. The fields of `retry` are
+   * applied over the default policy one by one.
+   */
   activityOptions?: ActivityOptions;
   /** The state of each route, in the order of `routes`. Absent when the relay starts, and set by its Continue-As-New. */
   state?: RelayRouteState[];
@@ -76,7 +79,12 @@ export async function ablyRelayWorkflow(input: AblyRelayWorkflowInput): Promise<
   const { sourceWorkflowId, routes } = input;
   const state: RelayRouteState[] =
     input.state ?? routes.map(() => ({ status: 'running', offset: 0, handoff: null }) satisfies RelayRouteState);
-  const activities = proxyActivities<RelayActivities>({ ...DEFAULT_RELAY_ACTIVITY_OPTIONS, ...input.activityOptions });
+  // The fields of `retry` are applied over the default policy one by one, so that setting one keeps the others.
+  const activities = proxyActivities<RelayActivities>({
+    ...DEFAULT_RELAY_ACTIVITY_OPTIONS,
+    ...input.activityOptions,
+    retry: { ...DEFAULT_RELAY_ACTIVITY_OPTIONS.retry, ...input.activityOptions?.retry },
+  });
 
   // Activities are numbered as they start. Once Temporal suggests Continue-As-New, `suggestedAt` is the number of the
   // next one, and a route stops starting activities once none numbered below it is still running.

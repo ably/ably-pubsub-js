@@ -25,7 +25,8 @@ export interface AblyRelayOptions extends RelayCheckpointOptions {
   completeTimeoutMs?: number;
   /**
    * Options for the relay's activities, applied over its defaults: a `startToCloseTimeout` of 1 hour, a
-   * `heartbeatTimeout` of 30 seconds, and retries without a limit on attempts. Set `taskQueue` to run them on workers
+   * `heartbeatTimeout` of 30 seconds, and retries without a limit on attempts, from 1 second to at most 1 minute
+   * apart. The fields of `retry` are applied over the default policy one by one. Set `taskQueue` to run them on workers
    * other than the relay workflow's. Keep a `heartbeatTimeout`, so that Temporal notices a lost worker quickly.
    */
   activityOptions?: ActivityOptions;

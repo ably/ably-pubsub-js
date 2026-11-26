@@ -15,7 +15,7 @@ import type { JsonValue, RelayRoute } from '../../../src/platform/temporal/src/c
 import type { RelayAdaptorFactory } from '../../../src/platform/temporal/src/worker/relay/adaptor';
 import { createRelayActivities } from '../../../src/platform/temporal/src/worker/relay/activity';
 import type { AblyRelayWorkflowInput } from '../../../src/platform/temporal/src/workflow/relay/workflow';
-import { installTestRuntime } from '../temporal-test-helpers';
+import { EventType, eventsOfType, historyEvents, installTestRuntime } from '../temporal-test-helpers';
 import type { RelaySourceInput } from './workflows/relay';
 
 const TASK_QUEUE = 'ably-temporal-relay';
@@ -202,6 +202,15 @@ describe('temporal relay workflow', function () {
     const { data, handoffs } = record(channel);
     expect(data).to.deep.equal(['a', 'b', 'a', 'b', 'c', 'd', 'e']);
     expect(handoffs).to.deep.equal([null, null, { count: 2 }, { count: 4 }]);
+
+    // The retry option set only initialInterval, so the default maximumInterval still applies.
+    const scheduled = eventsOfType(
+      await historyEvents(relayOf(source.workflowId)),
+      EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED,
+    );
+    const retryPolicy = scheduled[0].activityTaskScheduledEventAttributes?.retryPolicy;
+    expect(Number(retryPolicy?.initialInterval?.nanos)).to.equal(100_000_000);
+    expect(Number(retryPolicy?.maximumInterval?.seconds)).to.equal(60);
   });
 
   it('fails the source with an AblyError when a route is invalid', async function () {

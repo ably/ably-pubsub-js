@@ -2,10 +2,12 @@ import * as http from 'http';
 import type { AddressInfo } from 'net';
 import { expect } from 'chai';
 import { CancelledFailure } from '@temporalio/common';
-import type { WorkerOptions } from '@temporalio/worker';
+import { Worker, type WorkerOptions } from '@temporalio/worker';
+import { createHttpClient } from '@ably/pubsub-server';
 import * as WorkerEntryPoint from '../../../src/platform/temporal/src/index';
 import { AblyHttpPlugin } from '../../../src/platform/temporal/src/worker/plugin';
 import { ActivityNames } from '../../../src/platform/temporal/src/common/activities';
+import { createActivities } from '../../../src/platform/temporal/src/worker/activities';
 import { activityEnvironment, runActivity, toWire } from './worker-helpers';
 import { version as serverVersion } from '../../../../server/package.json';
 
@@ -89,6 +91,75 @@ describe('temporal/worker/plugin', function () {
       expect(name.startsWith('ably.'), name).to.equal(true);
       expect(activities[name], name).to.be.a('function');
     }
+  });
+
+  describe('activity names already registered', function () {
+    const anotherPlugin = /already has another AblyHttpPlugin/;
+
+    it('rejects an application activity with the name of an Ably activity', function () {
+      const myPublish = async () => 'mine';
+
+      expect(() => configuredActivities(plugin(), { [ActivityNames.publish]: myPublish })).to.throw(
+        TypeError,
+        `The worker's activities already include an activity named '${ActivityNames.publish}', which AblyHttpPlugin would replace with its own.`,
+      );
+    });
+
+    it('names every application activity that it would replace', function () {
+      const activities = { [ActivityNames.publish]: async () => 1, [ActivityNames.time]: async () => 2 };
+
+      expect(() => configuredActivities(plugin(), activities)).to.throw(
+        TypeError,
+        `already include activities named '${ActivityNames.publish}', '${ActivityNames.time}',`,
+      );
+    });
+
+    it('rejects the activities from createActivities as application activities', function () {
+      const activities = createActivities(createHttpClient({ key: KEY }));
+
+      expect(() => configuredActivities(plugin(), activities)).to.throw(TypeError, /do not also add AblyHttpPlugin\.$/);
+    });
+
+    it('ignores a value under an Ably name that is not a function, as the worker does', function () {
+      const activities = configuredActivities(plugin(), { [ActivityNames.publish]: 'not an activity' });
+
+      expect(activities[ActivityNames.publish]).to.be.a('function');
+    });
+
+    it('ignores an Ably name inherited by the activities object, as the worker does', function () {
+      const inherited = Object.create({ [ActivityNames.publish]: async () => 'inherited' });
+
+      expect(configuredActivities(plugin(), inherited)[ActivityNames.publish]).to.be.a('function');
+    });
+
+    it('rejects a second AblyHttpPlugin on the same worker', function () {
+      const first = plugin();
+      const second = plugin();
+      const options = first.configureWorker({ taskQueue: 'test', activities: {} } as WorkerOptions);
+
+      expect(() => second.configureWorker(options)).to.throw(TypeError, anotherPlugin);
+    });
+
+    it('accepts the same AblyHttpPlugin added twice', function () {
+      const only = plugin();
+      const once = only.configureWorker({ taskQueue: 'test', activities: {} } as WorkerOptions);
+
+      const twice = only.configureWorker(once);
+
+      expect(twice.activities).to.deep.equal(once.activities);
+    });
+
+    it('makes Worker.create reject a second AblyHttpPlugin, before it connects', async function () {
+      let caught: unknown;
+      try {
+        await Worker.create({ taskQueue: 'test', plugins: [plugin(), plugin()] });
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).to.be.instanceOf(TypeError);
+      expect((caught as TypeError).message).to.match(anotherPlugin);
+    });
   });
 
   it('creates its own client from clientOptions', async function () {

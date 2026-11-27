@@ -1,0 +1,461 @@
+{
+  "workflowId": "relay-replay-route-failed:ably:01a21d74-0028-7d49-b3b7-eeac197354f0",
+  "history": {
+    "events": [
+      {
+        "eventId": "1",
+        "eventTime": "2026-11-27T14:41:11.227428192Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+        "taskId": "1049003",
+        "workflowExecutionStartedEventAttributes": {
+          "workflowType": {
+            "name": "ablyRelayWorkflow"
+          },
+          "parentWorkflowNamespace": "default",
+          "parentWorkflowNamespaceId": "01a21d73-df5b-773b-93ce-aaabadae752a",
+          "parentWorkflowExecution": {
+            "workflowId": "relay-replay-route-failed",
+            "runId": "01a21d74-0028-7d49-b3b7-eeac197354f0"
+          },
+          "parentInitiatedEventId": "5",
+          "taskQueue": {
+            "name": "ably-temporal-relay-replay",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJzb3VyY2VXb3JrZmxvd0lkIjoicmVsYXktcmVwbGF5LXJvdXRlLWZhaWxlZCIsInNvdXJjZVJ1bklkIjoiMDFhMjFkNzQtMDAyOC03ZDQ5LWIzYjctZWVhYzE5NzM1NGYwIiwicm91dGVzIjpbeyJ0b3BpY3MiOlsiYmFkIl0sImFkYXB0b3IiOiJwb2lzb24iLCJjaGFubmVsIjoiYnJva2VuIn0seyJ0b3BpY3MiOlsiYWdlbnQiXSwiYWRhcHRvciI6InJlY29yZGluZyIsImNoYW5uZWwiOiJoZWFsdGh5In1dLCJjaGVja3BvaW50cyI6e319"
+              }
+            ]
+          },
+          "workflowRunTimeout": "0s",
+          "workflowTaskTimeout": "10s",
+          "originalExecutionRunId": "01a21d74-003b-7684-90d8-3e1eb0f58405",
+          "firstExecutionRunId": "01a21d74-003b-7684-90d8-3e1eb0f58405",
+          "attempt": 1,
+          "firstWorkflowTaskBackoff": "0s",
+          "header": {},
+          "workflowId": "relay-replay-route-failed:ably:01a21d74-0028-7d49-b3b7-eeac197354f0",
+          "rootWorkflowExecution": {
+            "workflowId": "relay-replay-route-failed",
+            "runId": "01a21d74-0028-7d49-b3b7-eeac197354f0"
+          }
+        }
+      },
+      {
+        "eventId": "2",
+        "eventTime": "2026-11-27T14:41:11.232984163Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1049013",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "ably-temporal-relay-replay",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "3",
+        "eventTime": "2026-11-27T14:41:11.235807820Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1049019",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "2",
+          "identity": "1655441@mike-thinkpad",
+          "requestId": "4baf9371-83ca-4965-bfce-9ed26c017ba2",
+          "historySizeBytes": "772",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          }
+        }
+      },
+      {
+        "eventId": "4",
+        "eventTime": "2026-11-27T14:41:11.244647876Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1049030",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "2",
+          "startedEventId": "3",
+          "identity": "1655441@mike-thinkpad",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          },
+          "sdkMetadata": {
+            "coreUsedFlags": [
+              2,
+              4,
+              1,
+              3
+            ],
+            "sdkName": "temporal-typescript",
+            "sdkVersion": "1.27.0"
+          },
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "5",
+        "eventTime": "2026-11-27T14:41:11.244701288Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+        "taskId": "1049031",
+        "activityTaskScheduledEventAttributes": {
+          "activityId": "1",
+          "activityType": {
+            "name": "ably.relay.route"
+          },
+          "taskQueue": {
+            "name": "ably-temporal-relay-replay",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "header": {},
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJzb3VyY2VXb3JrZmxvd0lkIjoicmVsYXktcmVwbGF5LXJvdXRlLWZhaWxlZCIsInJvdXRlIjp7InRvcGljcyI6WyJiYWQiXSwiYWRhcHRvciI6InBvaXNvbiIsImNoYW5uZWwiOiJicm9rZW4ifSwiY2hlY2twb2ludCI6eyJvZmZzZXQiOjAsImhhbmRvZmYiOm51bGwsInJ1bklkIjoiMDFhMjFkNzQtMDAyOC03ZDQ5LWIzYjctZWVhYzE5NzM1NGYwIn0sIm9wdGlvbnMiOnt9fQ=="
+              }
+            ]
+          },
+          "scheduleToCloseTimeout": "0s",
+          "scheduleToStartTimeout": "0s",
+          "startToCloseTimeout": "3600s",
+          "heartbeatTimeout": "30s",
+          "workflowTaskCompletedEventId": "4",
+          "retryPolicy": {
+            "initialInterval": "1s",
+            "backoffCoefficient": 2,
+            "maximumInterval": "60s"
+          },
+          "useWorkflowBuildId": true
+        }
+      },
+      {
+        "eventId": "6",
+        "eventTime": "2026-11-27T14:41:11.244728585Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+        "taskId": "1049032",
+        "activityTaskScheduledEventAttributes": {
+          "activityId": "2",
+          "activityType": {
+            "name": "ably.relay.route"
+          },
+          "taskQueue": {
+            "name": "ably-temporal-relay-replay",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "header": {},
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJzb3VyY2VXb3JrZmxvd0lkIjoicmVsYXktcmVwbGF5LXJvdXRlLWZhaWxlZCIsInJvdXRlIjp7InRvcGljcyI6WyJhZ2VudCJdLCJhZGFwdG9yIjoicmVjb3JkaW5nIiwiY2hhbm5lbCI6ImhlYWx0aHkifSwiY2hlY2twb2ludCI6eyJvZmZzZXQiOjAsImhhbmRvZmYiOm51bGwsInJ1bklkIjoiMDFhMjFkNzQtMDAyOC03ZDQ5LWIzYjctZWVhYzE5NzM1NGYwIn0sIm9wdGlvbnMiOnt9fQ=="
+              }
+            ]
+          },
+          "scheduleToCloseTimeout": "0s",
+          "scheduleToStartTimeout": "0s",
+          "startToCloseTimeout": "3600s",
+          "heartbeatTimeout": "30s",
+          "workflowTaskCompletedEventId": "4",
+          "retryPolicy": {
+            "initialInterval": "1s",
+            "backoffCoefficient": 2,
+            "maximumInterval": "60s"
+          },
+          "useWorkflowBuildId": true
+        }
+      },
+      {
+        "eventId": "7",
+        "eventTime": "2026-11-27T14:41:11.244746507Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+        "taskId": "1049087",
+        "activityTaskStartedEventAttributes": {
+          "scheduledEventId": "5",
+          "identity": "1655441@mike-thinkpad",
+          "requestId": "c53b4504-6009-4be5-96ad-1ff0cb927b51",
+          "attempt": 1,
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          }
+        }
+      },
+      {
+        "eventId": "8",
+        "eventTime": "2026-11-27T14:41:12.266674416Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_FAILED",
+        "taskId": "1049088",
+        "activityTaskFailedEventAttributes": {
+          "failure": {
+            "message": "this adaptor always fails",
+            "source": "TypeScriptSDK",
+            "stackTrace": "ApplicationFailure: this adaptor always fails\n    at ApplicationFailure.nonRetryable (/home/mike/code/ably-js/node_modules/@temporalio/common/src/failure.ts:254:12)\n    at Object.write (/home/mike/code/ably-js/packages/core-impl/test/temporal/workflow/relay-replay.test.ts:141:34)\n    at writeOrSkip (/home/mike/code/ably-js/packages/core-impl/src/platform/temporal/src/worker/relay/activity.ts:305:13)\n    at relayUntilReturn (/home/mike/code/ably-js/packages/core-impl/src/platform/temporal/src/worker/relay/activity.ts:282:10)\n    at async relayRoute (/home/mike/code/ably-js/packages/core-impl/src/platform/temporal/src/worker/relay/activity.ts:122:20)\n    at async Activity.execute (/home/mike/code/ably-js/node_modules/@temporalio/worker/src/activity.ts:150:14)\n    at async NativeConnection.withAbortSignal (/home/mike/code/ably-js/node_modules/@temporalio/worker/src/connection.ts:218:12)\n    at async Client.withAbortSignal (/home/mike/code/ably-js/node_modules/@temporalio/client/src/base-client.ts:117:12)\n    at async <anonymous> (/home/mike/code/ably-js/node_modules/@temporalio/worker/src/activity.ts:210:24)\n    at async <anonymous> (/home/mike/code/ably-js/node_modules/@temporalio/worker/src/worker.ts:1305:24)",
+            "applicationFailureInfo": {
+              "type": "PoisonedAdaptor",
+              "nonRetryable": true
+            }
+          },
+          "scheduledEventId": "5",
+          "startedEventId": "7",
+          "identity": "1655441@mike-thinkpad",
+          "retryState": "RETRY_STATE_NON_RETRYABLE_FAILURE"
+        }
+      },
+      {
+        "eventId": "9",
+        "eventTime": "2026-11-27T14:41:12.266739638Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1049089",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "1655441@mike-thinkpad-31dd44985e7a416f90cf9ab5e6ff5365",
+            "kind": "TASK_QUEUE_KIND_STICKY",
+            "normalName": "ably-temporal-relay-replay"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "10",
+        "eventTime": "2026-11-27T14:41:12.268899395Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1049094",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "9",
+          "identity": "1655441@mike-thinkpad",
+          "requestId": "bd44aba8-d1f2-4994-8b9f-8ca28135af28",
+          "historySizeBytes": "3545",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          }
+        }
+      },
+      {
+        "eventId": "11",
+        "eventTime": "2026-11-27T14:41:12.281170521Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1049098",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "9",
+          "startedEventId": "10",
+          "identity": "1655441@mike-thinkpad",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          },
+          "sdkMetadata": {},
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "12",
+        "eventTime": "2026-11-27T14:41:11.244764384Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+        "taskId": "1049124",
+        "activityTaskStartedEventAttributes": {
+          "scheduledEventId": "6",
+          "identity": "1655441@mike-thinkpad",
+          "requestId": "d7fc06f1-d8c2-4672-9355-215198327a05",
+          "attempt": 1,
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          }
+        }
+      },
+      {
+        "eventId": "13",
+        "eventTime": "2026-11-27T14:41:13.252635371Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+        "taskId": "1049125",
+        "activityTaskCompletedEventAttributes": {
+          "result": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJzdGF0dXMiOiJjb21wbGV0ZWQiLCJvZmZzZXQiOjMsInJ1bklkIjoiMDFhMjFkNzQtMDAyOC03ZDQ5LWIzYjctZWVhYzE5NzM1NGYwIiwiaGFuZG9mZiI6bnVsbCwic2tpcHBlZCI6MH0="
+              }
+            ]
+          },
+          "scheduledEventId": "6",
+          "startedEventId": "12",
+          "identity": "1655441@mike-thinkpad"
+        }
+      },
+      {
+        "eventId": "14",
+        "eventTime": "2026-11-27T14:41:13.252652736Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1049126",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "1655441@mike-thinkpad-31dd44985e7a416f90cf9ab5e6ff5365",
+            "kind": "TASK_QUEUE_KIND_STICKY",
+            "normalName": "ably-temporal-relay-replay"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "15",
+        "eventTime": "2026-11-27T14:41:13.254561651Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1049130",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "14",
+          "identity": "1655441@mike-thinkpad",
+          "requestId": "7e8366da-0369-4a4d-a9a8-25cfe55a6197",
+          "historySizeBytes": "4385",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          }
+        }
+      },
+      {
+        "eventId": "16",
+        "eventTime": "2026-11-27T14:41:13.260413030Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1049134",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "14",
+          "startedEventId": "15",
+          "identity": "1655441@mike-thinkpad",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          },
+          "sdkMetadata": {},
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "17",
+        "eventTime": "2026-11-27T14:41:13.260471229Z",
+        "eventType": "EVENT_TYPE_SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED",
+        "taskId": "1049135",
+        "signalExternalWorkflowExecutionInitiatedEventAttributes": {
+          "workflowTaskCompletedEventId": "16",
+          "namespace": "default",
+          "namespaceId": "01a21d73-df5b-773b-93ce-aaabadae752a",
+          "workflowExecution": {
+            "workflowId": "relay-replay-route-failed",
+            "runId": "01a21d74-0028-7d49-b3b7-eeac197354f0"
+          },
+          "signalName": "ably.relay.completed",
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJzb3VyY2VSdW5JZCI6IjAxYTIxZDc0LTAwMjgtN2Q0OS1iM2I3LWVlYWMxOTczNTRmMCIsInJvdXRlcyI6W3siY2hhbm5lbCI6ImJyb2tlbiIsInRvcGljcyI6WyJiYWQiXSwic3RhdHVzIjoiZmFpbGVkIiwic2tpcHBlZCI6MCwiZXJyb3IiOnsibWVzc2FnZSI6InRoaXMgYWRhcHRvciBhbHdheXMgZmFpbHMiLCJ0eXBlIjoiUG9pc29uZWRBZGFwdG9yIn19LHsiY2hhbm5lbCI6ImhlYWx0aHkiLCJ0b3BpY3MiOlsiYWdlbnQiXSwic3RhdHVzIjoiY29tcGxldGVkIiwic2tpcHBlZCI6MH1dfQ=="
+              }
+            ]
+          }
+        }
+      },
+      {
+        "eventId": "18",
+        "eventTime": "2026-11-27T14:41:13.263016983Z",
+        "eventType": "EVENT_TYPE_EXTERNAL_WORKFLOW_EXECUTION_SIGNALED",
+        "taskId": "1049143",
+        "externalWorkflowExecutionSignaledEventAttributes": {
+          "initiatedEventId": "17",
+          "namespace": "default",
+          "namespaceId": "01a21d73-df5b-773b-93ce-aaabadae752a",
+          "workflowExecution": {
+            "workflowId": "relay-replay-route-failed",
+            "runId": "01a21d74-0028-7d49-b3b7-eeac197354f0"
+          }
+        }
+      },
+      {
+        "eventId": "19",
+        "eventTime": "2026-11-27T14:41:13.263026231Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1049144",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "1655441@mike-thinkpad-31dd44985e7a416f90cf9ab5e6ff5365",
+            "kind": "TASK_QUEUE_KIND_STICKY",
+            "normalName": "ably-temporal-relay-replay"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "20",
+        "eventTime": "2026-11-27T14:41:13.264573816Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1049152",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "19",
+          "identity": "1655441@mike-thinkpad",
+          "requestId": "911e4934-b76a-4a8b-a86a-b0279b9b9211",
+          "historySizeBytes": "5464",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          }
+        }
+      },
+      {
+        "eventId": "21",
+        "eventTime": "2026-11-27T14:41:13.273729262Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1049161",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "19",
+          "startedEventId": "20",
+          "identity": "1655441@mike-thinkpad",
+          "workerVersion": {
+            "buildId": "@temporalio/worker@1.27.0+54b53d86aec5eb98ea128c2966e11aabfdbc6cac9f2bbe07f4c2080c961be2ea"
+          },
+          "sdkMetadata": {},
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "22",
+        "eventTime": "2026-11-27T14:41:13.273822813Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_FAILED",
+        "taskId": "1049162",
+        "workflowExecutionFailedEventAttributes": {
+          "failure": {
+            "message": "Ably: 1 of 2 relay routes failed. Channel broken: this adaptor always fails",
+            "source": "TypeScriptSDK",
+            "stackTrace": "ApplicationFailure: Ably: 1 of 2 relay routes failed. Channel broken: this adaptor always fails\n    at ApplicationFailure.create (/home/mike/code/ably-js/node_modules/@temporalio/common/src/failure.ts:228:11)\n    at create (/home/mike/code/ably-js/packages/core-impl/src/platform/temporal/src/workflow/relay/workflow.ts:189:29)",
+            "applicationFailureInfo": {
+              "type": "AblyRelayRouteFailed",
+              "nonRetryable": true,
+              "details": {
+                "payloads": [
+                  {
+                    "metadata": {
+                      "encoding": "anNvbi9wbGFpbg=="
+                    },
+                    "data": "W3siY2hhbm5lbCI6ImJyb2tlbiIsInRvcGljcyI6WyJiYWQiXSwic3RhdHVzIjoiZmFpbGVkIiwic2tpcHBlZCI6MCwiZXJyb3IiOnsibWVzc2FnZSI6InRoaXMgYWRhcHRvciBhbHdheXMgZmFpbHMiLCJ0eXBlIjoiUG9pc29uZWRBZGFwdG9yIn19LHsiY2hhbm5lbCI6ImhlYWx0aHkiLCJ0b3BpY3MiOlsiYWdlbnQiXSwic3RhdHVzIjoiY29tcGxldGVkIiwic2tpcHBlZCI6MH1d"
+                  }
+                ]
+              }
+            }
+          },
+          "retryState": "RETRY_STATE_RETRY_POLICY_NOT_SET",
+          "workflowTaskCompletedEventId": "21"
+        }
+      }
+    ]
+  }
+}

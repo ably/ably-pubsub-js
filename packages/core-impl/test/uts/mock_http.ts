@@ -14,7 +14,7 @@ interface ConnectionResult {
 
 interface RequestResult {
   error: { message: string; code: number; statusCode: number } | null;
-  body: string | null;
+  body: string | Buffer | null;
   headers: Record<string, string>;
   unpacked: boolean;
   statusCode: number;
@@ -121,7 +121,8 @@ class PendingRequest {
 
     this._resolve!({
       error: error,
-      body: typeof body === 'string' ? body : JSON.stringify(body),
+      // A Buffer body is a binary (MessagePack) response, passed through as the Node.js HTTP client returns it
+      body: typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body),
       headers: responseHeaders,
       unpacked: false,
       statusCode: status,

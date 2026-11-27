@@ -1,4 +1,5 @@
 import Message, { WireMessage, fromEncoded, fromEncodedArray } from './message';
+import { applyPatch } from './messagepatch';
 import * as API from '@ably/pubsub-core/api';
 import Platform from 'common/platform';
 import Logger from '../util/logger';
@@ -14,6 +15,10 @@ export class DefaultMessage extends Message {
 
   static async fromEncodedArray(encodedArray: Array<unknown>, options?: API.ChannelOptions): Promise<Message[]> {
     return fromEncodedArray(Logger.defaultLogger, Platform.Crypto, encodedArray as WireMessage[], options);
+  }
+
+  static applyPatch<T extends Properties<Message>>(message: T, patch: Properties<Message>): T {
+    return applyPatch(message, patch);
   }
 
   static fromValues(values: Properties<Message>): Message {

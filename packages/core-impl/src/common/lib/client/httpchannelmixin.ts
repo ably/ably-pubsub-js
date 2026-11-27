@@ -92,7 +92,7 @@ export class HttpChannelMixin {
 
   static async updateDeleteMessage(
     channel: HttpChannel | RealtimeChannel,
-    action: 'message.update' | 'message.delete' | 'message.append',
+    action: 'message.update' | 'message.delete' | 'message.append' | 'message.patch',
     message: Message,
     operation?: API.MessageOperation,
     params?: Record<string, any>,

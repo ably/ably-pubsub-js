@@ -392,6 +392,29 @@ export declare interface HttpChannel {
    */
   appendMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
   /**
+   * Patches an existing message: atomically sets, appends to or removes values inside its JSON `data`, and sets or removes its headers. Only the `patches` field changes the message. Subscribers receive the patch as a `message.patch`, and apply it to their copy with {@link Message.applyPatch}.
+   *
+   * The channel must be configured to allow message appends, enabled by a [rule](https://ably.com/docs/channels#rules).
+   *
+   * The supplied {@link Message} must carry a populated `serial`. A newly constructed {@link Message} has none, so the call rejects with an {@link ErrorInfo}.
+   *
+   * @param message - A {@link Message} object containing a populated `serial` field and the `patches` to apply.
+   * @param operation - An optional {@link MessageOperation} object containing metadata about the patch operation.
+   * @param options - Optional parameters to modify how the publish is made.
+   * @returns A promise which, upon success, will be fulfilled with an {@link UpdateDeleteResult} object containing the serial of the new version of the message. Upon failure, the promise will be rejected with an {@link ErrorInfo} object which explains the error.
+   * @example
+   * ```ts
+   * const result = await channel.patchMessage({
+   *   serial: message.serial,
+   *   patches: {
+   *     data: [{ op: 'append', path: '/content/0/text', data: ' more text' }],
+   *     extras: { headers: [{ op: 'set', key: 'status', value: 'complete' }] },
+   *   },
+   * });
+   * ```
+   */
+  patchMessage(message: Message, operation?: MessageOperation, options?: PublishOptions): Promise<UpdateDeleteResult>;
+  /**
    * Retrieves all historical versions of a specific message, ordered by version. This includes the original message and all subsequent update, delete, or append operations.
    *
    * The supplied serial or {@link Message} must carry a populated `serial`. A newly constructed {@link Message} has none, so the call rejects with an {@link ErrorInfo}.

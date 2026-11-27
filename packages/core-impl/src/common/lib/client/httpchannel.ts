@@ -213,6 +213,15 @@ class HttpChannel {
     return this.client.http.channelMixin.updateDeleteMessage(this, 'message.append', message, operation, params);
   }
 
+  async patchMessage(
+    message: Message,
+    operation?: API.MessageOperation,
+    params?: Record<string, any>,
+  ): Promise<API.UpdateDeleteResult> {
+    Logger.logAction(this.logger, Logger.LOG_MICRO, 'HttpChannel.patchMessage()', 'channel = ' + this.name);
+    return this.client.http.channelMixin.updateDeleteMessage(this, 'message.patch', message, operation, params);
+  }
+
   async getMessageVersions(
     serialOrMessage: string | Message,
     params?: Record<string, any>,

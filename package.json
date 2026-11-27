@@ -28,6 +28,7 @@
     "@temporalio/testing": "^1.27.0",
     "@temporalio/worker": "^1.27.0",
     "@temporalio/workflow": "^1.27.0",
+    "@temporalio/workflow-streams": "^1.27.0",
     "@testing-library/react": "^13.3.0",
     "@types/cli-table": "^0.3.4",
     "@types/jmespath": "^0.15.2",

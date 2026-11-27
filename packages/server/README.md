@@ -66,8 +66,8 @@ Everything the SDK exposes is exported here, so you never need to add `@ably/pub
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `@ably/pubsub-server`                   | `createHttpClient`, `createRealtimeClient`, `createRealtimeChannelPool`, plus the core's entire public API and types |
 | `@ably/pubsub-server/liveobjects`       | The LiveObjects plugin                                                                                               |
-| `@ably/pubsub-server/temporal`          | The Temporal plugin, which registers the Ably activities on a Temporal worker                                        |
-| `@ably/pubsub-server/temporal/workflow` | The Temporal plugin's HTTP client for Temporal workflow code                                                         |
+| `@ably/pubsub-server/temporal`          | The Temporal plugin, which registers the Ably activities and the Workflow Streams relay on a Temporal worker         |
+| `@ably/pubsub-server/temporal/workflow` | The Temporal plugin's HTTP client for Temporal workflow code, and `startAblyRelay`                                   |
 
 ```javascript
 import { createRealtimeClient } from '@ably/pubsub-server';
@@ -84,7 +84,7 @@ const message = await Message.fromEncoded(webhookPayload, { cipher: { key } });
 
 The LiveObjects plugin is the same object the core exports, not a copy, so a client built here accepts it as the plugin it expects. It carries no side of its own and is available from both packages.
 
-The Temporal plugin calls the Ably REST API from Temporal workflow code, running each call as an activity on the worker. Its `@temporalio/*` dependencies are optional peer dependencies of this package: install them alongside it when you use the plugin.
+The Temporal plugin calls the Ably REST API from Temporal workflow code, running each call as an activity on the worker. It can also relay a workflow's Workflow Stream to Ably channels, through a realtime channel pool. Its `@temporalio/*` dependencies are optional peer dependencies of this package: install them alongside it when you use the plugin, and `@temporalio/workflow-streams` too when you use the relay. See the [Temporal plugin docs](https://github.com/ably/ably-js/blob/main/docs/temporal.md).
 
 Push receive and the React hooks are device-side concerns and are not re-exported here; they live on [`@ably/pubsub-device`](https://www.npmjs.com/package/@ably/pubsub-device). Push _admin_ is a server concern and is already on the client, at `client.push.admin`.
 

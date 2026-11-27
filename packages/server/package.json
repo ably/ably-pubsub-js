@@ -79,7 +79,8 @@
     "@temporalio/activity": "1.x",
     "@temporalio/common": "1.x",
     "@temporalio/plugin": "1.x",
-    "@temporalio/workflow": ">=1.18.0 <2.0.0"
+    "@temporalio/workflow": ">=1.18.0 <2.0.0",
+    "@temporalio/workflow-streams": ">=1.27.0 <2.0.0"
   },
   "peerDependenciesMeta": {
     "@temporalio/activity": {
@@ -92,6 +93,9 @@
       "optional": true
     },
     "@temporalio/workflow": {
+      "optional": true
+    },
+    "@temporalio/workflow-streams": {
       "optional": true
     }
   },

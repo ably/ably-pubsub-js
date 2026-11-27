@@ -200,7 +200,7 @@ export async function agentWorkflow(): Promise<void> {
 }
 ```
 
-The plugin requires `@temporalio/*` 1.18.0 or later. See the [Temporal plugin documentation](./docs/temporal.md) for setup, the supported API, retries and error handling.
+The plugin requires `@temporalio/*` 1.18.0 or later. It can also relay a workflow's [Workflow Stream](./docs/temporal.md#relaying-workflow-streams) to Ably channels, which requires 1.27.0 or later. See the [Temporal plugin documentation](./docs/temporal.md) for setup, the supported API, retries and error handling.
 
 ---
 

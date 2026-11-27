@@ -2,6 +2,14 @@
 
 This contains only the most important and/or user-facing changes; for a full changelog, see the commit history.
 
+## [3.3.0](https://github.com/ably/ably-pubsub-js/tree/3.3.0) (2026-11-27)
+
+[Full Changelog](https://github.com/ably/ably-pubsub-js/compare/3.2.0...3.3.0)
+
+### What's Changed
+
+- `RealtimePublisherChannel`, the handle a `RealtimeChannelPool` in `@ably/pubsub-server` gives out, gains `getMessage`, which reads a message back by serial as `RealtimeChannel.getMessage` does. It is a REST request, so it doesn't attach the channel or depend on the connection [#2356](https://github.com/ably/ably-pubsub-js/pull/2356)
+
 ## [3.2.0](https://github.com/ably/ably-pubsub-js/tree/3.2.0) (2026-11-20)
 
 [Full Changelog](https://github.com/ably/ably-pubsub-js/compare/3.1.0...3.2.0)
